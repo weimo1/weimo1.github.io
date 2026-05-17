@@ -1,0 +1,108 @@
+﻿# Butterfly 主题配置
+# 文档: https://butterfly.js.org/
+
+# 导航菜单
+menu:
+  首页: / || fas fa-home
+  归档: /archives/ || fas fa-archive
+  标签: /tags/ || fas fa-tags
+  分类: /categories/ || fas fa-folder-open
+  关于: /about/ || fas fa-heart
+
+# 代码块
+code_blocks:
+  theme: darker
+  macStyle: true
+  copy: true
+  language: true
+  shrink: false
+  fullpage: false
+
+# 社交链接
+social:
+  fab fa-github: https://github.com/weimo1 || Github || '#24292e'
+
+# 网站图标
+favicon: /img/favicon.png
+
+# 头像
+avatar:
+  img: /img/avatar.png
+  effect: true
+
+# 首页顶部图
+index_img: /img/index_bg.jpg
+default_top_img: /img/default_bg.jpg
+
+# 封面设置
+cover:
+  index_enable: true
+  aside_enable: true
+  archives_enable: true
+  position: both
+
+# 侧边栏
+aside:
+  enable: true
+  hide: false
+  button: true
+  mobile: true
+  position: right
+  display:
+    archive: true
+    tag: true
+    category: true
+  card_author:
+    enable: true
+    description: 'C++ / 图形学 / 系统底层'
+  card_announcement:
+    enable: true
+    content: Welcome to my blog
+  card_recent_post:
+    enable: true
+    limit: 5
+  card_categories:
+    enable: true
+    limit: 8
+  card_tags:
+    enable: true
+    limit: 40
+  card_archives:
+    enable: true
+    type: monthly
+
+# 暗色模式
+darkmode:
+  enable: true
+  button: true
+  autoChangeMode: 1
+
+# 搜索
+search:
+  use: local
+  placeholder: search...
+
+local_search:
+  enable: true
+
+# 页脚
+footer:
+  owner:
+    enable: true
+    since: 2026
+
+# 图片灯箱
+fancybox: true
+
+# 懒加载
+lazyload:
+  enable: true
+
+# PJAX
+pjax:
+  enable: false
+
+# 字体
+font:
+  global-font-size: '16px'
+  code-font-size: '14px'
