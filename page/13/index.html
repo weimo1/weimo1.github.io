@@ -1,0 +1,283 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>weimo1's blog - 技术笔记与思考</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="个人技术博客">
+<meta property="og:type" content="website">
+<meta property="og:title" content="weimo1&#39;s blog">
+<meta property="og:url" content="https://weimo1.github.io/page/13/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="个人技术博客">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json"></script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/page/13/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'weimo1\'s blog',
+  isHighlightShrink: false,
+  isToc: false,
+  pageType: 'home'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="page" id="body-wrap"><header class="full_page fixed" id="page-header" style="background-image: url(/img/index_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="site-info"><h1 id="site-title">weimo1's blog</h1><div id="site-subtitle"><span id="subtitle"></span></div><div id="site_social_icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div id="scroll-down"><i class="fas fa-angle-down scroll-down-effects"></i></div></header><main class="layout" id="content-inner"><div class="recent-posts nc" id="recent-posts"><div class="recent-post-items"><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/function/" title="function">function</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="content">function 适用范围：C++11 std::function——通用多态函数包装器（类型擦除 + SBO）。  一、核心概念 定义：在C++11标准中，引入了 std::function 这一通用多态函数包装器，定义于 &lt;functional&gt; 头文件中。它彻底改变了C++中函数对象的使用方式，为不同类型的可调用实体提供了统一的接口。std::function 能够存储、复制和调用任何可复制构造的可调用目标，包括函数指针、lambda表达式、std::bind 表达式、函数对象以及成员函数指针等。 关键词：std::function、类型擦除（Type Erasure）...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/flowerEngine/" title="flowerEngine">flowerEngine</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E8%87%AA%E5%B7%B1%E7%9A%84%E9%A1%B9%E7%9B%AE/">自己的项目</a></span></div><div class="content">Flower Engine：高性能 Vulkan 渲染引擎深度研究 适用范围：基于 Vulkan 1.3 的开源渲染引擎 “Flower Engine” 的架构分析、性能剖析与工程实践。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/gRPC-%E6%96%AD%E7%BA%BF%E9%87%8D%E8%BF%9E%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E8%AF%A6%E8%A7%A3/" title="gRPC 断线重连与服务发现详解">gRPC 断线重连与服务发现详解</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="content">gRPC 断线重连与服务发现详解 深入分析 gRPC 的断线重连机制（连接状态机、指数退避、Channel&#x2F;RPC 双层重试）和服务发现架构（可插拔 Resolver、Consul&#x2F;K8s 集成、负载均衡器），以及背后的设计理念：可插拔架构、透明重试、健康感知和可观测性。  一、核心概念 定义：gRPC 的断线重连通过状态机驱动的连接管理 + 指数退避策略 + Channel&#x2F;RPC 双层重试保证高可用。服务发现通过可插拔的 Resolver 接口支持 DNS、Consul、K8s 等多种后端，配合负载均衡器实现请求分发。 关键词：连接状态机、指数退避、Ex...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/gRPC/" title="gRPC">gRPC</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="content">gRPC 框架深度解析 gRPC 是 Google 开源的高性能跨语言 RPC 框架，基于 HTTP&#x2F;2 + Protobuf。本文从 RPC 的基本概念出发，深入分析 gRPC 的分层架构、Channel 连接抽象、服务调用流程和内置高级特性。  一、核心概念 定义：gRPC 是 CNCF 旗下的高性能、开源通用 RPC 框架。使用 Protobuf 作为接口定义语言（IDL）和序列化协议，HTTP&#x2F;2 作为传输协议，支持多种编程语言和双向流式传输。 关键词：RPC、Protobuf、HTTP&#x2F;2、Channel、Stub、服务定义、流式传输、拦截器、多路...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/gRPC%E9%80%9A%E4%BF%A1%E4%B8%8E%E8%BF%9E%E6%8E%A5%E6%B1%A0/" title="gRPC通信与连接池">gRPC通信与连接池</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="content">gRPC通信与连接池设计 适用范围：gRPC服务间通信原理、多Channel&#x2F;Stub连接池设计、brpc vs gRPC对比分析、gRPC服务端构建。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/grpc%E8%B0%83%E7%94%A8/" title="grpc调用">grpc调用</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="content">gRPC 调用机制 深入分析 gRPC 的多 Channel&#x2F;Stub 设计原因、服务间通信的完整流程，以及 Channel 作为长连接抽象的底层机制。HTTP&#x2F;2 多路复用虽强大但存在流控和队头阻塞限制，多 Channel 是解决这些问题的关键。  一、核心概念 定义：gRPC 调用通过 Channel（HTTP&#x2F;2 连接抽象）和 Stub（客户端代理）实现。多 Channel&#x2F;Stub 设计解决了单连接的性能瓶颈、负载均衡和容错问题。 关键词：Channel、Stub、HTTP&#x2F;2 多路复用、队头阻塞、负载均衡、服务发现、Protob...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/grpc%E5%92%8Cbrpc/" title="grpc和brpc">grpc和brpc</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="content">gRPC 与 brpc 对比选型 gRPC 和 brpc 是 C++ 领域两大主流 RPC 框架。gRPC 由 Google 开源，主打跨语言标准化和云原生生态；brpc 由百度开源，主打极致性能和多协议支持。此外还有腾讯的 tRPC 等多语言框架。本文提供选型框架和实践建议。  一、核心概念 定义：gRPC 基于 HTTP&#x2F;2 + Protobuf，是跨语言、标准化的 RPC 框架。brpc 基于自研高性能网络库，支持 HTTP、Redis、RTMP 等多协议。两者设计哲学不同——gRPC 追求通用性和生态，brpc 追求性能和灵活性。 关键词：RPC 框架选型、gRPC、b...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/gdb/" title="gdb">gdb</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E8%B0%83%E8%AF%95%E4%B8%8E%E5%B7%A5%E5%85%B7/">调试与工具</a></span></div><div class="content">gdb使用c++编程的同学，经常会遇到诸如内存越界、重复释放等内存问题，大家比较习惯的追查这类问题的方式是，打开core文件的limit，生成core文件，用gdb进行分析； 但是，在实际的生产环境中。由于程序本省占用内存非常大，比如搜索的索引服务，进行core的dump不太现实，所以一般采用，在程序中捕获信号，之后打印进程的堆栈信息，再进行追查。 下面本文，就按照这种方式进行追查，首先，分析没有so的程序如何使用objdump与汇编进行分析程序的问题所在；接着分析有so的程序，如何使用objdump进行分析，希望对大家能有所帮助。 程序员的自我修养：如何用好 GDB 使用objdump...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/http%E6%9C%8D%E5%8A%A1%E5%99%A8/" title="http服务器">http服务器</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a></span></div><div class="content">HTTP包头信息一个标准的HTTP报文头通常由请求头和响应头两部分组成。 HTTP 请求头HTTP请求头包括以下字段：  Request-line：包含用于描述请求类型、要访问的资源以及所使用的HTTP版本的信息。  Host：指定被请求资源的主机名或IP地址和端口号。  Accept：指定客户端能够接收的媒体类型列表，用逗号分隔，例如 text&#x2F;plain, text&#x2F;html。  User-Agent：客户端使用的浏览器类型和版本号，供服务器统计用户代理信息。  Cookie：如果请求中包含cookie信息，则通过这个字段将cookie信息发送给Web服务器。  ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/posts/http%E6%9C%8D%E5%8A%A1%E5%99%A8_1/" title="http服务器">http服务器</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a><i class="fas fa-angle-right article-meta-link"></i><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/boost-asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">boost-asio  网络编程</a></span></div><div class="content">HTTP包头信息一个标准的HTTP报文头通常由请求头和响应头两部分组成。 HTTP 请求头HTTP请求头包括以下字段：  Request-line：包含用于描述请求类型、要访问的资源以及所使用的HTTP版本的信息。  Host：指定被请求资源的主机名或IP地址和端口号。  Accept：指定客户端能够接收的媒体类型列表，用逗号分隔，例如 text&#x2F;plain, text&#x2F;html。  User-Agent：客户端使用的浏览器类型和版本号，供服务器统计用户代理信息。  Cookie：如果请求中包含cookie信息，则通过这个字段将cookie信息发送给Web服务器。  ...</div></div></div></div><nav id="pagination"><div class="pagination"><a class="extend prev" rel="prev" href="/page/12/#content-inner"><i class="fas fa-chevron-left fa-fw"></i></a><a class="page-number" href="/">1</a><span class="space">&hellip;</span><a class="page-number" href="/page/12/#content-inner">12</a><span class="page-number current">13</span><a class="page-number" href="/page/14/#content-inner">14</a><span class="space">&hellip;</span><a class="page-number" href="/page/30/#content-inner">30</a><a class="extend next" rel="next" href="/page/14/#content-inner"><i class="fas fa-chevron-right fa-fw"></i></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div><div class="card-widget card-categories"><div class="item-headline">
+            <i class="fas fa-folder-open"></i>
+            <span>分类</span>
+            <a class="card-more-btn" href="/categories/" title="查看更多">
+      <i class="fas fa-angle-right"></i></a>
+          </div>
+          <ul class="card-category-list" id="aside-cat-list">
+            <li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/"><span class="card-category-list-name">C++知识库</span><span class="card-category-list-count">121</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/"><span class="card-category-list-name">C++语言核心</span><span class="card-category-list-count">121</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/"><span class="card-category-list-name">内存模型</span><span class="card-category-list-count">16</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/"><span class="card-category-list-name">基础知识</span><span class="card-category-list-count">32</span></a><ul class="card-category-list child"><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/"><span class="card-category-list-name">基础概念</span><span class="card-category-list-count">17</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E5%AE%9E%E8%B7%B5%E4%B8%8E%E6%9D%82%E9%A1%B9/"><span class="card-category-list-name">实践与杂项</span><span class="card-category-list-count">4</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E7%BC%96%E8%AF%91%E4%B8%8E%E6%9E%84%E5%BB%BA/"><span class="card-category-list-name">编译与构建</span><span class="card-category-list-count">4</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E8%B0%83%E8%AF%95%E4%B8%8E%E5%B7%A5%E5%85%B7/"><span class="card-category-list-name">调试与工具</span><span class="card-category-list-count">3</span></a></li></ul></li></ul></li></ul></li>
+          </ul></div><div class="card-widget card-archives">
+    <div class="item-headline">
+      <i class="fas fa-archive"></i>
+      <span>归档</span>
+      
+    </div>
+  
+    <ul class="card-archive-list">
+      
+        <li class="card-archive-list-item">
+          <a class="card-archive-list-link" href="/archives/2026/06/">
+            <span class="card-archive-list-date">
+              六月 2026
+            </span>
+            <span class="card-archive-list-count">299</span>
+          </a>
+        </li>
+      
+    </ul>
+  </div><div class="card-widget card-webinfo"><div class="item-headline"><i class="fas fa-chart-line"></i><span>网站信息</span></div><div class="webinfo"><div class="webinfo-item"><div class="item-name">文章数目 :</div><div class="item-count">299</div></div><div class="webinfo-item"><div class="item-name">本站总字数 :</div><div class="item-count">1049.2k</div></div><div class="webinfo-item"><div class="item-name">本站访客数 :</div><div class="item-count" id="busuanzi_value_site_uv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">本站总浏览量 :</div><div class="item-count" id="busuanzi_value_site_pv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">最后更新时间 :</div><div class="item-count" id="last-push-date" data-lastPushDate="2026-06-20T07:30:21.521Z"><i class="fa-solid fa-spinner fa-spin"></i></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"><script>window.typedJSFn = {
+  init: str => {
+    window.typed = new Typed('#subtitle', Object.assign({
+      strings: str,
+      startDelay: 300,
+      typeSpeed: 150,
+      loop: true,
+      backSpeed: 50,
+    }, {"strings":["C++ / 图形学 / 系统底层","持续探索技术边界","代码即艺术"],"typeSpeed":70,"backSpeed":50,"loop":true}))
+  },
+  run: subtitleType => {
+    if (true) {
+      if (typeof Typed === 'function') {
+        subtitleType()
+      } else {
+        btf.getScript('https://cdn.jsdelivr.net/npm/typed.js@3.0.0/dist/typed.umd.min.js').then(subtitleType)
+      }
+    } else {
+      subtitleType()
+    }
+  },
+  processSubtitle: (content, extraContents = []) => {
+    if (true) {
+      const sub = ["C++ / 图形学 / 系统底层"].slice()
+
+      if (extraContents.length > 0) {
+        sub.unshift(...extraContents)
+      }
+
+      if (typeof content === 'string') {
+        sub.unshift(content)
+      } else if (Array.isArray(content)) {
+        sub.unshift(...content)
+      }
+
+      sub.length > 0 && typedJSFn.init(sub)
+    } else {
+      document.getElementById('subtitle').textContent = typeof content === 'string' ? content :
+        (Array.isArray(content) && content.length > 0 ? content[0] : '')
+    }
+  }
+}
+btf.addGlobalFn('pjaxSendOnce', () => { typed.destroy() }, 'typedDestroy')
+</script><script>function subtitleType () {
+  typedJSFn.processSubtitle(["C++ / 图形学 / 系统底层"])
+}
+typedJSFn.run(subtitleType)</script></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

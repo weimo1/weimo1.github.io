@@ -1,0 +1,493 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>聊天系统数据库表设计 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="聊天系统数据库表设计（参考手册） 适用范围：IM 聊天系统数据库表结构参考、DDL 语句、字段说明、索引设计速查  一、项目&#x2F;模块概述 模块定位：本文提供 IM 聊天系统的完整数据库表结构参考，涵盖用户、消息、会话、单聊、群聊、好友关系的 DDL 定义和字段说明，作为开发和面试快速查阅手册。 技术栈与依赖：MySQL 8.0 InnoDB、UTF8MB4 字符集、BIGINT 主键、复合">
+<meta property="og:type" content="article">
+<meta property="og:title" content="聊天系统数据库表设计">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="聊天系统数据库表设计（参考手册） 适用范围：IM 聊天系统数据库表结构参考、DDL 语句、字段说明、索引设计速查  一、项目&#x2F;模块概述 模块定位：本文提供 IM 聊天系统的完整数据库表结构参考，涵盖用户、消息、会话、单聊、群聊、好友关系的 DDL 定义和字段说明，作为开发和面试快速查阅手册。 技术栈与依赖：MySQL 8.0 InnoDB、UTF8MB4 字符集、BIGINT 主键、复合">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.577Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "聊天系统数据库表设计",
+  "url": "https://weimo1.github.io/posts/%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.577Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '聊天系统数据库表设计',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">聊天系统数据库表设计</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">聊天系统数据库表设计</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.577Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="聊天系统数据库表设计（参考手册）"><a href="#聊天系统数据库表设计（参考手册）" class="headerlink" title="聊天系统数据库表设计（参考手册）"></a>聊天系统数据库表设计（参考手册）</h1><blockquote>
+<p>适用范围：IM 聊天系统数据库表结构参考、DDL 语句、字段说明、索引设计速查</p>
+</blockquote>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：本文提供 IM 聊天系统的完整数据库表结构参考，涵盖用户、消息、会话、单聊、群聊、好友关系的 DDL 定义和字段说明，作为开发和面试快速查阅手册。</li>
+<li><strong>技术栈与依赖</strong>：MySQL 8.0 InnoDB、UTF8MB4 字符集、BIGINT 主键、复合索引。</li>
+<li><strong>模块边界</strong>：本文聚焦表结构定义和字段约束，业务逻辑细节见《IM数据库表设计》。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><h3 id="表关系图"><a href="#表关系图" class="headerlink" title="表关系图"></a>表关系图</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">users ───┬── messages (sender_id, receiver_id)</span><br><span class="line">         ├── conversations (user_id)</span><br><span class="line">         ├── private_chat (user1_id, user2_id)</span><br><span class="line">         ├── group_chat → group_chat_member (user_id)</span><br><span class="line">         ├── friend_request (sender_id, receiver_id)</span><br><span class="line">         └── friend_relationship (user_id, friend_id)</span><br></pre></td></tr></table></figure>
+
+<h3 id="核心设计决策"><a href="#核心设计决策" class="headerlink" title="核心设计决策"></a>核心设计决策</h3><table>
+<thead>
+<tr>
+<th>决策</th>
+<th>选择</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>引擎</td>
+<td>InnoDB</td>
+<td>支持事务、行锁、外键、崩溃恢复</td>
+</tr>
+<tr>
+<td>字符集</td>
+<td>utf8mb4</td>
+<td>完整 UTF-8，支持 Emoji</td>
+</tr>
+<tr>
+<td>主键类型</td>
+<td>BIGINT UNSIGNED</td>
+<td>支持 2^64 条记录，自增无溢出风险</td>
+</tr>
+<tr>
+<td>时间格式</td>
+<td>DATETIME(3)</td>
+<td>毫秒精度，不受 2038 问题限制</td>
+</tr>
+<tr>
+<td>消息状态</td>
+<td>TINYINT 枚举</td>
+<td>0未读&#x2F;1已读&#x2F;2撤回，可扩展</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-用户表（users）"><a href="#3-1-用户表（users）" class="headerlink" title="3.1 用户表（users）"></a>3.1 用户表（users）</h3><table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>类型</th>
+<th>说明</th>
+<th>约束</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>user_id</td>
+<td>BIGINT</td>
+<td>用户唯一ID</td>
+<td>AUTO_INCREMENT, PK</td>
+</tr>
+<tr>
+<td>username</td>
+<td>VARCHAR(64)</td>
+<td>用户名</td>
+<td>UNIQUE</td>
+</tr>
+<tr>
+<td>password_hash</td>
+<td>CHAR(64)</td>
+<td>SHA-256 密码哈希</td>
+<td>NOT NULL</td>
+</tr>
+<tr>
+<td>salt</td>
+<td>CHAR(32)</td>
+<td>密码盐值</td>
+<td>NOT NULL</td>
+</tr>
+<tr>
+<td>avatar_url</td>
+<td>VARCHAR(255)</td>
+<td>头像链接</td>
+<td>DEFAULT NULL</td>
+</tr>
+<tr>
+<td>online_status</td>
+<td>TINYINT</td>
+<td>0离线&#x2F;1在线</td>
+<td>DEFAULT 0</td>
+</tr>
+<tr>
+<td>last_active_at</td>
+<td>DATETIME</td>
+<td>最后活跃时间</td>
+<td>DEFAULT NULL</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-聊天消息表（chat-message）"><a href="#3-2-聊天消息表（chat-message）" class="headerlink" title="3.2 聊天消息表（chat_message）"></a>3.2 聊天消息表（chat_message）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> `chat_message` (</span><br><span class="line">  `message_id` <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> AUTO_INCREMENT,</span><br><span class="line">  `thread_id`  <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;会话ID（同一会话的所有消息共用）&#x27;</span>,</span><br><span class="line">  `sender_id`  <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;发送者ID&#x27;</span>,</span><br><span class="line">  `recv_id`    <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;接收者ID（用户或群组）&#x27;</span>,</span><br><span class="line">  `content`    TEXT <span class="keyword">NOT NULL</span> COMMENT <span class="string">&#x27;消息内容（JSON或加密文本）&#x27;</span>,</span><br><span class="line">  `created_at` <span class="type">TIMESTAMP</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  `updated_at` <span class="type">TIMESTAMP</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span> <span class="keyword">ON</span> <span class="keyword">UPDATE</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  `status`     TINYINT <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="number">0</span> COMMENT <span class="string">&#x27;0=未读 1=已读 2=撤回&#x27;</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`message_id`),</span><br><span class="line">  KEY `idx_thread_created` (`thread_id`, `created_at`),</span><br><span class="line">  KEY `idx_thread_message` (`thread_id`, `message_id`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4 <span class="keyword">COLLATE</span><span class="operator">=</span>utf8mb4_unicode_ci;</span><br></pre></td></tr></table></figure>
+
+<p><strong>索引说明</strong>：</p>
+<ul>
+<li><code>idx_thread_created</code>：消息时间线查询（”查看某会话最近消息”）</li>
+<li><code>idx_thread_message</code>：消息分页（<code>WHERE thread_id=? AND message_id&lt;? ORDER BY message_id DESC</code>）</li>
+</ul>
+<h3 id="3-3-会话表（conversations）"><a href="#3-3-会话表（conversations）" class="headerlink" title="3.3 会话表（conversations）"></a>3.3 会话表（conversations）</h3><table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>类型</th>
+<th>说明</th>
+<th>约束</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>session_id</td>
+<td>VARCHAR(64)</td>
+<td>会话ID</td>
+<td>PK</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>BIGINT</td>
+<td>用户ID</td>
+<td>FK(users.user_id)</td>
+</tr>
+<tr>
+<td>session_type</td>
+<td>TINYINT</td>
+<td>0单聊&#x2F;1群聊</td>
+<td>DEFAULT 0</td>
+</tr>
+<tr>
+<td>unread_count</td>
+<td>INT</td>
+<td>未读消息数</td>
+<td>DEFAULT 0</td>
+</tr>
+<tr>
+<td>last_message_id</td>
+<td>BIGINT</td>
+<td>最后一条消息ID</td>
+<td>FK(messages.message_id)</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME(3)</td>
+<td>最后更新时间</td>
+<td>DEFAULT NOW(3)</td>
+</tr>
+</tbody></table>
+<h3 id="3-4-单聊表（private-chat）"><a href="#3-4-单聊表（private-chat）" class="headerlink" title="3.4 单聊表（private_chat）"></a>3.4 单聊表（private_chat）</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> `private_chat` (</span><br><span class="line">  `thread_id`  <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `user1_id`   <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `user2_id`   <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `created_at` <span class="type">TIMESTAMP</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`thread_id`),</span><br><span class="line">  <span class="keyword">UNIQUE</span> KEY `uniq_private_thread` (`user1_id`, `user2_id`),</span><br><span class="line">  KEY `idx_private_user1_thread` (`user1_id`, `thread_id`),</span><br><span class="line">  KEY `idx_private_user2_thread` (`user2_id`, `thread_id`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键约束</strong>：<code>UNIQUE(user1_id, user2_id)</code> 保证每对用户只有一个私聊会话。查询时需 <code>WHERE (user1=A AND user2=B) OR (user1=B AND user2=A)</code>。</p>
+<h3 id="3-5-群聊表"><a href="#3-5-群聊表" class="headerlink" title="3.5 群聊表"></a>3.5 群聊表</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 群聊基本信息</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> `group_chat` (</span><br><span class="line">  `thread_id`  <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `name`       <span class="type">VARCHAR</span>(<span class="number">255</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;群聊名称&#x27;</span>,</span><br><span class="line">  `created_at` <span class="type">TIMESTAMP</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`thread_id`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 群成员</span></span><br><span class="line"><span class="keyword">CREATE TABLE</span> `group_chat_member` (</span><br><span class="line">  `thread_id`   <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `user_id`     <span class="type">BIGINT</span> UNSIGNED <span class="keyword">NOT NULL</span>,</span><br><span class="line">  `role`        TINYINT <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="number">0</span> COMMENT <span class="string">&#x27;0=普通 1=管理 2=创建者&#x27;</span>,</span><br><span class="line">  `joined_at`   <span class="type">TIMESTAMP</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span>,</span><br><span class="line">  `muted_until` <span class="type">TIMESTAMP</span> <span class="keyword">NULL</span> COMMENT <span class="string">&#x27;禁言截至时间&#x27;</span>,</span><br><span class="line">  <span class="keyword">PRIMARY KEY</span> (`thread_id`, `user_id`),</span><br><span class="line">  KEY `idx_user_threads` (`user_id`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8mb4;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-好友申请表（friend-request）"><a href="#3-6-好友申请表（friend-request）" class="headerlink" title="3.6 好友申请表（friend_request）"></a>3.6 好友申请表（friend_request）</h3><table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>主键，自增</td>
+</tr>
+<tr>
+<td>sender_id</td>
+<td>BIGINT</td>
+<td>请求发送者ID</td>
+</tr>
+<tr>
+<td>receiver_id</td>
+<td>BIGINT</td>
+<td>请求接收者ID</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TINYINT</td>
+<td>0待处理&#x2F;1已同意&#x2F;2已拒绝&#x2F;3已撤回</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>DATETIME</td>
+<td>请求创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>DATETIME</td>
+<td>请求更新时间</td>
+</tr>
+</tbody></table>
+<h3 id="3-7-好友关系表（friend-relationship）"><a href="#3-7-好友关系表（friend-relationship）" class="headerlink" title="3.7 好友关系表（friend_relationship）"></a>3.7 好友关系表（friend_relationship）</h3><table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>主键，自增</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>BIGINT</td>
+<td>用户ID</td>
+</tr>
+<tr>
+<td>friend_id</td>
+<td>BIGINT</td>
+<td>好友ID</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>DATETIME</td>
+<td>关系建立时间</td>
+</tr>
+</tbody></table>
+<p><strong>注意</strong>：每行代表单向关系，双向好友需两行（或业务层保证对称）。</p>
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li><strong>索引设计原则</strong>：(thread_id, created_at) 复合索引让同一会话的消息物理上聚集，减少磁盘 I&#x2F;O。</li>
+<li><strong>字符集选择</strong>：utf8mb4（非 utf8）支持 Emoji 等 4 字节字符，<code>utf8mb4_unicode_ci</code> 提供完整排序规则。</li>
+<li><strong>时间字段</strong>：<code>TIMESTAMP</code> 自动设置 <code>CURRENT_TIMESTAMP</code>，但范围仅到 2038 年。超长期存储用 <code>DATETIME(3)</code>。</li>
+<li><strong>分库分表预留</strong>：以 <code>thread_id</code> 作为分片键，同一会话的所有数据在同一分片，避免跨库 JOIN。</li>
+<li><strong>字段注释</strong>：<code>COMMENT</code> 详细标注字段含义和枚举值，减少文档依赖。</li>
+</ul>
+<h2 id="五、源码解析"><a href="#五、源码解析" class="headerlink" title="五、源码解析"></a>五、源码解析</h2><h3 id="5-1-消息插入示例"><a href="#5-1-消息插入示例" class="headerlink" title="5.1 消息插入示例"></a>5.1 消息插入示例</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// MysqlDao 层封装的消息插入</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">MysqlDao::insertMessage</span><span class="params">(<span class="type">uint64_t</span> threadId, <span class="type">uint64_t</span> senderId,</span></span></span><br><span class="line"><span class="params"><span class="function">                              <span class="type">uint64_t</span> recvId, <span class="type">const</span> std::string&amp; content)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> guard = pool_-&gt;<span class="built_in">getConnectionGuard</span>();</span><br><span class="line">    <span class="keyword">auto</span> stmt = guard-&gt;<span class="built_in">prepareStatement</span>(</span><br><span class="line">        <span class="string">&quot;INSERT INTO chat_message (thread_id, sender_id, recv_id, content) &quot;</span></span><br><span class="line">        <span class="string">&quot;VALUES (?, ?, ?, ?)&quot;</span>);</span><br><span class="line">    stmt-&gt;<span class="built_in">setUInt64</span>(<span class="number">1</span>, threadId);</span><br><span class="line">    stmt-&gt;<span class="built_in">setUInt64</span>(<span class="number">2</span>, senderId);</span><br><span class="line">    stmt-&gt;<span class="built_in">setUInt64</span>(<span class="number">3</span>, recvId);</span><br><span class="line">    stmt-&gt;<span class="built_in">setString</span>(<span class="number">4</span>, content);</span><br><span class="line">    <span class="keyword">return</span> stmt-&gt;<span class="built_in">executeUpdate</span>() &gt; <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-会话未读计数更新"><a href="#5-2-会话未读计数更新" class="headerlink" title="5.2 会话未读计数更新"></a>5.2 会话未读计数更新</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 新消息到达时更新未读计数</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">MysqlDao::incrementUnread</span><span class="params">(<span class="type">uint64_t</span> sessionId)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> guard = pool_-&gt;<span class="built_in">getConnectionGuard</span>();</span><br><span class="line">    <span class="keyword">auto</span> stmt = guard-&gt;<span class="built_in">prepareStatement</span>(</span><br><span class="line">        <span class="string">&quot;UPDATE conversations SET unread_count = unread_count + 1, &quot;</span></span><br><span class="line">        <span class="string">&quot;updated_at = NOW(3) WHERE session_id = ?&quot;</span>);</span><br><span class="line">    stmt-&gt;<span class="built_in">setString</span>(<span class="number">1</span>, std::<span class="built_in">to_string</span>(sessionId));</span><br><span class="line">    stmt-&gt;<span class="built_in">executeUpdate</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-好友申请处理"><a href="#5-3-好友申请处理" class="headerlink" title="5.3 好友申请处理"></a>5.3 好友申请处理</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 处理好友申请（同意/拒绝）</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">MysqlDao::handleFriendRequest</span><span class="params">(<span class="type">uint64_t</span> requestId, <span class="type">uint8_t</span> newStatus)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> guard = pool_-&gt;<span class="built_in">getConnectionGuard</span>();</span><br><span class="line">    <span class="comment">// 开启事务：同时更新申请状态和插入好友关系</span></span><br><span class="line">    guard-&gt;con-&gt;<span class="built_in">setAutoCommit</span>(<span class="literal">false</span>);</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">auto</span> stmt1 = guard-&gt;<span class="built_in">prepareStatement</span>(</span><br><span class="line">            <span class="string">&quot;UPDATE friend_request SET status = ?, update_time = NOW() &quot;</span></span><br><span class="line">            <span class="string">&quot;WHERE id = ?&quot;</span>);</span><br><span class="line">        stmt1-&gt;<span class="built_in">setUInt</span>(<span class="number">1</span>, newStatus);</span><br><span class="line">        stmt1-&gt;<span class="built_in">setUInt64</span>(<span class="number">2</span>, requestId);</span><br><span class="line">        stmt1-&gt;<span class="built_in">executeUpdate</span>();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (newStatus == <span class="number">1</span>) &#123; <span class="comment">// 同意 → 建立双向好友关系</span></span><br><span class="line">            <span class="keyword">auto</span> stmt2 = guard-&gt;<span class="built_in">prepareStatement</span>(</span><br><span class="line">                <span class="string">&quot;INSERT INTO friend_relationship (user_id, friend_id) &quot;</span></span><br><span class="line">                <span class="string">&quot;VALUES (?, ?), (?, ?)&quot;</span>);</span><br><span class="line">            stmt2-&gt;<span class="built_in">setUInt64</span>(<span class="number">1</span>, senderId); stmt2-&gt;<span class="built_in">setUInt64</span>(<span class="number">2</span>, receiverId);</span><br><span class="line">            stmt2-&gt;<span class="built_in">setUInt64</span>(<span class="number">3</span>, receiverId); stmt2-&gt;<span class="built_in">setUInt64</span>(<span class="number">4</span>, senderId);</span><br><span class="line">            stmt2-&gt;<span class="built_in">executeUpdate</span>();</span><br><span class="line">        &#125;</span><br><span class="line">        guard-&gt;con-&gt;<span class="built_in">commit</span>();</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125; <span class="built_in">catch</span> (...) &#123;</span><br><span class="line">        guard-&gt;con-&gt;<span class="built_in">rollback</span>();</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法"><a href="#6-1-高频问法" class="headerlink" title="6.1 高频问法"></a>6.1 高频问法</h3><p><strong>Q1：IM 系统的核心表有哪些？各自作用？</strong><br>users（用户基础信息）、chat_message（消息存储和索引）、conversations（会话预览和未读计数）、private_chat（单聊关系）、group_chat + group_chat_member（群聊与成员）、friend_request（好友申请）、friend_relationship（好友关系）。</p>
+<p><strong>Q2：消息表为什么有两个复合索引？</strong><br><code>(thread_id, created_at)</code>：消息时间线查询（”最近消息”）。<code>(thread_id, message_id)</code>：分页拉取（<code>WHERE thread_id=? AND message_id&lt;? ORDER BY message_id DESC</code>）。两者覆盖不同的查询模式。</p>
+<p><strong>Q3：UNIQUE(user1_id, user2_id) 如何保证单聊唯一？</strong><br>插入时总是 <code>user1 = min(A,B)</code>, <code>user2 = max(A,B)</code>，确保同一对用户只有一行。查询时 <code>WHERE (user1=A AND user2=B) OR (user1=B AND user2=A)</code> 覆盖双向。</p>
+<p><strong>Q4：BIGINT vs INT 的选择依据？</strong><br>IM 系统消息量巨大：微信日消息量千亿级，INT（<del>21 亿）几个月就溢出。BIGINT（</del>922 亿亿）不会溢出，且自增 ID 全局唯一。</p>
+<p><strong>Q5：utf8mb4 和 utf8 的区别？</strong><br>MySQL utf8 实际是 utf8mb3（最多 3 字节），不支持 Emoji（4 字节）。utf8mb4 是完整 UTF-8 实现。</p>
+<p><strong>Q6：会话表和消息表如何协同？</strong><br>会话表维护消息预览（最后一条 + 未读数），打开聊天列表只需查会话表。进入会话后按需查消息表。减少一次性加载量。</p>
+<p><strong>Q7：消息撤回如何实现？</strong><br>更新 <code>status = 2</code>（撤回），不物理删除。好处：可追溯审计、恢复简单、索引无需重建。</p>
+<p><strong>Q8：好友关系为什么是双向表？</strong><br>查询”我的好友”只需 <code>WHERE user_id = ?</code>，性能简单高效。代价是插入&#x2F;删除需操作两行，但这是低频操作。</p>
+<p><strong>Q9：群成员表为什么用复合主键？</strong><br><code>(thread_id, user_id)</code> 复合主键：快速查询某群的所有成员、某用户是否在某群。单独 <code>user_id</code> 索引支撑”某用户加入的所有群”。</p>
+<p><strong>Q10：如何做分库分表？</strong><br>以 <code>thread_id</code> 作为分片键（sharding key）：同一会话的所有消息落在同一分片，<code>(thread_id, message_id)</code> 索引查询只需访问单分片，无需跨库聚合。</p>
+<h3 id="6-2-反问点"><a href="#6-2-反问点" class="headerlink" title="6.2 反问点"></a>6.2 反问点</h3><ul>
+<li>消息表的容量规划是多少？预计多久需要分库分表？</li>
+<li>好友关系是双行还是单表？为什么这样设计？</li>
+<li>有没有考虑用 NoSQL（如 MongoDB）存储消息？为什么选 MySQL？</li>
+<li>消息的读写比例大概是多少？有没有缓存层（Redis）？</li>
+</ul>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ul>
+<li>核心 7 表 &#x3D; users + chat_message + conversations + private_chat + group_chat + group_chat_member + friend_*</li>
+<li>消息双索引 &#x3D; (thread_id, created_at) 时间线 + (thread_id, message_id) 分页</li>
+<li>UNIQUE 单聊 &#x3D; 插入时 min&#x2F;max 保证顺序，查询时 OR 双向覆盖</li>
+<li>BIGINT ≈ 922 亿亿；INT ≈ 21 亿</li>
+<li>utf8mb4 &#x3D; 完整 UTF-8（4 字节），支持 Emoji</li>
+<li>会话表 &#x3D; 预览层；消息表 &#x3D; 详情层</li>
+<li>撤回 &#x3D; status&#x3D;2（软删除，可追溯）</li>
+<li>分片键 &#x3D; thread_id，同会话数据同分片</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://dev.mysql.com/doc/refman/8.0/en/innodb-indexes.html">MySQL InnoDB 索引文档</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-utf8mb4.html">UTF8MB4 字符集</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/">https://weimo1.github.io/posts/%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E8%90%83%E5%8F%96/" title="萃取"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">萃取</div></div><div class="info-2"><div class="info-item-1">萃取（Traits）https://en.cppreference.com/w/cpp/meta.html 一、核心概念萃取（Traits）是 C++ 模板元编程的核心技术，通过编译期类型信息提取和转换，让泛型代码根据类型特征自动适应不同行为。本质是：将类型属性映射为编译期常量或类型别名，供模板代码在编译期做出决策。 萃取的三层含义 类型属性查询（如 std::is_pointer&lt;T&gt;::value）：回答”T 是不是指针” 类型变换（如 std::remove_const&lt;T&gt;::type）：从 T 得到”去掉 const 后的类型” 类型特征提取（如 std...</div></div></div></a><a class="pagination-related" href="/posts/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="网络编程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">网络编程</div></div><div class="info-2"><div class="info-item-1">网络编程 适用范围：Linux I&#x2F;O模型（BIO&#x2F;NIO&#x2F;AIO）、I&#x2F;O多路复用（select&#x2F;poll&#x2F;epoll）、用户态&#x2F;内核态切换与数据拷贝、C10K并发模型选型  一、核心概念 定义：网络编程中的 I&#x2F;O 模型描述了应用程序如何与内核协作完成网络数据的收发。从阻塞 I&#x2F;O (BIO) 到非阻塞轮询 (NIO) 再到 I&#x2F;O 多路复用 (select&#x2F;poll&#x2F;epoll) 和异步 I&#x2F;O (AIO)，核心演进目标是提高并发处理能力 关键词：阻塞I...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%81%8A%E5%A4%A9%E7%B3%BB%E7%BB%9F%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1%EF%BC%88%E5%8F%82%E8%80%83%E6%89%8B%E5%86%8C%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">聊天系统数据库表设计（参考手册）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A1%A8%E5%85%B3%E7%B3%BB%E5%9B%BE"><span class="toc-number">1.2.1.</span> <span class="toc-text">表关系图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96"><span class="toc-number">1.2.2.</span> <span class="toc-text">核心设计决策</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%94%A8%E6%88%B7%E8%A1%A8%EF%BC%88users%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 用户表（users）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%81%8A%E5%A4%A9%E6%B6%88%E6%81%AF%E8%A1%A8%EF%BC%88chat-message%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 聊天消息表（chat_message）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%BC%9A%E8%AF%9D%E8%A1%A8%EF%BC%88conversations%EF%BC%89"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 会话表（conversations）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%8D%95%E8%81%8A%E8%A1%A8%EF%BC%88private-chat%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 单聊表（private_chat）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E7%BE%A4%E8%81%8A%E8%A1%A8"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 群聊表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E5%A5%BD%E5%8F%8B%E7%94%B3%E8%AF%B7%E8%A1%A8%EF%BC%88friend-request%EF%BC%89"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 好友申请表（friend_request）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E5%A5%BD%E5%8F%8B%E5%85%B3%E7%B3%BB%E8%A1%A8%EF%BC%88friend-relationship%EF%BC%89"><span class="toc-number">1.3.7.</span> <span class="toc-text">3.7 好友关系表（friend_relationship）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.</span> <span class="toc-text">四、工程实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%B6%88%E6%81%AF%E6%8F%92%E5%85%A5%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 消息插入示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E4%BC%9A%E8%AF%9D%E6%9C%AA%E8%AF%BB%E8%AE%A1%E6%95%B0%E6%9B%B4%E6%96%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 会话未读计数更新</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%A5%BD%E5%8F%8B%E7%94%B3%E8%AF%B7%E5%A4%84%E7%90%86"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 好友申请处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.7.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

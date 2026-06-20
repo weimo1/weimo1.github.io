@@ -1,0 +1,401 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>SkipList | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="SkipList 适用范围：LevelDB 内存表（MemTable）的核心数据结构——并发安全的跳表  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SkipList">
+<meta property="og:url" content="https://weimo1.github.io/posts/SkipList/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="SkipList 适用范围：LevelDB 内存表（MemTable）的核心数据结构——并发安全的跳表  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.551Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "SkipList",
+  "url": "https://weimo1.github.io/posts/SkipList/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.551Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/SkipList/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'SkipList',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">SkipList</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">SkipList</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.551Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E/">存储引擎</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>17分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="SkipList"><a href="#SkipList" class="headerlink" title="SkipList"></a>SkipList</h1><blockquote>
+<p>适用范围：LevelDB 内存表（MemTable）的核心数据结构——并发安全的跳表</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。</li>
+<li><strong>代码块必须标注语言</strong>：C++ 代码用 <code>c++</code>，禁止无语言标注的裸代码块。</li>
+<li><strong>字数硬指标</strong>：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：SkipList（跳表）是 LevelDB 内存表 MemTable 的底层数据结构，负责在内存中维护有序的 key-value 对，支持 O(log n) 的插入和查找。它是 LSM-Tree 写入路径的第一站——所有写入首先进入跳表。</li>
+<li><strong>技术栈与依赖</strong>：C++ 模板实现，<code>std::atomic</code> 提供无锁并发读，自定义内存分配器（Arena）</li>
+<li><strong>模块边界</strong>：<ul>
+<li>输入：有序 key（InternalKey &#x3D; UserKey + SequenceNumber）</li>
+<li>输出：支持 <code>Insert</code>、<code>Contains</code>、迭代器遍历</li>
+<li>上下游：MemTable 封装跳表，上层写操作写入跳表，读操作在跳表中查找</li>
+</ul>
+</li>
+</ul>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/600729377">https://zhuanlan.zhihu.com/p/600729377</a></p>
+<h3 id="什么是跳表"><a href="#什么是跳表" class="headerlink" title="什么是跳表"></a>什么是跳表</h3><p>跳表全称为跳跃列表，它允许快速查询，插入和删除一个有序连续元素的数据链表。跳跃列表的平均查找和插入时间复杂度都是O(logn)。快速查询是通过维护一个多层次的链表，且每一层链表中的元素是前一层链表元素的子集。一开始时，算法在最稀疏的层次进行搜索，直至需要查找的元素在该层两个相邻的元素中间。这时，算法将跳转到下一个层次，重复刚才的搜索，直到找到需要查找的元素为止。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1765714167616-26b5c300-03e5-4ee3-a81b-1ef0a4a33e09.png"></p>
+<p>一张跳跃列表的示意图。每个带有箭头的框表示一个指针, 而每行是一个稀疏子序列的链表；底部的编号框（黄色）表示有序的数据序列。查找从顶部最稀疏的子序列向下进行, 直至需要查找的元素在该层两个相邻的元素中间。</p>
+<blockquote>
+<p>补充：跳表由 William Pugh 于 1990 年提出，作为平衡树（AVL&#x2F;红黑树）的替代品。其核心优势是实现简单（不需要复杂的旋转操作），且天然支持并发——LevelDB 的选择正是因为跳表能轻松实现 lock-free 读。</p>
+</blockquote>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="第一层：跳表-vs-平衡树"><a href="#第一层：跳表-vs-平衡树" class="headerlink" title="第一层：跳表 vs 平衡树"></a>第一层：跳表 vs 平衡树</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1765714356268-52f66903-eacf-4574-9725-2d0fafc2d453.png"></p>
+<p>跳表本质上是<strong>链表 + 多层索引</strong>：</p>
+<ul>
+<li>第 0 层：完整的排序链表（所有节点）</li>
+<li>第 1 层：每隔约 k 个节点取一个（k &#x3D; kBranching &#x3D; 4）</li>
+<li>第 2 层：每隔约 k² 个节点取一个</li>
+<li>…</li>
+<li>最高层：仅头节点和少量节点</li>
+</ul>
+<h3 id="第二层：查找流程"><a href="#第二层：查找流程" class="headerlink" title="第二层：查找流程"></a>第二层：查找流程</h3><p>从最高层开始，每层向右走到下一个节点 key ≥ 目标 key 时，下降到下一层继续。最后一层（level 0）走到的位置即为目标位置或其前驱。</p>
+<h3 id="第三层：关键设计决策"><a href="#第三层：关键设计决策" class="headerlink" title="第三层：关键设计决策"></a>第三层：关键设计决策</h3><table>
+<thead>
+<tr>
+<th>设计决策</th>
+<th>LevelDB 选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>高度随机</td>
+<td>1&#x2F;kBranching 概率递增</td>
+<td>概率保证 O(log n) 期望高度</td>
+</tr>
+<tr>
+<td>并发策略</td>
+<td>写单线程 + 读无锁</td>
+<td>MemTable 写入串行（单线程），读用 acquire 屏障</td>
+</tr>
+<tr>
+<td>内存管理</td>
+<td>Arena 分配器</td>
+<td>批量申请内存，节点连续分配，减少碎片</td>
+</tr>
+<tr>
+<td>节点 next_ 数组</td>
+<td>柔性数组 <code>atomic&lt;Node*&gt;[1]</code></td>
+<td>节点大小随高度变化，一次分配</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><h3 id="3-1-时间复杂度分析"><a href="#3-1-时间复杂度分析" class="headerlink" title="3.1 时间复杂度分析"></a>3.1 时间复杂度分析</h3><p><strong>跳表具体有多快</strong></p>
+<p>通过上边的例子我们知道，跳表的查询效率比链表高，那具体高多少呢？下面我们一起来看一下。</p>
+<p>衡量一个算法的效率我们可以用时间复杂度，这里我们也用时间复杂度来比较一下链表和跳表。前面我们已经讲过了，链表的查询的时间复杂度为 O(n)，那跳表的呢？</p>
+<p>如果一个链表有 n 个结点，如果每两个结点抽取出一个结点建立索引的话，那么第一级索引的结点数大约就是 n&#x2F;2，第二级索引的结点数大约为 n&#x2F;4，以此类推第 m 级索引的节点数大约为 n&#x2F;(2^m)。</p>
+<p>假如一共有 m 级索引，第 m 级的结点数为两个，通过上边我们找到的规律，那么得出 n&#x2F;(2^m)&#x3D;2，从而求得 m&#x3D;log(n)-1。如果加上原始链表，那么整个跳表的高度就是 log(n)。我们在查询跳表的时候，如果每一层都需要遍历 k 个结点，那么最终的时间复杂度就为 O(k * log(n))。</p>
+<p>那这个 k 值为多少呢，按照我们每两个结点提取一个基点建立索引的情况，我们每一级最多需要遍历两个个结点，所以 k&#x3D;2。为什么每一层最多遍历两个结点呢？</p>
+<p>因为我们是每两个结点提取一个结点建立索引，最高一级索引只有两个结点，然后下一层索引比上一层索引两个结点之间增加了一个结点，也就是上一层索引两结点的中值，看到这里是不是想起来我们前边讲过的二分查找，每次我们只需要判断要找的值在不在当前结点和下一个结点之间即可。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1765714186778-4ccd8936-41de-4efe-ae1a-9a0210dcd8ec.png"></p>
+<p>如上图所示，我们要查询红色结点，我们查询的路线即黄线表示出的路径查询，每一级最多遍历两个结点即可。</p>
+<p>所以跳表的查询任意数据的时间复杂度为 O(2 * log(n))，前边的常数 2 可以忽略，为 O(log(n))。</p>
+<blockquote>
+<p>补充：LevelDB 使用 <code>kBranching = 4</code> 而非 2，意味着每层遍历期望 4 个节点，高度 ≈ log₄(n)。节点高度随机——每层有 1&#x2F;4 的概率再向上一层。这使得高度分布更均匀，减少了极端情况。</p>
+</blockquote>
+<h3 id="3-2-LevelDB-SkipList-完整实现"><a href="#3-2-LevelDB-SkipList-完整实现" class="headerlink" title="3.2 LevelDB SkipList 完整实现"></a>3.2 LevelDB SkipList 完整实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifndef</span> DB_SKIPLIST_H_</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> DB_SKIPLIST_H_</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;assert.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;atomic&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;new&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;logger/log.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;logger/log_level.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;utils/random_util.h&quot;</span></span></span><br><span class="line"><span class="keyword">namespace</span> corekv &#123;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">SkipListOption</span> &#123;</span><br><span class="line">  <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">int32_t</span> kMaxHeight = <span class="number">20</span>;</span><br><span class="line">  <span class="comment">//有多少概率被选中, 空间和时间的折中</span></span><br><span class="line">  <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">unsigned</span> <span class="type">int</span> kBranching = <span class="number">4</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> _KeyType, <span class="keyword">typename</span> _KeyComparator, <span class="keyword">typename</span> _Allocator&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SkipList</span> <span class="keyword">final</span> &#123;</span><br><span class="line">  <span class="keyword">struct</span> <span class="title class_">Node</span>;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">SkipList</span>(_KeyComparator comparator);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">SkipList</span>(<span class="type">const</span> SkipList&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  SkipList&amp; <span class="keyword">operator</span>=(<span class="type">const</span> SkipList&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Insert</span><span class="params">(<span class="type">const</span> _KeyType&amp; key)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 该对象记录的是要节点要插入位置的前一个对象，本质是链表的插入</span></span><br><span class="line">    Node* prev[SkipListOption::kMaxHeight] = &#123;<span class="literal">nullptr</span>&#125;;</span><br><span class="line">    <span class="comment">//在key的构造过程中，有一个持续递增的序号，因此理论上不会有重复的key</span></span><br><span class="line">    Node* node = <span class="built_in">FindGreaterOrEqual</span>(key, prev);</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">nullptr</span> != node) &#123;</span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">Equal</span>(key, node-&gt;key)) &#123;</span><br><span class="line">        <span class="built_in">LOG</span>(WARN, <span class="string">&quot;key:%s has existed&quot;</span>, key);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="type">int32_t</span> new_level = <span class="built_in">RandomHeight</span>();</span><br><span class="line">    <span class="type">int32_t</span> cur_max_level = <span class="built_in">GetMaxHeight</span>();</span><br><span class="line">    <span class="keyword">if</span> (new_level &gt; cur_max_level) &#123;</span><br><span class="line">      <span class="comment">//因为skiplist存在多层，而刚开始的时候只是分配kMaxHeight个空间，每一层的next并没有真正使用</span></span><br><span class="line">      <span class="keyword">for</span> (<span class="type">int32_t</span> index = cur_max_level; index &lt; new_level; ++index) &#123;</span><br><span class="line">        prev[index] = head_;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">// 更新当前的最大值</span></span><br><span class="line">      cur_height_.<span class="built_in">store</span>(new_level, std::memory_order_relaxed);</span><br><span class="line">    &#125;</span><br><span class="line">    Node* new_node = <span class="built_in">NewNode</span>(key, new_level);</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int32_t</span> index = <span class="number">0</span>; index &lt; new_level; ++index) &#123;</span><br><span class="line">      new_node-&gt;<span class="built_in">NoBarrier_SetNext</span>(index, prev[index]-&gt;<span class="built_in">NoBarrier_Next</span>(index));</span><br><span class="line">      prev[index]-&gt;<span class="built_in">NoBarrier_SetNext</span>(index, new_node);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">Contains</span><span class="params">(<span class="type">const</span> _KeyType&amp; key)</span> </span>&#123;</span><br><span class="line">    Node* node = <span class="built_in">FindGreaterOrEqual</span>(key, <span class="literal">nullptr</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span> != node &amp;&amp; <span class="built_in">Equal</span>(key, node-&gt;key);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">Equal</span><span class="params">(<span class="type">const</span> _KeyType&amp; a, <span class="type">const</span> _KeyType&amp; b)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> comparator_.<span class="built_in">Compare</span>(a, b) == <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="function">Node* <span class="title">NewNode</span><span class="params">(<span class="type">const</span> _KeyType&amp; key, <span class="type">int32_t</span> height)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">int32_t</span> <span class="title">RandomHeight</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">int32_t</span> <span class="title">GetMaxHeight</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> cur_height_.<span class="built_in">load</span>(std::memory_order_relaxed); &#125;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">KeyIsAfterNode</span><span class="params">(<span class="type">const</span> _KeyType&amp; key, Node* n)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (<span class="literal">nullptr</span> != n &amp;&amp; comparator_.<span class="built_in">Compare</span>( n-&gt;key, key) &lt; <span class="number">0</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//找到一个大于等于key的node</span></span><br><span class="line">  <span class="function">Node* <span class="title">FindGreaterOrEqual</span><span class="params">(<span class="type">const</span> _KeyType&amp; key, Node** prev)</span> </span>&#123;</span><br><span class="line">    Node* cur = head_;</span><br><span class="line">    <span class="comment">//当前有效的最高层</span></span><br><span class="line">    <span class="type">int32_t</span> level = <span class="built_in">GetMaxHeight</span>() - <span class="number">1</span>;</span><br><span class="line">    Node* near_bigger_node = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">      <span class="comment">// 根据跳表原理，他是从最上层开始，向左或者向下遍历</span></span><br><span class="line">      Node* next = cur-&gt;<span class="built_in">Next</span>(level);</span><br><span class="line">      <span class="comment">// 说明key比next要大，直接往后next即可</span></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">KeyIsAfterNode</span>(key, next)) &#123;</span><br><span class="line">        cur = next;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (prev != <span class="literal">NULL</span>) &#123;</span><br><span class="line">          prev[level] = cur;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (level == <span class="number">0</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> next;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//进入下一层</span></span><br><span class="line">        level--;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 找到小于key中最大的key</span></span><br><span class="line">  <span class="function">Node* <span class="title">FindLessThan</span><span class="params">(<span class="type">const</span> _KeyType&amp; key)</span> </span>&#123;</span><br><span class="line">    Node* cur = head_;</span><br><span class="line">    <span class="type">int32_t</span> level = <span class="built_in">GetMaxHeight</span>() - <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">      Node* next = cur-&gt;<span class="built_in">Next</span>(level);</span><br><span class="line">      <span class="type">int32_t</span> cmp = (next == <span class="literal">nullptr</span>) ? <span class="number">1</span> : comparator_.<span class="built_in">Compare</span>(next-&gt;key, key);</span><br><span class="line">      <span class="comment">//刚好next大于等于0</span></span><br><span class="line">      <span class="keyword">if</span> (cmp &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 因为高度是随机生成的，在这里只有level=0才能确定到底是哪个node</span></span><br><span class="line">        <span class="keyword">if</span> (level == <span class="number">0</span>) &#123;</span><br><span class="line">          <span class="keyword">return</span> cur;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">          level--;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        cur = next;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//查找最后一个节点的数据</span></span><br><span class="line">  <span class="function">Node* <span class="title">FindLast</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Node* cur = head_;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">uint32_t</span> kBaseLevel = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">      Node* next = cur-&gt;<span class="built_in">Next</span>(kBaseLevel);</span><br><span class="line">      <span class="keyword">if</span> (<span class="literal">nullptr</span> == next) &#123;</span><br><span class="line">        <span class="keyword">return</span> cur;</span><br><span class="line">      &#125;</span><br><span class="line">      cur = next;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  _KeyComparator comparator_;  <span class="comment">//比较器</span></span><br><span class="line">  _Allocator arena_;           <span class="comment">//内存管理对象</span></span><br><span class="line">  Node* head_ = <span class="literal">nullptr</span>;</span><br><span class="line">  std::atomic&lt;<span class="type">int32_t</span>&gt; cur_height_;  <span class="comment">//当前有效的层数</span></span><br><span class="line">  RandomUtil rnd_;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Implementation details follow</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> _KeyType, <span class="keyword">class</span> <span class="title class_">_KeyComparator</span>, <span class="keyword">typename</span> _Allocator&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">SkipList</span>&lt;_KeyType, _KeyComparator, _Allocator&gt;::Node &#123;</span><br><span class="line">  <span class="function"><span class="keyword">explicit</span> <span class="title">Node</span><span class="params">(<span class="type">const</span> _KeyType&amp; k)</span> : key(k) &#123;</span>&#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">const</span> _KeyType key;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Accessors/mutators for links.  Wrapped in methods so we can</span></span><br><span class="line">  <span class="comment">// add the appropriate barriers as necessary.</span></span><br><span class="line">  <span class="function">Node* <span class="title">Next</span><span class="params">(<span class="type">int32_t</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// Use an &#x27;acquire load&#x27; so that we observe a fully initialized</span></span><br><span class="line">    <span class="comment">// version of the returned Node.</span></span><br><span class="line">    <span class="keyword">return</span> next_[n].<span class="built_in">load</span>(std::memory_order_acquire);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">SetNext</span><span class="params">(<span class="type">int</span> n, Node* x)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">assert</span>(n &gt;= <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// Use a &#x27;release store&#x27; so that anybody who reads through this</span></span><br><span class="line">    <span class="comment">// pointer observes a fully initialized version of the inserted node.</span></span><br><span class="line">    next_[n].<span class="built_in">store</span>(x, std::memory_order_release);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// No-barrier variants that can be safely used in a few locations.</span></span><br><span class="line">  <span class="function">Node* <span class="title">NoBarrier_Next</span><span class="params">(<span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> next_[n].<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">NoBarrier_SetNext</span><span class="params">(<span class="type">int</span> n, Node* x)</span> </span>&#123;</span><br><span class="line">    next_[n].<span class="built_in">store</span>(x, std::memory_order_relaxed);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="comment">// Array of length equal to the node height.  next_[0] is lowest level link.</span></span><br><span class="line">  std::atomic&lt;Node*&gt; next_[<span class="number">1</span>];</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> _KeyType, <span class="keyword">class</span> <span class="title class_">_Comparator</span>, <span class="keyword">typename</span> _Allocator&gt;</span><br><span class="line">SkipList&lt;_KeyType, _Comparator, _Allocator&gt;::<span class="built_in">SkipList</span>(_Comparator cmp)</span><br><span class="line">    : <span class="built_in">comparator_</span>(cmp),</span><br><span class="line">      <span class="built_in">cur_height_</span>(<span class="number">1</span>),</span><br><span class="line">      <span class="built_in">head_</span>(<span class="built_in">NewNode</span>(<span class="number">0</span>, SkipListOption::kMaxHeight)) &#123;</span><br><span class="line">  <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; SkipListOption::kMaxHeight; i++) &#123;</span><br><span class="line">    head_-&gt;<span class="built_in">SetNext</span>(i, <span class="literal">nullptr</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> _KeyType, <span class="keyword">typename</span> _Comparator, <span class="keyword">typename</span> _Allocator&gt;</span><br><span class="line"><span class="keyword">typename</span> SkipList&lt;_KeyType, _Comparator, _Allocator&gt;::Node*</span><br><span class="line">SkipList&lt;_KeyType, _Comparator, _Allocator&gt;::<span class="built_in">NewNode</span>(<span class="type">const</span> _KeyType&amp; key,</span><br><span class="line">                                                     <span class="type">int32_t</span> height) &#123;</span><br><span class="line">  <span class="type">char</span>* node_memory = (<span class="type">char</span>*)arena_.<span class="built_in">Allocate</span>(</span><br><span class="line">      <span class="built_in">sizeof</span>(Node) + <span class="built_in">sizeof</span>(std::atomic&lt;Node*&gt;) * (height - <span class="number">1</span>));</span><br><span class="line">  <span class="comment">//定位new写法</span></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">new</span> (node_memory) <span class="built_in">Node</span>(key);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> _KeyType, <span class="keyword">typename</span> _Comparator, <span class="keyword">typename</span> _Allocator&gt;</span><br><span class="line"><span class="type">int32_t</span> SkipList&lt;_KeyType, _Comparator, _Allocator&gt;::<span class="built_in">RandomHeight</span>() &#123;</span><br><span class="line">  <span class="type">int32_t</span> height = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">while</span> (height &lt; SkipListOption::kMaxHeight &amp;&amp;</span><br><span class="line">         ((rnd_.<span class="built_in">GetSimpleRandomNum</span>() % SkipListOption::kBranching) == <span class="number">0</span>)) &#123;</span><br><span class="line">    height++;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> height;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#125;  <span class="comment">// namespace corekv</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="4-1-与项目中其他模块的集成方式"><a href="#4-1-与项目中其他模块的集成方式" class="headerlink" title="4.1 与项目中其他模块的集成方式"></a>4.1 与项目中其他模块的集成方式</h3><ul>
+<li><strong>MemTable</strong>：跳表被 MemTable 封装，外部通过 <code>MemTable::Add()</code> 写入，<code>MemTable::Get()</code> 查询</li>
+<li><strong>Compaction</strong>：MemTable 写满后 → 转为 Immutable MemTable → dump 为 SSTable，跳表数据转为磁盘文件</li>
+<li><strong>WAL（Write-Ahead Log）</strong>：写入跳表前先写 WAL，崩溃恢复时重放 WAL 重建跳表</li>
+</ul>
+<h3 id="4-2-生产环境考量"><a href="#4-2-生产环境考量" class="headerlink" title="4.2 生产环境考量"></a>4.2 生产环境考量</h3><p><strong>并发安全</strong></p>
+<ul>
+<li>写操作串行（LevelDB 单写线程），插入时用 <code>NoBarrier_SetNext</code>（relaxed 内存序），无锁开销</li>
+<li>读操作用 <code>acquire</code> 语义——确保读到完全初始化的节点（<code>Next()</code> 用 <code>memory_order_acquire</code>）</li>
+<li>关键：不存在写-写竞争，只存在写-读竞争，acquire-release 配对即可</li>
+</ul>
+<p><strong>内存管理</strong></p>
+<ul>
+<li>Arena 分配器批量申请 4KB 内存块，节点在其中顺序分配——减少 malloc 调用、减少内存碎片</li>
+<li>节点柔性数组 <code>next_[1]</code> + placement new 实现可变大小分配，比 <code>std::vector</code> 更紧凑</li>
+<li>所有节点统一在 Arena 析构时释放——无需逐个 delete</li>
+</ul>
+<p><strong>性能特征</strong></p>
+<ul>
+<li>查找 O(log₄ n)，n&#x3D;百万时约 10 层遍历，每层最多 4 个节点 → 约 40 次比较</li>
+<li>插入 O(log₄ n) 查找位置 + O(height) 修改指针</li>
+<li>kMaxHeight&#x3D;20 硬限制，千万级数据足够</li>
+</ul>
+<h3 id="4-3-常见优化策略"><a href="#4-3-常见优化策略" class="headerlink" title="4.3 常见优化策略"></a>4.3 常见优化策略</h3><ul>
+<li><strong>RandomHeight 优化</strong>：用位运算替代取模——<code>rnd_.Next() &amp; 0x3 == 0</code> 比 <code>% 4</code> 更快</li>
+<li><strong>预取 (prefetch)</strong>：遍历时对下一个节点预取 <code>__builtin_prefetch(next)</code></li>
+<li><strong>批量插入</strong>：先排序再批量插入可减少查找路径的重复遍历</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-LevelDB-跳表的并发哲学"><a href="#5-1-LevelDB-跳表的并发哲学" class="headerlink" title="5.1 LevelDB 跳表的并发哲学"></a>5.1 LevelDB 跳表的并发哲学</h3><p>LevelDB 跳表不是完全 lock-free 的——它依赖一个关键假设：<strong>只有一个写线程</strong>。这个假设让并发控制大幅简化：</p>
+<ul>
+<li>不需要 CAS（Compare-And-Swap）原子操作做链表插入</li>
+<li>不需要担心写-写 ABA 问题</li>
+<li>只需要保证读线程能看到完整初始化的节点</li>
+</ul>
+<p><strong>内存序的精准选择</strong>：</p>
+<ul>
+<li>读线程用 <code>acquire</code>：防止 CPU&#x2F;编译器将 <code>next_-&gt;load()</code> 后面的读操作重排到 load 之前</li>
+<li>写线程用 <code>release</code>：防止 CPU&#x2F;编译器将节点初始化重排到 <code>store</code> 之后</li>
+<li>同一层内写线程用 <code>relaxed</code>：写线程自己保证顺序，不需要额外的同步开销</li>
+</ul>
+<h3 id="5-2-难点与易错点"><a href="#5-2-难点与易错点" class="headerlink" title="5.2 难点与易错点"></a>5.2 难点与易错点</h3><p><strong>陷阱1：柔性数组 + placement new 的内存布局</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Node 的实际内存布局：</span></span><br><span class="line"><span class="comment">// [key][padding][next_[0]][next_[1]]...[next_[height-1]]</span></span><br><span class="line"><span class="comment">// </span></span><br><span class="line"><span class="comment">// 分配公式：</span></span><br><span class="line"><span class="comment">// sizeof(Node) + sizeof(atomic&lt;Node*&gt;) * (height - 1)</span></span><br><span class="line"><span class="comment">// 因为 Node 定义中已经包含 next_[1]（1个元素），所以只需要额外分配 height-1 个</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>陷阱2：max_height 的懒增长</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 跳表刚创建时 cur_height_ = 1</span></span><br><span class="line"><span class="comment">// 只有当随机高度超过当前最大高度时，才提升 cur_height_</span></span><br><span class="line"><span class="comment">// 这避免了在数据量小时维护高空层级的开销</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>陷阱3：FindGreaterOrEqual 的 prev 数组</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// prev 数组记录每一层上&quot;插入位置的前驱节点&quot;</span></span><br><span class="line"><span class="comment">// 遍历时：如果 key &gt; next，cur 前进（prev 不记录）</span></span><br><span class="line"><span class="comment">//         如果 key ≤ next，记录 cur 到 prev[level]，下降一层</span></span><br><span class="line"><span class="comment">// 这确保插入时知道每一层应该在哪里插入新节点</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-经验总结"><a href="#5-3-经验总结" class="headerlink" title="5.3 经验总结"></a>5.3 经验总结</h3><ol>
+<li><strong>跳表是 MemTable 的最佳选择</strong>——有序、高效、并发友好，比红黑树实现简单得多</li>
+<li><strong>LevelDB 的”单写线程”假设是关键工程权衡</strong>——牺牲了写并发，换来了极简的并发控制</li>
+<li><strong>Arena 内存管理是性能基石</strong>——批量分配 + 统一释放，避免了频繁的 new&#x2F;delete</li>
+<li><strong>跳表的高度随机性至关重要</strong>——如果高度分布不均（如都低或都高），性能退化严重</li>
+</ol>
+<h2 id="六、面试准备（≥10问法-5反问-5一句话，均带回答）"><a href="#六、面试准备（≥10问法-5反问-5一句话，均带回答）" class="headerlink" title="六、面试准备（≥10问法+5反问+5一句话，均带回答）"></a>六、面试准备（≥10问法+5反问+5一句话，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>Q1：跳表是什么？为什么 LevelDB 用它而不是红黑树？</strong><br>A：跳表是有序链表的概率性多层索引结构，查找&#x2F;插入 O(log n)。LevelDB 选它因为：1) 实现比红黑树简单；2) 天然支持并发读（不需要全局锁）；3) 范围扫描只需沿 level 0 遍历。</p>
+<p><strong>Q2：跳表的高度是如何确定的？</strong><br>A：每个新节点插入时随机生成高度——从 1 开始，每次以 1&#x2F;kBranching（1&#x2F;4）的概率递增，直到达到 kMaxHeight&#x3D;20。这种概率分布保证期望高度 ≈ log₄(n)。</p>
+<p><strong>Q3：跳表的查找过程是怎样的？</strong><br>A：从头节点的最高层开始——如果当前层下一个节点的 key ≤ 目标 key，向右移动；否则下降一层。重复直到 level 0，此时的下一个节点就是 ≥ 目标 key 的第一个节点。</p>
+<p><strong>Q4：LevelDB 跳表如何保证并发安全？</strong><br>A：依赖”单写线程”前提——写线程用 release 语义写入节点指针，读线程用 acquire 语义读取。无 CAS 操作，无写-写竞争，只需保证读者看到完全初始化的节点。</p>
+<p><strong>Q5：为什么插入时用 NoBarrier_SetNext（relaxed）而不是 SetNext（release）？</strong><br>A：因为同一个写线程内操作的顺序由程序顺序保证，不需要额外的内存屏障。release 只对跨线程可见性有意义——在此场景中写线程是唯一的。</p>
+<p><strong>Q6：Node 中的 next_ 数组为什么声明为 <code>atomic&lt;Node*&gt; next_[1]</code>？</strong><br>A：这是 C 风格的柔性数组技巧——声明大小为 1，实际分配时多分配 <code>height - 1</code> 个额外元素，实现可变长度数组，避免额外的堆分配。</p>
+<p><strong>Q7：LevelDB 跳表的 kBranching 为什么是 4 而不是 2？</strong><br>A：kBranching&#x3D;4 使每层期望遍历 4 个节点，高度 ≈ log₄(n)。相比 2（log₂(n)），内存开销减半（少一半层），但每次查找多遍历约 2 倍节点——是空间换时间的折中。</p>
+<p><strong>Q8：跳表不支持删除操作——LevelDB 如何处理删除？</strong><br>A：LevelDB 跳表确实没有 Delete 方法。删除通过插入一个带删除标记（tombstone）的 key 实现，在 Compaction 时真正清理。MemTable 是临时的——写满后整体 dump 为 SSTable。</p>
+<p><strong>Q9：跳表的空间复杂度是多少？</strong><br>A：期望 O(n) 个指针。每个节点的期望高度 &#x3D; 1&#x2F;(1 - 1&#x2F;kBranching) &#x3D; 1&#x2F;(1 - 1&#x2F;4) ≈ 1.33 层。即 n 个节点使用约 1.33n 个指针（不含 key 和 value 存储），比平衡树（2n 个指针+颜色位）更省。</p>
+<p><strong>Q10：如果 RandomHeight 一直随机到很高，会不会出问题？</strong><br>A：kMaxHeight&#x3D;20 硬限制。即使 n&#x3D;10 亿，log₄(10⁹) ≈ 15，20 层绰绰有余。概率上超过 20 层的概率 &#x3D; (1&#x2F;4)^20 ≈ 10⁻¹²——可忽略。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>在实际的 LevelDB 生产部署中，你们是否遇到过跳表高度不均匀导致的性能问题？</p>
+</li>
+<li><p>贵团队是否有考虑过用 B+树或 ART（Adaptive Radix Tree）替代跳表做内存索引？</p>
+</li>
+<li><p><strong>陷阱问题1</strong>：”跳表和红黑树谁更快？”——没有绝对答案。跳表插入更简单（无旋转），并发读更好（无锁）。红黑树空间更紧凑，确定性更强。LevelDB 选跳表主要因为并发和实现复杂度。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：”跳表退化到 O(n) 的情况？”——如果随机数发生器坏掉（始终返回 0），所有节点高度&#x3D;1，退化为普通有序链表。但概率极低（(1&#x2F;4)^n）。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：”跳表支持范围查询吗？”——支持。level 0 是完整的有序链表，直接沿 next_[0] 遍历即可。这是跳表相比哈希表的天然优势。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li><p>跳表的核心设计理念是：<strong>用随机化的多层索引换取 O(log n) 查找——概率保证性能，实现极简。</strong></p>
+</li>
+<li><p>LevelDB 跳表的并发模型是：<strong>单写线程 + acquire-release 内存序——写不锁、读无锁。</strong></p>
+</li>
+<li><p>跳表高度随机生成，期望高度 ≈ log₄(n)：<strong>每增加一层概率 1&#x2F;4，最多 20 层。</strong></p>
+</li>
+<li><p>与红黑树相比：<strong>跳表实现更简单、并发更友好，但空间略多（1.33n 指针 vs 2n 指针+颜色位）。</strong></p>
+</li>
+<li><p>避免的常见错误是：<strong>假设跳表是线程安全的多写者数据结构——LevelDB 的跳表只支持单写者。</strong></p>
+</li>
+<li><p>当被问到”跳表能替代 B+树吗？”——回答：”内存场景可以（如 MemTable），磁盘场景不行——B+树的节点大小匹配磁盘页，跳表的链表结构在磁盘上随机 IO 严重。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>原笔记全部内容已按六大段结构组织完毕。跳表定义与原理图收入一段，时间复杂度推导收入三段 3.1，完整源码收入三段 3.2，所有原代码和注释一字未删。知乎参考链接收入一段末尾。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/SkipList/">https://weimo1.github.io/posts/SkipList/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Sha/" title="Sha"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Sha</div></div><div class="info-2"><div class="info-item-1">Sha 适用范围：项目基础库中的 SHA 系列哈希算法（SHA-1&#x2F;SHA-256 等）实现  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。  一、项目&#x2F;模块概述 模块定位：项目基础库中的 SHA 系列安全哈希算法实现，提供 SHA-1、SHA-256 等摘要计算能力。通常与 MD5 模块并列，构成哈希摘要工具链。 技术栈与依赖：纯 C++ 标准库实现，无外部依赖 模...</div></div></div></a><a class="pagination-related" href="/posts/Select/" title="Select"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Select</div></div><div class="info-2"><div class="info-item-1">Selectselect(2) 底层逻辑select(2) 提供一种 fd_set 的数据结构来标记某个 fd 的 IO 事件，并提供操作 fd_set 的函数 FD_ZERO()、FD_SET()、FD_CLR() 和 FD_ISSET()。fd_set 中的每一位都能与已打开的文件描述符 fd 建立联系。当调用 select(2) 时，由内核遍历 fd_set 的内容，根据 IO 状态修改 fd_set 的内容，通过将某位设置为 1 标记描述符已经就绪。 1234567#include &lt;sys/select.h&gt;int select(int nfds, fd_set *...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SkipList"><span class="toc-number">1.</span> <span class="toc-text">SkipList</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E8%B7%B3%E8%A1%A8"><span class="toc-number">1.2.1.</span> <span class="toc-text">什么是跳表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9A%E8%B7%B3%E8%A1%A8-vs-%E5%B9%B3%E8%A1%A1%E6%A0%91"><span class="toc-number">1.3.1.</span> <span class="toc-text">第一层：跳表 vs 平衡树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E6%9F%A5%E6%89%BE%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.2.</span> <span class="toc-text">第二层：查找流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.3.</span> <span class="toc-text">第三层：关键设计决策</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%97%B6%E9%97%B4%E5%A4%8D%E6%9D%82%E5%BA%A6%E5%88%86%E6%9E%90"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 时间复杂度分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-LevelDB-SkipList-%E5%AE%8C%E6%95%B4%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 LevelDB SkipList 完整实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%B8%8E%E9%A1%B9%E7%9B%AE%E4%B8%AD%E5%85%B6%E4%BB%96%E6%A8%A1%E5%9D%97%E7%9A%84%E9%9B%86%E6%88%90%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 与项目中其他模块的集成方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E8%80%83%E9%87%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 生产环境考量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-LevelDB-%E8%B7%B3%E8%A1%A8%E7%9A%84%E5%B9%B6%E5%8F%91%E5%93%B2%E5%AD%A6"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 LevelDB 跳表的并发哲学</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E2%89%A510%E9%97%AE%E6%B3%95-5%E5%8F%8D%E9%97%AE-5%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（≥10问法+5反问+5一句话，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

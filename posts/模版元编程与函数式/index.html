@@ -1,0 +1,521 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>模版元编程与函数式 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="模版元编程与函数式 适用范围：C++模板函数、模板参数（类型&#x2F;整数）、编译期计算、constexpr、SFINAE、变参模板、折叠表达式  一、核心概念 定义：模板元编程(TMP)是利用C++模板系统在编译期执行计算的技术。模板不是代码，而是代码的”蓝图”——编译器在实例化时根据模板生成具体类型的代码 关键词：模板实例化、编译期常量、SFINAE、变参模板、折叠表达式、constexpr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="模版元编程与函数式">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="模版元编程与函数式 适用范围：C++模板函数、模板参数（类型&#x2F;整数）、编译期计算、constexpr、SFINAE、变参模板、折叠表达式  一、核心概念 定义：模板元编程(TMP)是利用C++模板系统在编译期执行计算的技术。模板不是代码，而是代码的”蓝图”——编译器在实例化时根据模板生成具体类型的代码 关键词：模板实例化、编译期常量、SFINAE、变参模板、折叠表达式、constexpr">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.573Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "模版元编程与函数式",
+  "url": "https://weimo1.github.io/posts/%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.573Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '模版元编程与函数式',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">模版元编程与函数式</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">模版元编程与函数式</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.573Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E6%A8%A1%E6%9D%BF%E4%B8%8E%E6%B3%9B%E5%9E%8B/">模板与泛型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>23分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="模版元编程与函数式"><a href="#模版元编程与函数式" class="headerlink" title="模版元编程与函数式"></a>模版元编程与函数式</h1><blockquote>
+<p>适用范围：C++模板函数、模板参数（类型&#x2F;整数）、编译期计算、constexpr、SFINAE、变参模板、折叠表达式</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：模板元编程(TMP)是利用C++模板系统在编译期执行计算的技术。模板不是代码，而是代码的”蓝图”——编译器在实例化时根据模板生成具体类型的代码</li>
+<li><strong>关键词</strong>：模板实例化、编译期常量、SFINAE、变参模板、折叠表达式、constexpr、两阶段编译、依赖名</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>编写类型无关的通用容器&#x2F;算法（std::vector, std::sort）</li>
+<li>编译期计算（阶乘、斐波那契、类型列表操作）</li>
+<li>类型萃取与静态断言（std::is_integral_v, static_assert）</li>
+<li>高性能计算（避免虚函数、分支预测失败）</li>
+<li>边界：过度使用导致编译慢、二进制膨胀、错误信息难以阅读</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-基本工作原理（三层递进）"><a href="#2-1-基本工作原理（三层递进）" class="headerlink" title="2.1 基本工作原理（三层递进）"></a>2.1 基本工作原理（三层递进）</h3><p><strong>第一层：模板是代码生成器</strong>。<code>template &lt;class T&gt;</code> 声明一个类型参数 T，编译器在调用点根据实参类型生成一份具体代码。这是编译期多态（静态多态），零运行时开销。</p>
+<p><strong>第二层：两阶段编译</strong>。阶段1（模板定义时）检查非依赖名——不依赖模板参数的语法直接检查；阶段2（实例化时）检查依赖名——依赖模板参数的语法在 T 确定后才检查。这解释了为什么模板代码必须放在头文件：编译单元需要看到完整定义才能实例化。</p>
+<p><strong>第三层：SFINAE 与编译期分支</strong>。替换失败不是错误(Substitution Failure Is Not An Error)：当模板参数替换导致语法无效时，编译器从候选集中移除该重载而非报错。配合 <code>std::enable_if</code>、<code>if constexpr</code>(C++17)、<code>concepts</code>(C++20) 实现编译期条件选择。</p>
+<h3 id="2-2-模板-vs-面向对象的多态"><a href="#2-2-模板-vs-面向对象的多态" class="headerlink" title="2.2 模板 vs 面向对象的多态"></a>2.2 模板 vs 面向对象的多态</h3><p>为什么面向对象在HPC(高性能计算)不如函数式和元编程香了？</p>
+<p>传统面向对象思想下，令 Int, Float, Double 继承 Numeric 接口类，<code>multiply(int)</code> 作为虚函数。问题：</p>
+<ol>
+<li>虚函数调用有间接跳转开销</li>
+<li>需要为每个类型重复定义，每个运算符都声明纯虚函数</li>
+<li>不同参数类型的排列组合（如 <code>3.14f * 3</code>）违背开闭原则</li>
+</ol>
+<p>模板方案：<code>template &lt;class T&gt; T twice(T t) { return t * 2; }</code>——编译器自动为每种类型生成特化版本，零运行时开销。</p>
+<h3 id="2-3-编译期常量的核心价值"><a href="#2-3-编译期常量的核心价值" class="headerlink" title="2.3 编译期常量的核心价值"></a>2.3 编译期常量的核心价值</h3><p><code>template &lt;int N&gt;</code> 传入的 N 是编译期常量。每个不同 N 编译器单独生成一份代码，可做针对性优化：</p>
+<ul>
+<li><code>show_times&lt;0&gt;()</code> 可优化为空函数</li>
+<li><code>if constexpr (debug)</code> 在 false 分支完全不生成代码</li>
+<li>与 <code>func(int N)</code>（运行期常量）的关键区别：前者让编译器有更多优化空间</li>
+</ul>
+<p>代价：过度使用导致二进制膨胀、编译变慢（Boost 编译慢即源于大量模板）。</p>
+<h2 id="三、动手实践（代码案例"><a href="#三、动手实践（代码案例" class="headerlink" title="三、动手实践（代码案例)"></a>三、动手实践（代码案例)</h2><h2 id="1-template"><a href="#1-template" class="headerlink" title="1 template"></a>1 template</h2><h3 id="1-1-为什么需要模板函数-template"><a href="#1-1-为什么需要模板函数-template" class="headerlink" title="1.1 为什么需要模板函数 (template)"></a>1.1 为什么需要模板函数 (template)</h3><p>答: 避免重复写代码。</p>
+<p>比如，利用重载实现“将一个数乘以2”这个功能，需要:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">int twice(int t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">float twice(float t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">double twice(double t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; twice(21) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(3.14f) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(2.718) &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么面向对象在HPC(高性能计算)不如函数式和元编程香了？</p>
+<p>这个例子要是按传统的面向对象思想，可能是这样:</p>
+<ul>
+<li>令 Int, Float, Double 继承 Numeric 接口类并实现，其中<code>multiply(int)</code>作为虚函数。然后定义:</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Numeric *twice(Numeric *t) &#123;</span><br><span class="line">    return t-&gt;multiply(2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>且不说这样的性能问题，你忍得住寂寞去重复定义好几个，然后每个运算符都要声明一个纯虚函数吗？</p>
+<p>而且,<code>Float</code>的乘法应该是<code>multiply(float)</code>, 你也去定义好几个重载吗？</p>
+<p>定义为<code>multiply(Numeric *)</code>的话依然会违背你们的<code>开闭原则</code>:</p>
+<ul>
+<li>比如<code>3.14f * 3</code>, 两端是不同的类型, 怎么处理所有可能类型的排列组合？</li>
+</ul>
+<p>不如放弃类和方法的概念，欣然接受全局函数和重载。</p>
+<h3 id="1-2-模板函数-定义"><a href="#1-2-模板函数-定义" class="headerlink" title="1.2 模板函数: 定义"></a>1.2 模板函数: 定义</h3><p>使用<code>template &lt;class T&gt;</code>其中 T 可以变成任意类型。</p>
+<p>调用时<code>twice&lt;int&gt;</code>即可将 T 替换为 int。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">T twice(T t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; twice&lt;int&gt;(21) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice&lt;float&gt;(3.14f) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice&lt;double&gt;(2.718) &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>C++</p>
+<p>注意有的教材上写做: <code>template &lt;typename T&gt;</code>是完全等价的，只是个人喜好不同。</p>
+<h3 id="1-3-模板函数-自动推导参数类型"><a href="#1-3-模板函数-自动推导参数类型" class="headerlink" title="1.3 模板函数: 自动推导参数类型"></a>1.3 模板函数: 自动推导参数类型</h3><p>那这样需要手动写<code>&lt;int&gt;</code>, <code>&lt;float&gt;</code>用起来还不如重载方便了？</p>
+<p>别担心，C++ 规定:</p>
+<ul>
+<li>当模板类型参数 T 作为函数参数时，则可以省略该模板参数。自动根据调用者的参数判断。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">T twice(T t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; twice(21) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(3.14f) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(2.718) &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-4-模板函数-特化的重载"><a href="#1-4-模板函数-特化的重载" class="headerlink" title="1.4 模板函数: 特化的重载"></a>1.4 模板函数: 特化的重载</h3><p>有时候，一个统一的实现（比如 t * 2）满足不了某些特殊情况。比如<code>std::string</code>就不能用乘法来重复，这时候我们需要用 t + t 来替代，怎么办呢？</p>
+<p>没关系，只需添加一个<code>twice(std::string)</code>即可，他会自动和已有的模板<code>twice&lt;T&gt;(T)</code>之间相互重载。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">T twice(T t) &#123;</span><br><span class="line">    return t * 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">std::string twice(std::string t) &#123;</span><br><span class="line">    return t + t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; twice(21) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(3.14f) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(2.718) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; twice(&quot;hello&quot;) &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>但是这样也有一个问题，那就是如果我用<code>twice(“hello”)</code>这样去调用，他不会自动隐式转换到<code>std::string</code>并调用那个特化函数，而是会去调用模板函数<code>twice&lt;char *&gt;(“hello”)</code>, 从而出错。</p>
+<p>可能的解决方案: SFINAE。</p>
+<h3 id="1-5-模板函数-默认参数类型"><a href="#1-5-模板函数-默认参数类型" class="headerlink" title="1.5 模板函数: 默认参数类型"></a>1.5 模板函数: 默认参数类型</h3><p>但是如果模板类型参数 T 没有出现在函数的参数中，那么编译器就无法推断，就不得不手动指定了。</p>
+<p>但是，可以通过:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T = int&gt;</span><br></pre></td></tr></table></figure>
+
+<p>表示调用者没有指定时，T 默认为 int。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T = int&gt;</span><br><span class="line">T two() &#123;</span><br><span class="line">    return 2;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; two&lt;int&gt;() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; two&lt;float&gt;() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; two&lt;double&gt;() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; two() &lt;&lt; std::endl;  // 等价于 two&lt;int&gt;()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-6-模板参数-整数也可以作为参数"><a href="#1-6-模板参数-整数也可以作为参数" class="headerlink" title="1.6 模板参数: 整数也可以作为参数"></a>1.6 模板参数: 整数也可以作为参数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br></pre></td></tr></table></figure>
+
+<p>可以声明类型 T 作为模板尖括号里的参数。除了类型，任意整数也可以作为模板参数:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">template &lt;int N&gt;</span><br></pre></td></tr></table></figure>
+
+<p>来声明一个整数 N 作为模板参数。</p>
+<p>不过模板参数只支持整数类型（包括 enum）。</p>
+<p>浮点类型、指针类型，不能声明为模板参数。自定义类型也不可以，比如:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">template &lt;float F, glm::vec3 V&gt;  // 错误！</span><br></pre></td></tr></table></figure>
+
+<p>示例:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">template &lt;int N&gt;</span><br><span class="line">void show_times(std::string msg) &#123;</span><br><span class="line">    for (int i = 0; i &lt; N; i++) &#123;</span><br><span class="line">        std::cout &lt;&lt; msg &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    show_times&lt;1&gt;(&quot;one&quot;);</span><br><span class="line">    show_times&lt;3&gt;(&quot;three&quot;);</span><br><span class="line">    show_times&lt;4&gt;(&quot;four&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-7-模板参数-多个模板参数"><a href="#1-7-模板参数-多个模板参数" class="headerlink" title="1.7 模板参数: 多个模板参数"></a>1.7 模板参数: 多个模板参数</h3><p><code>int N</code>和<code>class T</code>可以一起使用。</p>
+<p>你只需要指定其中一部分参数即可，会自动根据参数类型(<code>T msg</code>)、默认值(<code>int N = 1</code>)，推断尖括号里没有指定的那些参数。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">template &lt;int N = 1, class T&gt;</span><br><span class="line">void show_times(T msg) &#123;</span><br><span class="line">    for (int i = 0; i &lt; N; i++) &#123;</span><br><span class="line">        std::cout &lt;&lt; msg &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    show_times(&quot;one&quot;); // 打印 1 个 &quot;one&quot;</span><br><span class="line">    show_times&lt;3&gt;(42); // 打印 3 个 42</span><br><span class="line">    show_times&lt;4&gt;(&#x27;%&#x27;);// 打印 4 个 &#x27;%&#x27;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-8-模板参数-参数部分特化"><a href="#1-8-模板参数-参数部分特化" class="headerlink" title="1.8 模板参数: 参数部分特化"></a>1.8 模板参数: 参数部分特化</h3><ol>
+<li><code>func(T t)</code>完全让参数类型取决于调用者。</li>
+<li><code>func(vector&lt;T&gt; t)</code>这样则可以限定仅仅为<code>vector</code>类型的参数。</li>
+</ol>
+<p>这里用了<code>const &amp;</code>避免不必要的的拷贝。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">T sum(std::vector&lt;T&gt; const &amp;arr) &#123;</span><br><span class="line">    T res = 0;</span><br><span class="line">    for (int i = 0; i &lt; arr.size(); i++) &#123;</span><br><span class="line">        res += arr[i];</span><br><span class="line">    &#125;</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; a = &#123;4, 3, 2, 1&#125;;</span><br><span class="line">    std::cout &lt;&lt; sum(a) &lt;&lt; std::endl;</span><br><span class="line">    std::vector&lt;float&gt; b = &#123;3.14f, 2.718f&#125;;</span><br><span class="line">    std::cout &lt;&lt; sum(b) &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>不过，这种部分特化也不支持隐式转换。</p>
+<h3 id="1-9-为什么要支持整数作为模板参数-因为是编译期常量"><a href="#1-9-为什么要支持整数作为模板参数-因为是编译期常量" class="headerlink" title="1.9 为什么要支持整数作为模板参数: 因为是编译期常量"></a>1.9 为什么要支持整数作为模板参数: 因为是编译期常量</h3><ul>
+<li>你可能会想，模板只需要支持<code>class T</code>不就行了？</li>
+</ul>
+<ul>
+<li>反正<code>int N</code>可以作为函数的参数传入，模板还不支持浮点。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">template &lt;int N&gt;</span><br><span class="line">void func();</span><br><span class="line">// 和</span><br><span class="line">void func(int N);</span><br></pre></td></tr></table></figure>
+
+<p>一个是模板参数，一个是函数参数，有什么区别？有很大区别！</p>
+<p><code>template &lt;int N&gt;</code>传入的 N，是一个编译期常量，每个不同的 N，编译器都会单独生成一份代码，从而可以对他做单独的优化。</p>
+<p>而<code>func(int N)</code>，则变成运行期常量，编译器无法自动优化，只能运行时根据被调用参数 N 的不同。</p>
+<p>比如<code>show_times&lt;0&gt;()</code>编译器就可以自动优化为一个空函数。因此模板元编程对高性能编程很重要。</p>
+<p>通常来说，模板的内部实现需要被暴露出来，除非使用特殊的手段，否则，定义和实现都必须放在头文件里。</p>
+<p>但也正因如此，如果过度使用模板，会导致生成的二进制文件大小剧增，编译变得很慢等。(boost 编译慢的原因找到了…因为他们用了大量的模板。)</p>
+<h2 id="2-constexpr"><a href="#2-constexpr" class="headerlink" title="2 constexpr"></a>2 constexpr</h2><h3 id="2-1-模板的应用-编译期优化案例"><a href="#2-1-模板的应用-编译期优化案例" class="headerlink" title="2.1 模板的应用: 编译期优化案例"></a>2.1 模板的应用: 编译期优化案例</h3><p>在右边这个案例中，我们声明了一个<code>sumto</code>函数，作用是求出从 1 到 n 所有数字的和。</p>
+<p>用一个<code>debug</code>参数控制是否输出调试信息。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">int sumto(int n, bool debug) &#123;</span><br><span class="line">    int res = 0;</span><br><span class="line">    for (int i = 1; i &lt;= n; i++) &#123;</span><br><span class="line">        res += i;</span><br><span class="line">        if (debug)</span><br><span class="line">            std::cout &lt;&lt; i &lt;&lt; &quot;-th: &quot; &lt;&lt; res &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; sumto(4, true) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; sumto(4, false) &lt;&lt; std::endl;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>但是这样<code>debug</code>是运行时判断，这样即使是<code>debug</code>为<code>false</code>也会浪费 CPU 时间。</p>
+<ul>
+<li>因此可以把<code>debug</code>改成模板参数，这样就是编译期常量。编译器会生成两份函数<code>sumto&lt;true&gt;</code>和<code>sumto&lt;false&gt;</code>。前者保留了调试用的打印语句，后者则完全为性能优化而可以去掉打印语句。</li>
+</ul>
+<p>后者其实在编译器看来就是 <code>if (false) std::cout &lt;&lt; ...</code> 这样显然是会被他自动优化掉的。(但是如果是远古的垃圾编译器可能不会, 因此:)</p>
+<h3 id="2-2-模板的应用-编译期分支"><a href="#2-2-模板的应用-编译期分支" class="headerlink" title="2.2 模板的应用: 编译期分支"></a>2.2 模板的应用: 编译期分支</h3><p>更进一步，可以用<code>C++17</code>的<code>if constexpr</code>语法(<a target="_blank" rel="noopener external nofollow noreferrer" href="https://hengxin666.github.io/HXLoLi/docs/%E7%A8%8B%E5%BA%8F%E8%AF%AD%E8%A8%80/C++/tmp%E4%B8%B6C++%E4%B8%B6memo/C++%E6%96%B0%E7%89%B9%E6%80%A7/C++17%E5%B8%B8%E7%94%A8%E6%96%B0%E7%89%B9%E6%80%A7/%E7%BC%96%E8%AF%91%E6%9C%9Fif%E8%A1%A8%E8%BE%BE%E5%BC%8F/">编译期if表达式</a>)，保证是编译期确定的分支:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">template &lt;bool debug&gt;</span><br><span class="line">int sumto(int n) &#123;</span><br><span class="line">    int res = 0;</span><br><span class="line">    for (int i = 1; i &lt;= n; i++) &#123;</span><br><span class="line">        res += i;</span><br><span class="line">        if constexpr (debug) &#123;</span><br><span class="line">            std::cout &lt;&lt; i &lt;&lt; &quot;-th: &quot; &lt;&lt; res &lt;&lt; std::endl;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::cout &lt;&lt; sumto&lt;true&gt;(4) &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; sumto&lt;false&gt;(4) &lt;&lt; std::endl;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-模板的难题-编译期常量的限制"><a href="#2-3-模板的难题-编译期常量的限制" class="headerlink" title="2.3 模板的难题: 编译期常量的限制"></a>2.3 模板的难题: 编译期常量的限制</h3><p>编译期常量的限制就在于他不能通过运行时变量组成的表达式来指定。比如:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>##container##</td>
+</tr>
+<tr>
+<td></td>
+</tr>
+</tbody></table>
+<p>这里在<code>if constexpr</code>的表达式里用到了运行时变量，从而无法作为编译期分支的条件。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>##container##</td>
+</tr>
+<tr>
+<td></td>
+</tr>
+</tbody></table>
+<h3 id="2-4-模板的难题-编译期常函数"><a href="#2-4-模板的难题-编译期常函数" class="headerlink" title="2.4 模板的难题: 编译期常函数"></a>2.4 模板的难题: 编译期常函数</h3><p>编译期 constexpr 的表达式，一般是无法调用其他函数的:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>##container##</td>
+</tr>
+<tr>
+<td></td>
+</tr>
+</tbody></table>
+<p>解决: 如果能保证<code>isnegative</code>里都可以在编译期求值，将他前面也标上<code>constexpr</code>即可:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">template &lt;bool debug&gt;</span><br><span class="line">int sumto(int n) &#123;</span><br><span class="line">    int res = 0;</span><br><span class="line">    for (int i = 1; i &lt;= n; i++) &#123;</span><br><span class="line">        res += i;</span><br><span class="line">        if constexpr (debug) &#123;</span><br><span class="line">            std::cout &lt;&lt; i &lt;&lt; &quot;-th: &quot; &lt;&lt; res &lt;&lt; std::endl;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">constexpr bool isnegative(int n) &#123;</span><br><span class="line">    return n &lt; 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    constexpr bool debug = isnegative(-2014);</span><br><span class="line">    std::cout &lt;&lt; sumto&lt;debug&gt;(4) &lt;&lt; std::endl;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意: <code>constexpr</code>函数不能调用<code>non-constexpr</code>函数。而且<code>constexpr</code>函数必须是内联(<code>inline</code>)的，不能分离声明和定义在另一个文件里。标准库的很多函数如<code>std::min</code>也是<code>constexpr</code>函数，可以放心大胆在模板尖括号内使用。</p>
+<h3 id="2-5-模板的难题-移到另一个文件中定义"><a href="#2-5-模板的难题-移到另一个文件中定义" class="headerlink" title="2.5 模板的难题: 移到另一个文件中定义"></a>2.5 模板的难题: 移到另一个文件中定义</h3><p>Tip</p>
+<p>一般来说，我会建议模板不要分离声明和定义，直接写在头文件里即可。如果分离还要罗列出所有模板参数的排列组合，违背了<code>开闭原则</code>。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>##container##</td>
+</tr>
+<tr>
+<td></td>
+</tr>
+</tbody></table>
+<p>这是因为编译器对模板的编译是惰性的，即只有当前<code>.cpp</code>文件用到了这个模板，该模板里的函数才会被定义。而我们的<code>sumto.cpp</code>中没有用到<code>sumto&lt;&gt;</code>函数的任何一份定义，所以<code>main.cpp</code>里只看到<code>sumto&lt;&gt;</code>函数的两份声明，从而出错。</p>
+<p>解决:</p>
+<ul>
+<li>在看得见<code>sumto&lt;&gt;</code>定义的<code>sumto.cpp</code>里，增加两个显式编译模板的声明:</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">template &lt;bool debug&gt;</span><br><span class="line">int sumto(int n) &#123;</span><br><span class="line">    int res = 0;</span><br><span class="line">    for (int i = 1; i &lt;= n; i++) &#123;</span><br><span class="line">        res += i;</span><br><span class="line">        if constexpr (debug)</span><br><span class="line">            std::cout &lt;&lt; i &lt;&lt; &quot;-th: &quot; &lt;&lt; res &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    return res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template int sumto&lt;true&gt;(int n);</span><br><span class="line">template int sumto&lt;false&gt;(int n);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-6-模板的惰性-延迟编译"><a href="#2-6-模板的惰性-延迟编译" class="headerlink" title="2.6 模板的惰性: 延迟编译"></a>2.6 模板的惰性: 延迟编译</h3><p>要证明模板的惰性，只需看这个例子:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T = void&gt;</span><br><span class="line">void func_that_never_pass_compile() &#123;</span><br><span class="line">    &quot;字符串&quot; = 2333;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>要是编译器哪怕细看了一眼: 字符串怎么可能被写入呢？肯定是会出错的。</p>
+<p>但是却没有出错，这是因为模板没有被调用，所以不会被实际编译！</p>
+<p>而只有当<code>main</code>调用了这个函数，才会被编译，才会报错！</p>
+<p>用一个假模板实现延迟编译的技术，可以加快编译的速度，用于<code>代理模式</code>等。</p>
+<h3 id="2-7-模板函数-一个例子"><a href="#2-7-模板函数-一个例子" class="headerlink" title="2.7 模板函数: 一个例子"></a>2.7 模板函数: 一个例子</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">void print(std::vector&lt;T&gt; const &amp;a) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;&#123;&quot;;</span><br><span class="line">    for (size_t i = 0; i &lt; a.size(); i++) &#123;</span><br><span class="line">        std::cout &lt;&lt; a[i];</span><br><span class="line">        if (i != a.size() - 1)</span><br><span class="line">            std::cout &lt;&lt; &quot;, &quot;;</span><br><span class="line">    &#125;</span><br><span class="line">    std::cout &lt;&lt; &quot;&#125;&quot; &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; a = &#123;1, 4, 2, 8, 5, 7&#125;;</span><br><span class="line">    print(a);</span><br><span class="line">    std::vector&lt;double&gt; b = &#123;3.14, 2.718, 0.618&#125;;</span><br><span class="line">    print(b);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-8-模板函数-配合运算符重载"><a href="#2-8-模板函数-配合运算符重载" class="headerlink" title="2.8 模板函数: 配合运算符重载"></a>2.8 模板函数: 配合运算符重载</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt;</span><br><span class="line">std::ostream &amp;operator&lt;&lt;(std::ostream &amp;os, std::vector&lt;T&gt; const &amp;a) &#123;</span><br><span class="line">    os &lt;&lt; &quot;&#123;&quot;;</span><br><span class="line">    for (size_t i = 0; i &lt; a.size(); i++) &#123;</span><br><span class="line">        os &lt;&lt; a[i];</span><br><span class="line">        if (i != a.size() - 1)</span><br><span class="line">            os &lt;&lt; &quot;, &quot;;</span><br><span class="line">    &#125;</span><br><span class="line">    os &lt;&lt; &quot;&#125;&quot;;</span><br><span class="line">    return os;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; a = &#123;1, 4, 2, 8, 5, 7&#125;;</span><br><span class="line">    std::cout &lt;&lt; a &lt;&lt; std::endl;</span><br><span class="line">    std::vector&lt;double&gt; b = &#123;3.14, 2.718, 0.618&#125;;</span><br><span class="line">    std::cout &lt;&lt; b &lt;&lt; std::endl;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-9-小结"><a href="#2-9-小结" class="headerlink" title="2.9 小结"></a>2.9 小结</h3><p>模板函数: 大家学废了吗?</p>
+<ol>
+<li>类型作为参数: <code>template &lt;class T&gt;</code></li>
+<li>整数值作为参数: <code>template &lt;int N&gt;</code></li>
+<li>定义默认参数: <code>template &lt;int N = 0, class T = int&gt;</code></li>
+<li>使用模板函数: <code>myfunc&lt;T, N&gt;(...)</code></li>
+<li>模板函数可以自动推断类型，从而参与重载</li>
+<li>模板具有惰性、多次编译的特点</li>
+</ol>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-编译期优化实战：debug-参数模板化"><a href="#4-1-编译期优化实战：debug-参数模板化" class="headerlink" title="4.1 编译期优化实战：debug 参数模板化"></a>4.1 编译期优化实战：debug 参数模板化</h3><p>将 <code>bool debug</code> 从函数参数变为模板参数 <code>template &lt;bool debug&gt;</code>，编译器生成两份独立函数：</p>
+<ul>
+<li><code>sumto&lt;true&gt;</code>：保留 cout 调试语句</li>
+<li><code>sumto&lt;false&gt;</code>：编译器优化后完全消除 if(false) 分支，零性能开销</li>
+</ul>
+<p>C++17 的 <code>if constexpr(debug)</code> 语法进一步保证编译期分支确定性，不会在 false 分支引入未实例化的依赖名错误。</p>
+<h3 id="4-2-模板惰性编译的应用"><a href="#4-2-模板惰性编译的应用" class="headerlink" title="4.2 模板惰性编译的应用"></a>4.2 模板惰性编译的应用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">T</span> = <span class="type">void</span>&gt;</span><br><span class="line"><span class="type">void</span> <span class="built_in">func_that_never_pass_compile</span>() &#123;</span><br><span class="line">    <span class="string">&quot;字符串&quot;</span> = <span class="number">2333</span>;  <span class="comment">// 明显错误的代码</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 只要不调用，就不会编译——证明模板的惰性</span></span><br></pre></td></tr></table></figure>
+
+<p>利用模板惰性可以实现<strong>延迟编译</strong>技术，用于代理模式、条件编译等。</p>
+<h3 id="4-3-constexpr-函数的约束与演进"><a href="#4-3-constexpr-函数的约束与演进" class="headerlink" title="4.3 constexpr 函数的约束与演进"></a>4.3 constexpr 函数的约束与演进</h3><ul>
+<li><strong>C++11</strong>：constexpr 函数只能包含单个 return 语句</li>
+<li><strong>C++14</strong>：放宽为可含多条语句、循环、条件分支</li>
+<li><strong>C++17</strong>：支持 lambda 标记为 constexpr</li>
+<li><strong>C++20</strong>：支持 <code>constexpr new</code>、<code>constexpr vector</code>、<code>constexpr string</code></li>
+</ul>
+<p>关键约束：constexpr 函数不能调用 non-constexpr 函数；必须内联(inline)；不能分离声明与定义。标准库的大部分算法和容器在 C++20 已全面 constexpr 化。</p>
+<h3 id="4-4-模板分离编译的解决方案"><a href="#4-4-模板分离编译的解决方案" class="headerlink" title="4.4 模板分离编译的解决方案"></a>4.4 模板分离编译的解决方案</h3><p>模板通常放在头文件中以支持任意类型实例化。若需分离编译，使用<strong>显式实例化声明</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// sumto.cpp 中显式实例化所有需要的版本</span></span><br><span class="line"><span class="keyword">template</span> <span class="type">int</span> <span class="built_in">sumto</span>&lt;<span class="literal">true</span>&gt;(<span class="type">int</span> n);</span><br><span class="line"><span class="keyword">template</span> <span class="type">int</span> <span class="built_in">sumto</span>&lt;<span class="literal">false</span>&gt;(<span class="type">int</span> n);</span><br></pre></td></tr></table></figure>
+
+<p>但这违背开闭原则——每新增一种参数组合都要修改 .cpp 文件。权衡：头文件定义（灵活性）vs 显式实例化（编译速度&#x2F;隐藏实现）。</p>
+<h3 id="4-5-与其他主题的关联"><a href="#4-5-与其他主题的关联" class="headerlink" title="4.5 与其他主题的关联"></a>4.5 与其他主题的关联</h3><ul>
+<li><strong>折叠表达式</strong>（C++17）：变参模板的语法糖，<code>(args + ...)</code> 一行替代递归解包，编译器展开为零开销</li>
+<li><strong>std::enable_if &#x2F; SFINAE</strong>：编译期条件选择，在类型萃取中大量应用</li>
+<li><strong>C++20 Concepts</strong>：替代 SFINAE，提供约束模板参数的声明式语法，错误信息可读性好 10 倍</li>
+<li><strong>类型萃取(type_traits)</strong>：<code>std::is_integral_v&lt;T&gt;</code>、<code>std::remove_reference_t&lt;T&gt;</code> 等是模板元编程的基础设施</li>
+<li><strong>if constexpr</strong>：替代传统的标签分发(tag dispatch)和 enable_if 重载，代码更清晰直观</li>
+</ul>
+<h3 id="4-6-常见优化策略"><a href="#4-6-常见优化策略" class="headerlink" title="4.6 常见优化策略"></a>4.6 常见优化策略</h3><ul>
+<li><strong>编译期计算替代运行时计算</strong>：<code>constexpr</code> 阶乘&#x2F;斐波那契在编译期完成</li>
+<li><strong>折叠表达式替代递归展开</strong>：减少模板实例化深度，编译更快</li>
+<li><strong>Concepts 约束模板参数</strong>：减少 SFINAE 回退链，加速重载决议</li>
+<li><strong>避免过度模板化</strong>：非性能敏感代码优先运行时方案（可读性 &gt; 编译期优化）</li>
+<li><strong>显式实例化</strong>：在多编译单元项目中减少重复实例化开销</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-模板实例化的两阶段编译"><a href="#5-1-模板实例化的两阶段编译" class="headerlink" title="5.1 模板实例化的两阶段编译"></a>5.1 模板实例化的两阶段编译</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">foo</span><span class="params">(T t)</span> </span>&#123;</span><br><span class="line">    t.<span class="built_in">undeclared</span>();    <span class="comment">// Phase 1：非依赖名，立即检查 → 报错！</span></span><br><span class="line">    t.<span class="built_in">push_back</span>(<span class="number">42</span>);   <span class="comment">// Phase 2：依赖名，实例化时检查</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 阶段1：模板定义时检查不依赖T的语法</span></span><br><span class="line"><span class="comment">// 阶段2：实例化时检查依赖T的部分，实现延迟编译</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-SFINAE-的核心原理"><a href="#5-2-SFINAE-的核心原理" class="headerlink" title="5.2 SFINAE 的核心原理"></a>5.2 SFINAE 的核心原理</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">auto</span> <span class="title">f</span><span class="params">(T t)</span> -&gt; <span class="title">decltype</span><span class="params">(t.foo(), <span class="type">void</span>())</span> </span>&#123;  <span class="comment">// 如果 T::foo 不存在</span></span><br><span class="line">    t.<span class="built_in">foo</span>();                                 <span class="comment">// substitution failure</span></span><br><span class="line">&#125;                                            <span class="comment">// → 从候选集移除，非编译错误</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">f</span><span class="params">(T t)</span> </span>&#123; <span class="comment">/* fallback */</span> &#125;  <span class="comment">// 回退版本</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">A</span> &#123; <span class="function"><span class="type">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;&#125; &#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">B</span> &#123;&#125;;</span><br><span class="line"><span class="built_in">f</span>(<span class="built_in">A</span>());  <span class="comment">// 调用第一个</span></span><br><span class="line"><span class="built_in">f</span>(<span class="built_in">B</span>());  <span class="comment">// 第一个 substitution failure → 调用 fallback</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-std-enable-if-的实现"><a href="#5-3-std-enable-if-的实现" class="headerlink" title="5.3 std::enable_if 的实现"></a>5.3 std::enable_if 的实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="type">bool</span> B, <span class="keyword">typename</span> T = <span class="type">void</span>&gt;</span><br><span class="line"><span class="keyword">struct</span> enable_if &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">enable_if</span>&lt;<span class="literal">true</span>, T&gt; &#123; <span class="keyword">using</span> type = T; &#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 用法：</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T,</span><br><span class="line">         <span class="keyword">typename</span> = std::<span class="type">enable_if_t</span>&lt;std::is_integral_v&lt;T&gt;&gt;&gt;</span><br><span class="line"><span class="type">void</span> <span class="built_in">process</span>(T t) &#123; <span class="comment">/* 仅整数可调用 */</span> &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-变参模板与折叠表达式实现"><a href="#5-4-变参模板与折叠表达式实现" class="headerlink" title="5.4 变参模板与折叠表达式实现"></a>5.4 变参模板与折叠表达式实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// C++11 递归解包</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function">T <span class="title">sum</span><span class="params">(T t)</span> </span>&#123; <span class="keyword">return</span> t; &#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">T <span class="title">sum</span><span class="params">(T t, Args... args)</span> </span>&#123; <span class="keyword">return</span> t + <span class="built_in">sum</span>(args...); &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// C++17 折叠表达式（编译器展开，零递归开销）</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">auto</span> <span class="title">sum</span><span class="params">(Args... args)</span> </span>&#123; <span class="keyword">return</span> (args + ...); &#125;</span><br><span class="line"><span class="comment">// 展开为：a + b + c + d</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-5-实践经验"><a href="#5-5-实践经验" class="headerlink" title="5.5 实践经验"></a>5.5 实践经验</h3><ol>
+<li><strong>模板代码放头文件</strong>：模板非真正编译单元，而是”模式”。分离编译需显式实例化声明。</li>
+<li><strong>概念（Concepts）替代 SFINAE</strong>：C++20 的 <code>requires</code> 约束比 enable_if 可读性好 10 倍，错误信息友好。</li>
+<li><strong>if constexpr 替代标签分发</strong>：<code>if constexpr (is_integral_v&lt;T&gt;)</code> 比 <code>enable_if</code> 重载清晰。</li>
+<li><strong>编译爆炸问题</strong>：变参模板每个组合实例化一次，过多的排列可能导致编译时间指数增长。</li>
+<li><strong>decltype 尾置返回</strong>：<code>auto f() -&gt; decltype(...)</code> 可在推导前使用参数名，比前置 decltype 更灵活。</li>
+<li><strong>模板元编程适度使用</strong>：非性能敏感代码优先运行时方案（可读性 &gt; 编译期优化）。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（11题）"><a href="#Q-A（11题）" class="headerlink" title="Q&amp;A（11题）"></a>Q&amp;A（11题）</h3><p><strong>Q1: 模板的两阶段编译是什么？</strong><br>A: 阶段1（定义时）检查非依赖名；阶段2（实例化时）检查依赖名。delayed compilation。</p>
+<p><strong>Q2: SFINAE 的原理？</strong><br>A: Substitution Failure Is Not An Error：模板参数替换失败时不报错，而是从候选集合中移除该重载。</p>
+<p><strong>Q3: enable_if 如何实现？</strong><br>A: 偏特化 <code>enable_if&lt;true, T&gt;</code> 有 type 成员，<code>enable_if&lt;false, T&gt;</code> 无 type，触发 SFINAE。</p>
+<p><strong>Q4: 变参模板的实现方式？</strong><br>A: C++11 递归解包（递归基例 + 递归调用）；C++17 折叠表达式 <code>(... op args)</code> 一行搞定。</p>
+<p><strong>Q5: 折叠表达式有哪些形式？</strong><br>A: 右折叠 (args op …)、左折叠 (… op args)、二元左右折叠 (args op … op init)。支持所有二元运算符。</p>
+<p><strong>Q6: 模板特化 vs 偏特化？</strong><br>A: 全特化 <code>template&lt;&gt; class Foo&lt;int&gt;</code> 覆盖所有参数；偏特化 <code>template&lt;T&gt; class Foo&lt;T*&gt;</code> 覆盖部分模式。</p>
+<p><strong>Q7: 模板元编程 vs constexpr 的选择？</strong><br>A: C++11&#x2F;14 用模板递归；C++14&#x2F;17 起优先 constexpr（可读性好）；类型操作（type_traits）仍需模板。</p>
+<p><strong>Q8: Forwarding Reference（万能引用）是什么？</strong><br>A: <code>template&lt;typename T&gt; void f(T&amp;&amp; t)</code> 中的 T&amp;&amp; 是万能引用（未加 const 的右值引用语法）。最佳搭配 std::forward<T>。</p>
+<p><strong>Q9: 为什么模板不能分离编译？</strong><br>A: 模板在调用点才实例化，编译单元边界导致未实例化的代码不可见。解决方案：头文件完整定义 或 显式实例化。</p>
+<p><strong>Q10: C++20 Concepts 解决的问题？</strong><br>A: 替代 SFINAE 和 enable_if，提供清晰的类型约束语法，错误信息人类可读，支持 requires 子句和 concept 定义。</p>
+<p><strong>Q11: 什么是 dependent name？</strong><br>A: 依赖模板参数的名字。需要加 typename（对类型）或 template（对模板）消除歧义。<code>typename T::value_type</code>。</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：模板友元函数不是真正的函数模板。<strong>反问</strong>：”如何定义模板类的模板友元函数？”</li>
+<li><strong>陷阱</strong>：<code>std::forward&lt;T&gt;</code> 只能用于万能引用（T&amp;&amp;），用于其他场景是误导。</li>
+<li><strong>陷阱</strong>：template 关键字用于依赖名模板调用：<code>obj.template foo&lt;T&gt;()</code>。<strong>反问</strong>：”没有 template 关键字会怎样？”</li>
+<li><strong>陷阱</strong>：<code>std::remove_reference&lt;T&gt;::type</code> 需要加 typename：编译器默认将 <code>::type</code> 视为静态成员。</li>
+<li><strong>陷阱</strong>：模板函数和普通函数的重载优先级：普通函数优先于模板函数（更特化者优先）。</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li>模板两阶段编译：非依赖名立即检查，依赖名延迟检查。</li>
+<li>SFINAE：替换失败从候选集移除，不是编译错误。</li>
+<li>折叠表达式 (args + …) 替代递归解包。</li>
+<li>T&amp;&amp; + 模板 &#x3D; 万能引用，需 std::forward。</li>
+<li>enable_if 通过偏特化隐藏 type 实现。</li>
+<li>typename 消除依赖类型歧义，template 消除依赖模板歧义。</li>
+<li>模板分离编译用显式实例化 template class Foo<int>。</li>
+<li>C++20 Concepts &#x3D; requires 子句 + 概念定义，可读性好。</li>
+</ol>
+<h2 id=""><a href="#" class="headerlink" title=""></a></h2></article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F/">https://weimo1.github.io/posts/%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%B6%88%E6%81%AF%E5%8D%8F%E8%AE%AE%E8%AE%BE%E8%AE%A1/" title="消息协议设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">消息协议设计</div></div><div class="info-2"><div class="info-item-1">消息协议设计 适用范围：IM 即时通讯系统的通信协议层设计，涵盖消息编码、消息类型定义、上行&#x2F;转发&#x2F;下行流程。  一、核心概念 定义：IM 消息协议是客户端与服务端之间通信的”语言规范”，定义了消息的编码格式、类型语义、字段结构和传输流程。它决定了系统各组件如何理解彼此发送的二进制数据流。 关键词：Protobuf 序列化、CMD&#x2F;ACK&#x2F;NOTIFY 消息类型、上行消息、消息转发、下行消息、协议版本兼容 适用场景&#x2F;边界： 适用于分布式 IM 系统中客户端到网关、网关到逻辑层、逻辑层到存储层之间的所有消息通信 边界：关注消息格式和传输语义...</div></div></div></a><a class="pagination-related" href="/posts/%E6%A8%A1%E6%9D%BF%E5%85%83/" title="模板元"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">模板元</div></div><div class="info-2"><div class="info-item-1">模板元2.2.1****模版偏特化和递归方式来展开参数包可变参数模板类的展开一般需要定义两到三个类，包括类声明和偏特化的模板类。如下方式定义了一个基本的可变参数模板类： 1234567891011121314151617//前向声明template&lt;typename... Args&gt;struct Sum;//基本定义template&lt;typename First, typename... Rest&gt;struct Sum&lt;First, Rest...&gt;&#123;enum &#123; value = Sum&lt;First&gt;::value + ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A8%A1%E7%89%88%E5%85%83%E7%BC%96%E7%A8%8B%E4%B8%8E%E5%87%BD%E6%95%B0%E5%BC%8F"><span class="toc-number">1.</span> <span class="toc-text">模版元编程与函数式</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%9F%BA%E6%9C%AC%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 基本工作原理（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%A8%A1%E6%9D%BF-vs-%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%A4%9A%E6%80%81"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 模板 vs 面向对象的多态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%B8%B8%E9%87%8F%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 编译期常量的核心价值</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-template"><span class="toc-number">1.4.</span> <span class="toc-text">1 template</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-template"><span class="toc-number">1.4.1.</span> <span class="toc-text">1.1 为什么需要模板函数 (template)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E5%AE%9A%E4%B9%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">1.2 模板函数: 定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E8%87%AA%E5%8A%A8%E6%8E%A8%E5%AF%BC%E5%8F%82%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.4.3.</span> <span class="toc-text">1.3 模板函数: 自动推导参数类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E7%89%B9%E5%8C%96%E7%9A%84%E9%87%8D%E8%BD%BD"><span class="toc-number">1.4.4.</span> <span class="toc-text">1.4 模板函数: 特化的重载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-5-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.4.5.</span> <span class="toc-text">1.5 模板函数: 默认参数类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-6-%E6%A8%A1%E6%9D%BF%E5%8F%82%E6%95%B0-%E6%95%B4%E6%95%B0%E4%B9%9F%E5%8F%AF%E4%BB%A5%E4%BD%9C%E4%B8%BA%E5%8F%82%E6%95%B0"><span class="toc-number">1.4.6.</span> <span class="toc-text">1.6 模板参数: 整数也可以作为参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-7-%E6%A8%A1%E6%9D%BF%E5%8F%82%E6%95%B0-%E5%A4%9A%E4%B8%AA%E6%A8%A1%E6%9D%BF%E5%8F%82%E6%95%B0"><span class="toc-number">1.4.7.</span> <span class="toc-text">1.7 模板参数: 多个模板参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-8-%E6%A8%A1%E6%9D%BF%E5%8F%82%E6%95%B0-%E5%8F%82%E6%95%B0%E9%83%A8%E5%88%86%E7%89%B9%E5%8C%96"><span class="toc-number">1.4.8.</span> <span class="toc-text">1.8 模板参数: 参数部分特化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-9-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E6%94%AF%E6%8C%81%E6%95%B4%E6%95%B0%E4%BD%9C%E4%B8%BA%E6%A8%A1%E6%9D%BF%E5%8F%82%E6%95%B0-%E5%9B%A0%E4%B8%BA%E6%98%AF%E7%BC%96%E8%AF%91%E6%9C%9F%E5%B8%B8%E9%87%8F"><span class="toc-number">1.4.9.</span> <span class="toc-text">1.9 为什么要支持整数作为模板参数: 因为是编译期常量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-constexpr"><span class="toc-number">1.5.</span> <span class="toc-text">2 constexpr</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%A8%A1%E6%9D%BF%E7%9A%84%E5%BA%94%E7%94%A8-%E7%BC%96%E8%AF%91%E6%9C%9F%E4%BC%98%E5%8C%96%E6%A1%88%E4%BE%8B"><span class="toc-number">1.5.1.</span> <span class="toc-text">2.1 模板的应用: 编译期优化案例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%A8%A1%E6%9D%BF%E7%9A%84%E5%BA%94%E7%94%A8-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%88%86%E6%94%AF"><span class="toc-number">1.5.2.</span> <span class="toc-text">2.2 模板的应用: 编译期分支</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E6%A8%A1%E6%9D%BF%E7%9A%84%E9%9A%BE%E9%A2%98-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%B8%B8%E9%87%8F%E7%9A%84%E9%99%90%E5%88%B6"><span class="toc-number">1.5.3.</span> <span class="toc-text">2.3 模板的难题: 编译期常量的限制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E6%A8%A1%E6%9D%BF%E7%9A%84%E9%9A%BE%E9%A2%98-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%B8%B8%E5%87%BD%E6%95%B0"><span class="toc-number">1.5.4.</span> <span class="toc-text">2.4 模板的难题: 编译期常函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E6%A8%A1%E6%9D%BF%E7%9A%84%E9%9A%BE%E9%A2%98-%E7%A7%BB%E5%88%B0%E5%8F%A6%E4%B8%80%E4%B8%AA%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89"><span class="toc-number">1.5.5.</span> <span class="toc-text">2.5 模板的难题: 移到另一个文件中定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-%E6%A8%A1%E6%9D%BF%E7%9A%84%E6%83%B0%E6%80%A7-%E5%BB%B6%E8%BF%9F%E7%BC%96%E8%AF%91"><span class="toc-number">1.5.6.</span> <span class="toc-text">2.6 模板的惰性: 延迟编译</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90"><span class="toc-number">1.5.7.</span> <span class="toc-text">2.7 模板函数: 一个例子</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-8-%E6%A8%A1%E6%9D%BF%E5%87%BD%E6%95%B0-%E9%85%8D%E5%90%88%E8%BF%90%E7%AE%97%E7%AC%A6%E9%87%8D%E8%BD%BD"><span class="toc-number">1.5.8.</span> <span class="toc-text">2.8 模板函数: 配合运算符重载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-9-%E5%B0%8F%E7%BB%93"><span class="toc-number">1.5.9.</span> <span class="toc-text">2.9 小结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%BC%96%E8%AF%91%E6%9C%9F%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98%EF%BC%9Adebug-%E5%8F%82%E6%95%B0%E6%A8%A1%E6%9D%BF%E5%8C%96"><span class="toc-number">1.6.1.</span> <span class="toc-text">4.1 编译期优化实战：debug 参数模板化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E6%A8%A1%E6%9D%BF%E6%83%B0%E6%80%A7%E7%BC%96%E8%AF%91%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">1.6.2.</span> <span class="toc-text">4.2 模板惰性编译的应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-constexpr-%E5%87%BD%E6%95%B0%E7%9A%84%E7%BA%A6%E6%9D%9F%E4%B8%8E%E6%BC%94%E8%BF%9B"><span class="toc-number">1.6.3.</span> <span class="toc-text">4.3 constexpr 函数的约束与演进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E6%A8%A1%E6%9D%BF%E5%88%86%E7%A6%BB%E7%BC%96%E8%AF%91%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.6.4.</span> <span class="toc-text">4.4 模板分离编译的解决方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.6.5.</span> <span class="toc-text">4.5 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.6.6.</span> <span class="toc-text">4.6 常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.7.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%A8%A1%E6%9D%BF%E5%AE%9E%E4%BE%8B%E5%8C%96%E7%9A%84%E4%B8%A4%E9%98%B6%E6%AE%B5%E7%BC%96%E8%AF%91"><span class="toc-number">1.7.1.</span> <span class="toc-text">5.1 模板实例化的两阶段编译</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-SFINAE-%E7%9A%84%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="toc-number">1.7.2.</span> <span class="toc-text">5.2 SFINAE 的核心原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-std-enable-if-%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.7.3.</span> <span class="toc-text">5.3 std::enable_if 的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E5%8F%98%E5%8F%82%E6%A8%A1%E6%9D%BF%E4%B8%8E%E6%8A%98%E5%8F%A0%E8%A1%A8%E8%BE%BE%E5%BC%8F%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.7.4.</span> <span class="toc-text">5.4 变参模板与折叠表达式实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.7.5.</span> <span class="toc-text">5.5 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.8.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8811%E9%A2%98%EF%BC%89"><span class="toc-number">1.8.1.</span> <span class="toc-text">Q&amp;A（11题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.8.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.8.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">1.9.</span> <span class="toc-text"></span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

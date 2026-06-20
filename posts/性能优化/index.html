@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>性能优化 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="性能优化https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;4245202423 影响多线程性能的因素笔者认为，影响多线程性能的主要因素有以下两个： 1.Lock Contention。 2.Cache Coherency。 Lock Contention对应使用锁来处理多线程同步问题的场景，而Cache Coherency则对应使用原子操作来处理多线程同步问题的场景。 Lock Conte">
+<meta property="og:type" content="article">
+<meta property="og:title" content="性能优化">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="性能优化https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;4245202423 影响多线程性能的因素笔者认为，影响多线程性能的主要因素有以下两个： 1.Lock Contention。 2.Cache Coherency。 Lock Contention对应使用锁来处理多线程同步问题的场景，而Cache Coherency则对应使用原子操作来处理多线程同步问题的场景。 Lock Conte">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.571Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "性能优化",
+  "url": "https://weimo1.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.571Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '性能优化',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">性能优化</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">性能优化</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.571Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/">基础概念</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="性能优化"><a href="#性能优化" class="headerlink" title="性能优化"></a>性能优化</h1><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/4245202423">https://zhuanlan.zhihu.com/p/4245202423</a></p>
+<h3 id="影响多线程性能的因素"><a href="#影响多线程性能的因素" class="headerlink" title="影响多线程性能的因素"></a>影响多线程性能的因素</h3><p>笔者认为，影响多线程性能的主要因素有以下两个：</p>
+<p><strong>1.Lock Contention。</strong> <strong>2.Cache Coherency。</strong></p>
+<p>Lock Contention对应使用锁来处理多线程同步问题的场景，而Cache Coherency则对应使用原子操作来处理多线程同步问题的场景。</p>
+<h3 id="Lock-Contention"><a href="#Lock-Contention" class="headerlink" title="Lock Contention"></a>Lock Contention</h3><p>在多线程环境中，多个线程同时尝试获取同一个锁（Lock）时，会发生竞争现象，这就是所谓的<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=249871413&content_type=Article&match_order=1&q=%E9%94%81%E7%AB%9E%E4%BA%89&zhida_source=entity">锁竞争</a>（Lock Contention）。锁竞争会导致线程或进程被阻塞，等待锁被释放，从而影响系统的性能和响应时间。大多数情况下，开发人员会选择使用锁来解决线程间的同步问题，因此锁竞争问题也变得广为人知且容易理解。由于锁的存在，位于临界区的代码在同一时刻只能由一个线程执行。因此，优化的思路就是尽量避免多个线程同时访问同一资源。常见的优化方向有两种：</p>
+<p><strong>1.减少临界区大小：临界区越小，这段代码的执行时间就越短，从而在整体程序运行时间中所占的比例也越小，冲突也就越少。</strong> <strong>2.对共享资源进行分桶操作：每个线程只会在某个桶上访问资源，理想情况下，每个线程都会访问不同的桶，这样就不会有冲突。</strong></p>
+<p>减少临界区大小需要开发者对自己的代码进行仔细思考，将不必要的操作放在临界区外，例如一些初始化和内存分配操作。</p>
+<p>对共享资源进行分桶操作在工程实践中也非常常见。例如，LevelDB的LRUCache中，每个Key只会固定在一个桶上。如果hash函数足够优秀且数据分布足够随机，这种方法可以大大提高LRUCache的性能。</p>
+<h3 id="Cache-Coherency"><a href="#Cache-Coherency" class="headerlink" title="Cache Coherency"></a>Cache Coherency</h3><p>缓存一致性（Cache Coherency）是指在多处理器系统中，确保各个处理器的缓存中的数据保持一致的机制。由于现代计算机系统通常包含多个处理器，每个处理器都有自己的缓存（如L1、L2、L3缓存），因此在并发访问共享内存时，可能会出现缓存数据不一致的问题。缓存一致性协议旨在解决这些问题，确保所有处理器在访问共享内存时看到的是一致的数据。</p>
+<p>当我们对一个共享变量进行写入操作时，实际上需要通过缓存一致性协议将该变量的更新同步到其他线程的缓存中，否则可能会读到不一致的值。实际上，这个同步过程的单位是一个缓存行（Cache Line），而且同步过程相对较慢，因为涉及到跨核通信。</p>
+<p>由此引申出两个严重影响性能的现象：</p>
+<p><strong>1.Cache Ping-Pong。</strong> <strong>2.False Sharing。</strong></p>
+<h3 id="Cache-Ping-Pong"><a href="#Cache-Ping-Pong" class="headerlink" title="Cache Ping-Pong"></a>Cache Ping-Pong</h3><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=249871413&content_type=Article&match_order=1&q=%E7%BC%93%E5%AD%98%E4%B9%92%E4%B9%93%E6%95%88%E5%BA%94&zhida_source=entity">缓存乒乓效应</a>（Cache Ping-Pong）是指在多处理器系统中，多个处理器频繁地对同一个缓存行（Cache Line）进行读写操作，导致该缓存行在不同处理器的缓存之间频繁地来回传递。这种现象会导致系统性能下降，因为缓存行的频繁传递会引起大量的缓存一致性流量和处理器间通信开销。</p>
+<p>讲到这里，其实就可以解释为什么开头那段代码会随着线程数量的增加而性能反而下降。代码中的变量 s 是一个共享资源，但它使用了 shared_ptr。在复制 shared_ptr 时，会引起引用计数的增加（计数+1），多个线程频繁对同一个缓存行进行读写操作，从而引发缓存乒乓效应，导致性能下降</p>
+<h3 id="False-Sharing"><a href="#False-Sharing" class="headerlink" title="False Sharing"></a>False Sharing</h3><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=249871413&content_type=Article&match_order=1&q=%E4%BC%AA%E5%85%B1%E4%BA%AB&zhida_source=entity">伪共享</a>（False Sharing）实际上是一种特殊的缓存乒乓效应（Cache Ping-Pong）。它指的是在多处理器系统中，多个处理器访问不同的数据，但这些数据恰好位于同一个缓存行中，导致该缓存行在不同处理器的缓存之间频繁传递。尽管处理器访问的是不同的数据，但由于它们共享同一个缓存行，仍然会引发缓存一致性流量，导致性能下降。</p>
+<h3 id="Lock-VS-Atomic"><a href="#Lock-VS-Atomic" class="headerlink" title="Lock VS Atomic"></a>Lock VS Atomic</h3><p>可以看到，无论是哪一种情况，std::mutex 的性能都更优。当然，这个测试结果可能会因不同的操作系统而有所不同，但至少可以得出一个结论：这两者的性能是一个量级的，并不存在 atomic 一定比 std::mutex 更快的说法。这其实是因为现代 C++ 中的 std::mutex 实现已经高度优化，其实现与上面的自旋锁（SpinLock）非常相似，在低竞争的情况下并不会陷入内核态。</p>
+<p>atomic 的优点有：</p>
+<p><strong>1.可以实现内存占用极小的锁。</strong> <strong>2.当临界区操作可以等价于一个原子操作时，性能会更高。</strong></p>
+<p>接下来结合这两个优点来看，链式数据结构的场景非常适合使用 atomic 变量。</p>
+<p><strong>1.内存占用少：即使每个节点都实现一个自旋锁（SpinLock），也不会浪费太多内存。</strong> <strong>2.链式数据结构的临界区通常可以优化成一个指针的 CAS 操作。</strong></p>
+<p>。</p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：性能优化是系统性识别和消除程序瓶颈的过程，核心原则是”先测量（profile）后优化，数据驱动决策”</li>
+<li><strong>关键词</strong>：Lock Contention、Cache Coherency、False Sharing、AoS vs SoA、分支预测、noexcept 移动、pre-allocation</li>
+<li><strong>适用场景&#x2F;边界</strong>：适用于热点代码（占总运行时间 &gt;10% 的路径）；不适用于”凭直觉优化”——未经 profiling 的优化往往是负优化</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——锁竞争（Lock Contention）</strong>：多线程争抢同一互斥锁时，未获取锁的线程被阻塞。优化方向：① 缩小临界区（将不必要操作移出锁外）；② 分桶（hash 到不同桶，每个桶独立加锁，如 LevelDB LRUCache）</li>
+<li><strong>第二层——缓存一致性问题</strong>：① 缓存乒乓（Cache Ping-Pong）：多个核频繁读写同一缓存行导致该行在内核间来回传输（如 shared_ptr 引用计数）；② 伪共享（False Sharing）：不同核访问不同变量但变量碰巧在同一缓存行中，仍会引发缓存一致性流量</li>
+<li><strong>第三层——CPU 微架构瓶颈</strong>：分支预测失败（<del>15-20 cycles 流水线清空）、缓存未命中（L1</del>4 cycles &#x2F; L2<del>12 &#x2F; L3</del>40 &#x2F; 主存~200+）、数据局部性差（AoS 遍历单字段浪费 67% 带宽）</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>alignas(64)</code> 隔离缓存行防伪共享；<code>SoA</code> 布局提升 SIMD 和缓存利用率</li>
+<li><strong>关键公式</strong>：分支预测命中率对排序数据可达 ~100%，乱序数据可能低至 50%；noexcept 移动使 vector 扩容用 memmove 加速 30-50%</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;algorithm&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;chrono&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 1. False Sharing 示例与修复</span></span><br><span class="line"><span class="built_in">alignas</span>(<span class="number">64</span>) <span class="keyword">struct</span> <span class="title class_">PaddedCounter</span> &#123;  <span class="comment">// 64 字节对齐隔离缓存行</span></span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. AoS vs SoA 性能对比</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">AoS</span> &#123; <span class="type">int</span> x, y, z; &#125;;  <span class="comment">// 12 字节/元素</span></span><br><span class="line"><span class="function">std::vector&lt;AoS&gt; <span class="title">aos</span><span class="params">(<span class="number">1&#x27;000&#x27;000</span>)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">SoA</span> &#123;  <span class="comment">// 分离存储</span></span><br><span class="line">    std::vector&lt;<span class="type">int</span>&gt; x, y, z;</span><br><span class="line">    <span class="built_in">SoA</span>(<span class="type">int</span> n) : <span class="built_in">x</span>(n), <span class="built_in">y</span>(n), <span class="built_in">z</span>(n) &#123;&#125;</span><br><span class="line">&#125; <span class="built_in">soa</span>(<span class="number">1&#x27;000&#x27;000</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 遍历 AoS.x: 加载 12 字节只用 4 字节（缓存利用率 33%）</span></span><br><span class="line"><span class="comment">// 遍历 SoA.x: 加载 4 字节用 4 字节（缓存利用率 100%）</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 分支预测优化——排序数据排序后分支预测 100% 命中</span></span><br><span class="line"><span class="function">std::vector&lt;<span class="type">int</span>&gt; <span class="title">data</span><span class="params">(<span class="number">1&#x27;000&#x27;000</span>)</span></span>;</span><br><span class="line">std::<span class="built_in">sort</span>(data.<span class="built_in">begin</span>(), data.<span class="built_in">end</span>());  <span class="comment">// 排序后分支预测率↑</span></span><br><span class="line"><span class="type">long</span> sum = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span> (<span class="type">int</span> x : data) &#123;</span><br><span class="line">    <span class="keyword">if</span> (x &gt; <span class="number">128</span>) sum += x;  <span class="comment">// 排序后几乎每次预测正确</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> <span class="number">0</span>; &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>预期</strong>：理解锁竞争、伪共享、数据局部性三大性能瓶颈的成因和修复</li>
+<li><strong>补充</strong>：<code>perf stat -e cache-misses,branch-misses ./program</code> 量化观测优化效果</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><ul>
+<li><strong>与其他主题的关联</strong>：与并发编程（无锁数据结构、原子操作）、编译器优化（-O2&#x2F;-O3 自动向量化）、内存模型（缓存一致性协议 MESI）、数据结构设计（cache-friendly 数据结构）强相关</li>
+<li><strong>工程中的真实用法</strong>：<ul>
+<li><strong>性能排查流程</strong>：<code>perf top</code> → 定位热点函数 → <code>perf record -g</code> 看调用路径 → 分析算法&#x2F;缓存&#x2F;分支三类瓶颈 → 针对性优化 → <code>perf stat</code> 验证</li>
+<li><strong>锁 vs 原子操作</strong>：现代 <code>std::mutex</code> 已高度优化（低竞争时不陷入内核），性能与 atomic 同量级。atomic 的优势在于：① 内存占用极小；② 临界区可简化为单条 CAS 指令时极快</li>
+<li><strong>noexcept 对移动的性能影响</strong>：<code>std::vector</code> 扩容时如果移动构造是 <code>noexcept</code>，走 memmove（O(1) 指针交换）；否则走拷贝（O(n) 深拷贝）。对含 <code>std::string</code>&#x2F;<code>std::vector</code> 成员的类，缺省 noexcept 移动构造至关重要</li>
+<li><strong>预分配（reserve）策略</strong>：已知大小的 vector 用 <code>reserve()</code> 预分配，避免多次扩容——扩容的摊销操作仍需 O(log n) 次内存分配，每次都要拷贝所有已有元素</li>
+</ul>
+</li>
+<li><strong>常见优化策略</strong>：<ul>
+<li><strong>算法层面</strong>：热点代码避免虚函数调用（无法内联+间接跳转~5-10ns）；字符串拼接用 <code>ostringstream</code> 或 <code>+=</code> 代替 <code>+</code> 链（减少临时对象）</li>
+<li><strong>数据结构</strong>：按值传递 ≤16 字节的小对象比传引用快（免间接访问）；优先用 <code>std::array</code>&#x2F;<code>std::vector</code> 而非 <code>std::list</code>（连续内存 &gt; 链表）</li>
+<li><strong>编译器优化</strong>：<code>-O3</code> 增加循环交换、自动向量化等激进优化；<code>-march=native</code> 启用 CPU 特定指令（AVX2&#x2F;AVX512）</li>
+<li><strong>具体技巧</strong>：<code>alignas(64)</code> 隔离频繁写入的多线程共享变量防伪共享；用 <code>constexpr</code>&#x2F;<code>const</code> 方便编译器常量传播和死代码消除；<code>__builtin_expect</code> 提示分支倾向</li>
+</ul>
+</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-编译器优化的代价模型"><a href="#1-编译器优化的代价模型" class="headerlink" title="1. 编译器优化的代价模型"></a>1. 编译器优化的代价模型</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// -O2 典型优化:</span></span><br><span class="line"><span class="comment">// 1. 内联: 小函数体直接替换到调用点，消除函数调用开销</span></span><br><span class="line"><span class="comment">// 2. 循环展开: 减少分支预测失败</span></span><br><span class="line"><span class="comment">// 3. 常量传播: 编译期计算常量表达式</span></span><br><span class="line"><span class="comment">// 4. 死代码消除: 移除不可达代码</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 分支预测案例:</span></span><br><span class="line"><span class="comment">// 排序后的数组遍历比乱序快 3-6x（分支预测命中率高）</span></span><br><span class="line"><span class="keyword">if</span> (a[i] &gt; <span class="number">128</span>) sum += a[i];  <span class="comment">// 排序后几乎 100% 预测正确</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-缓存友好的数据结构"><a href="#2-缓存友好的数据结构" class="headerlink" title="2. 缓存友好的数据结构"></a>2. 缓存友好的数据结构</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// AoS vs SoA 布局</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">AoS</span> &#123; <span class="type">int</span> x, y, z; &#125;;  <span class="comment">// Array of Structures - 遍历 x: stride=12</span></span><br><span class="line">AoS arr[<span class="number">1000</span>];</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">auto</span>&amp; a : arr) sum += a.x;  <span class="comment">// 每次加载 12 字节只用 4 字节</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// SoA 改建:</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">SoA</span> &#123; <span class="type">int</span> x[<span class="number">1000</span>], y[<span class="number">1000</span>], z[<span class="number">1000</span>]; &#125;;  <span class="comment">// 遍历 x: stride=4</span></span><br><span class="line"><span class="comment">// 缓存利用率从 33% → 100%</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>测不准优化</strong>：先 profile，热点处才优化</li>
+<li><strong>数据局部性 &gt; 算法复杂度</strong>：线性扫描有序数组比二分查找快（小数据）</li>
+<li><strong>按值传递小对象</strong>：≤ 16 字节的值传递比引用传递快（避免间接访问）</li>
+<li><strong>noexcept 让 vector 用 memmove</strong>：标记移动构造 noexcept 获得 30-50% 扩容加速</li>
+<li><strong>预分配</strong>：reserve 避免 vector 的多次扩容和内存拷贝</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: 如何系统地进行性能优化？</strong><br>A: Profile→找热点→改算法→改数据结构→改内存访问→编译器优化→并行化</p>
+<p><strong>Q2: 缓存未命中的代价有多大？</strong><br>A: L1 ~4 cycles, L2 ~12, L3 ~40, 主存 ~200+ cycles</p>
+<p><strong>Q3: AoS 和 SoA 的区别？</strong><br>A: AoS 一个对象的所有字段连续，适合同时访问多字段；SoA 同字段集中，适合 SIMD&#x2F;流式访问</p>
+<p><strong>Q4: 分支预测失败的影响？</strong><br>A: 失败导致流水线清空，代价 ~15-20 cycles。排序数据、无分支写法可避免</p>
+<p><strong>Q5: 虚函数的性能开销？</strong><br>A: 两次访存（vptr+vtable）+ 间接跳转（~5-10ns），加上无法内联的机会成本</p>
+<p><strong>Q6: move 比 copy 快多少？</strong><br>A: 对 vector&#x2F;string：move O(1)（交换指针），copy O(n)（深拷贝所有元素）</p>
+<p><strong>Q7: return value optimization 有多重要？</strong><br>A: 完全消除拷贝&#x2F;移动，等价于在调用方直接构造。对大型对象收益巨大</p>
+<p><strong>Q8: 为什么预分配（reserve）能提速？</strong><br>A: 避免多次扩容时的内存分配 + 元素拷贝，扩容的摊销成本从 O(log n) 次分配变为 1 次</p>
+<p><strong>Q9: 热点代码避免哪些操作？</strong><br>A: 虚函数调用、动态内存分配、锁竞争、异常处理路径、间接跳转</p>
+<p><strong>Q10: -O2 和 -O3 的区别？</strong><br>A: -O3 增加更激进的循环优化（如自动向量化、循环交换），但可能增加代码体积</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：盲目优化→”过早优化是万恶之源”，没有 profile 的优化是猜测</li>
+<li><strong>反问</strong>：性能重要还是可读性重要？→ 先保证正确+可读，热点处优化并加注释</li>
+<li><strong>陷阱</strong>：inline 关键字的误用→ inline 主要是链接属性，真正内联决定权在编译器</li>
+<li><strong>反问</strong>：用 SIMD 手写汇编值得吗？→ 优先用编译器自动向量化，不够再手写</li>
+<li><strong>陷阱</strong>：字符串拼接用 + 循环→每次创建临时对象，用 ostringstream 或 +&#x3D;</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>Profile first</strong>：先测量后优化</li>
+<li><strong>缓存命中</strong>：访问连续内存（数组 &gt;&gt; 链表）</li>
+<li><strong>AoS vs SoA</strong>：AoS 多字段一起访问，SoA 单字段 SIMD 遍历</li>
+<li><strong>分支预测</strong>：排序数据、cmov 无分支写法</li>
+<li><strong>虚函数</strong>：每次 ~5-10ns 额外开销</li>
+<li><strong>RVO&#x2F;NRVO</strong>：零拷贝返回值优化</li>
+<li><strong>reserve</strong>：预分配避免扩容</li>
+<li><strong>noexcept 移动</strong>：vector 扩容用 memmove</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/">https://weimo1.github.io/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96_1/" title="性能优化"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">性能优化</div></div><div class="info-2"><div class="info-item-1">性能优化 C++ 性能优化是一个多层次的系统工程，从 C++ 代码层面的算法选择和语言特性运用，到 Linux 操作系统层面的内核调优，再到硬件协同和网络协议栈优化，每一层都有独特的优化手段。  一、核心概念 定义：性能优化是指通过代码层面、编译器层面、操作系统层面和硬件层面的综合手段，降低程序执行时间、减少资源消耗、提高吞吐量并控制尾部延迟的系统工程。 关键词：无锁数据结构、原子操作、内存对齐、伪共享、SIMD、CPU 亲和性、DPDK、RDMA、分支预测、RVO&#x2F;NRVO、PMR 适用场景&#x2F;边界： 低延迟交易系统、游戏服务器、数据库引擎、网络中间件 计算密集型任务...</div></div></div></a><a class="pagination-related" href="/posts/%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B%E4%B8%8EKeepalive/" title="心跳检测与Keepalive"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">心跳检测与Keepalive</div></div><div class="info-2"><div class="info-item-1">心跳检测与Keepalive机制 适用范围：TCP长连接心跳检测机制、gRPC Keepalive配置、应用层心跳包实现、SO_KEEPALIVE套接字选项分析。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96"><span class="toc-number">1.</span> <span class="toc-text">性能优化</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BD%B1%E5%93%8D%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%80%A7%E8%83%BD%E7%9A%84%E5%9B%A0%E7%B4%A0"><span class="toc-number">1.1.</span> <span class="toc-text">影响多线程性能的因素</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Lock-Contention"><span class="toc-number">1.2.</span> <span class="toc-text">Lock Contention</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Cache-Coherency"><span class="toc-number">1.3.</span> <span class="toc-text">Cache Coherency</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Cache-Ping-Pong"><span class="toc-number">1.4.</span> <span class="toc-text">Cache Ping-Pong</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#False-Sharing"><span class="toc-number">1.5.</span> <span class="toc-text">False Sharing</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Lock-VS-Atomic"><span class="toc-number">1.6.</span> <span class="toc-text">Lock VS Atomic</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.7.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.9.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.10.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.11.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%BC%96%E8%AF%91%E5%99%A8%E4%BC%98%E5%8C%96%E7%9A%84%E4%BB%A3%E4%BB%B7%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.11.1.</span> <span class="toc-text">1. 编译器优化的代价模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%BC%93%E5%AD%98%E5%8F%8B%E5%A5%BD%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.11.2.</span> <span class="toc-text">2. 缓存友好的数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.11.3.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.12.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">1.12.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.12.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.12.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>IM Gateway | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="IM Gateway IM Gateway（长连接网关）是 IM 系统接入层的核心，负责管理客户端的 TCP 长连接。它承担连接管理、协议解析、消息路由、心跳维护等职责，是客户端和 IM 业务层之间的桥梁。  一、核心概念 定义：IM Gateway 是客户端与服务端建立 TCP 长连接的入口服务，负责管理连接生命周期（建立&#x2F;维持&#x2F;断开）、收发消息、与 State Server">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IM Gateway">
+<meta property="og:url" content="https://weimo1.github.io/posts/IM-Gateway/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="IM Gateway IM Gateway（长连接网关）是 IM 系统接入层的核心，负责管理客户端的 TCP 长连接。它承担连接管理、协议解析、消息路由、心跳维护等职责，是客户端和 IM 业务层之间的桥梁。  一、核心概念 定义：IM Gateway 是客户端与服务端建立 TCP 长连接的入口服务，负责管理连接生命周期（建立&#x2F;维持&#x2F;断开）、收发消息、与 State Server">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.544Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "IM Gateway",
+  "url": "https://weimo1.github.io/posts/IM-Gateway/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.544Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/IM-Gateway/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'IM Gateway',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">IM Gateway</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">IM Gateway</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.544Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="IM-Gateway"><a href="#IM-Gateway" class="headerlink" title="IM Gateway"></a>IM Gateway</h1><blockquote>
+<p>IM Gateway（长连接网关）是 IM 系统接入层的核心，负责管理客户端的 TCP 长连接。它承担连接管理、协议解析、消息路由、心跳维护等职责，是客户端和 IM 业务层之间的桥梁。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：IM Gateway 是客户端与服务端建立 TCP 长连接的入口服务，负责管理连接生命周期（建立&#x2F;维持&#x2F;断开）、收发消息、与 State Server 配合完成消息可靠推送。</li>
+<li>关键词：TCP 长连接、epoll、协议解析、消息路由、心跳保活、断线重连、State Server</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>客户端与服务端的长连接管理</li>
+<li>消息的接入层路由</li>
+<li>连接状态的维护和心跳</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：Gateway 在架构中的位置</strong></p>
+<p>IM Gateway 位于客户端和业务层之间：</p>
+<ul>
+<li>对上：接收客户端的 TCP 连接，解析消息协议</li>
+<li>对下：将消息路由到 State Server 和业务层</li>
+<li>横切：维护连接状态（心跳、重连、超时回收）</li>
+</ul>
+<p>客户端 → IP Config（获取 IP 列表）→ Gateway（建立 TCP 长连接）→ State Server（状态管理）→ IM Server（业务处理）</p>
+<p><strong>第二层：核心职责</strong></p>
+<ol>
+<li><strong>连接管理</strong>：accept TCP 连接、生成 connID、注册到 epoll、管理连接生命周期</li>
+<li><strong>协议解析</strong>：解析来自客户端的二进制消息协议，提取 msg type、payload</li>
+<li><strong>消息路由</strong>：将消息转发到正确的 State Server</li>
+<li><strong>心跳维护</strong>：接收客户端心跳、重置定时器、检测僵尸连接</li>
+<li><strong>优雅关闭</strong>：接受运维指令，安全迁移连接</li>
+</ol>
+<p><strong>第三层：与 State Server 的配合</strong></p>
+<p>Gateway 只解析 len 与 data，不深入业务。State Server 解析 msg type 并路由到对应业务逻辑。这种分层设计使得 Gateway 保持轻量和稳定，State Server 可以频繁迭代而 Gateway 不受影响。</p>
+<h3 id="关键数据结构-接口"><a href="#关键数据结构-接口" class="headerlink" title="关键数据结构&#x2F;接口"></a>关键数据结构&#x2F;接口</h3><ul>
+<li>connID：连接唯一标识（雪花算法生成）</li>
+<li>endpoint + connID：跨机器的连接唯一标识</li>
+<li>did（device ID&#x2F;user ID）：业务层用户标识到连接的映射</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> IMGateway <span class="keyword">struct</span> &#123;</span><br><span class="line">    listener    net.Listener</span><br><span class="line">    conns       <span class="keyword">map</span>[<span class="type">uint64</span>]*ConnContext</span><br><span class="line">    stateClient *StateServerClient</span><br><span class="line">    snowflake   *Snowflake</span><br><span class="line">    epoll       *EPoll</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> ConnContext <span class="keyword">struct</span> &#123;</span><br><span class="line">    ConnID   <span class="type">uint64</span></span><br><span class="line">    Conn     net.Conn</span><br><span class="line">    Endpoint <span class="type">string</span></span><br><span class="line">    Did      <span class="type">uint64</span></span><br><span class="line">    State    *ConnState</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(g *IMGateway)</span></span> handleMessage(ctx *ConnContext, data []<span class="type">byte</span>) &#123;</span><br><span class="line">    <span class="comment">// 只解析 len 和 data，不解析业务 type</span></span><br><span class="line">    <span class="comment">// 传递给 State Server 做进一步处理</span></span><br><span class="line">    g.stateClient.ForwardMessage(ctx.ConnID, data)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>epoll</strong>：Linux 高性能 I&#x2F;O 多路复用，管理百万级连接</li>
+<li><strong>State Server</strong>：Gateway 的状态后端，存储连接状态和消息信息</li>
+<li><strong>IP Config</strong>：Gateway 的调度中心，分配最优 Gateway IP</li>
+<li><strong>ProtoBuf</strong>：消息序列化压缩，减少带宽消耗</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>微信 Mars</strong>：TCP 长连接网关，支持多 IP 竞速、智能心跳、弱网优化</li>
+<li><strong>知乎 Gateway</strong>：发布&#x2F;订阅模式 + Token 鉴权的长连接网关</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>边缘触发（ET）模式</strong>：减少 epoll 事件通知次数</li>
+<li><strong>协程池</strong>：限制并发协程数，防止协程爆炸</li>
+<li><strong>零拷贝</strong>：sendfile&#x2F;splice 发送文件消息</li>
+<li><strong>连接数上限</strong>：单机限制最大连接数（如 100 万），超限拒绝</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="Gateway-的分层设计哲学"><a href="#Gateway-的分层设计哲学" class="headerlink" title="Gateway 的分层设计哲学"></a>Gateway 的分层设计哲学</h3><p>Gateway 的核心设计原则是”简单即是稳定”：</p>
+<ul>
+<li>不做业务逻辑——业务变更频繁，Gateway 做业务会频繁升级重启</li>
+<li>不存状态——状态交给 State Server，Gateway 重启不影响连接（因为有快速重连）</li>
+<li>协议层最浅解析——只解析必要的 routing 信息（connID、did），不做深度反序列化</li>
+</ul>
+<h3 id="连接数瓶颈分析"><a href="#连接数瓶颈分析" class="headerlink" title="连接数瓶颈分析"></a>连接数瓶颈分析</h3><p>单机百万连接的主要瓶颈：</p>
+<ol>
+<li><strong>FD 数量</strong>：每连接占用一个文件描述符，需调高 <code>ulimit -n</code> 和 <code>fs.nr_open</code></li>
+<li><strong>内存</strong>：每连接约 4KB×2 socket buffer + 协议状态 ~8KB，100 万 ≈ 8GB 内存</li>
+<li><strong>CPU</strong>：epoll 事件处理 + 心跳检测 + 超时扫描，需高效算法（时间轮）</li>
+<li><strong>网络带宽</strong>：心跳包周期性消耗，100 万连接 × 50 byte × 每分钟 2 次 ≈ 1.3Gbps</li>
+</ol>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>Gateway 做减法优于做加法——越简单的 Gateway 越稳定</li>
+<li>连接数不是越多越好——分散到多台 Gateway 提高可用性</li>
+<li>优雅关闭是必须的能力——没有它运维就是灾难</li>
+<li>心跳潮汐是真实存在且容易被忽略的问题——随机打散是简单有效的解决方案</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：IM Gateway 的核心职责是什么？</p>
+<p>A：管理 TCP 长连接生命周期（accept&#x2F;心跳&#x2F;重连&#x2F;关闭），解析消息协议，将消息路由到 State Server。不处理业务逻辑，不持久化状态。</p>
+<p>Q2：Gateway 和 State Server 如何分工？</p>
+<p>A：Gateway 负责”不变”的连接管理和消息收发。State Server 负责”变化”的状态管理（心跳定时器、消息定时器、消息幂等校验）。物理隔离减少 Gateway 重启频率。</p>
+<p>Q3：Gateway 如何管理百万级连接？</p>
+<p>A：epoll 边缘触发模式 + 协程池 + 时间轮定时器 + 合理的 FD&#x2F;内存&#x2F;带宽规划。</p>
+<p>Q4：为什么 Gateway 不解析业务协议？</p>
+<p>A：业务频繁变更，Gateway 做深度解析会导致频繁升级重启。只解析必要路由信息，其余透传给 State Server。</p>
+<p>Q5：Gateway 的优雅关闭如何实现？</p>
+<p>A：停止 accept 新连接 → 通知所有客户端迁移 → 等待确认或超时 → 强制关闭。配合客户端自动重连机制。</p>
+<p>Q6：Gateway 如何防止内存泄漏？</p>
+<p>A：心跳超时主动回收僵尸连接。定时扫描孤儿连接。连接断开后立即释放 socket buffer 和关联状态。</p>
+<p>Q7：单机 Gateway 的连接上限由什么决定？</p>
+<p>A：FD 数量（系统限制）、内存（每连接约 8KB）、CPU（epoll 事件处理能力）、带宽（心跳消耗）。通常 50-100 万是合理上限。</p>
+<p>Q8：Gateway 的协议分层是如何设计的？</p>
+<p>A：类似 OSI 分层。Gateway 只解析 len + data（类似传输层），State Server 解析 msg type + payload（类似应用层）。</p>
+<p>Q9：Gateway 如何与 IP Config 配合？</p>
+<p>A：Gateway 向 IP Config（通过 etcd）上报负载指标。IP Config 根据负载计算分值，决定是否将新连接调度到该 Gateway。</p>
+<p>Q10：Gateway 出现故障时如何快速恢复？</p>
+<p>A：State Server 保留连接状态。客户端通过原 connID 重连到其他 Gateway，State Server 复用已有状态秒级恢复。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>在实际运维中，Gateway 单机连接数达到多少时开始考虑扩容？</p>
+</li>
+<li><p>贵公司的 Gateway 是否有自动扩缩容能力？如果有，触发条件是什么？</p>
+</li>
+<li><p>陷阱 1：”Gateway 越多越好？” — 不一定。每个 Gateway 有运维成本。单机 50 万连接是合理的上限，100 万需要谨慎。</p>
+</li>
+<li><p>陷阱 2：”Gateway 可以用 UDP 吗？” — 可以（QUIC），但 UDP 被运营商 QoS 限制，NAT 穿透困难。TCP 在工程上更可靠。</p>
+</li>
+<li><p>陷阱 3：”Gateway 无状态就可以随便重启？” — 不是。Gateway 持有活动 TCP 连接。重启意味着全部连接断开，客户端需重连。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>IM Gateway 的核心是：管理长连接 + 路由消息 + 不处理业务逻辑。</li>
+<li>Gateway 做减法的原因是：越简单越稳定，避免频繁变更导致连接中断。</li>
+<li>心跳潮汐的解决方案是：随机打散心跳触发时间，防止大规模定时器同时触发。</li>
+<li>Gateway 的瓶颈通常在：FD 数量 &gt; 内存 &gt; 带宽 &gt; CPU。</li>
+<li>当被问到”Gateway 怎么优化”时回答：”ET 模式 epoll + 协程池 + 时间轮 + 分层协议解析，保持 Gateway 精简不膨胀。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的图片，原样保留于此。</p>
+</blockquote>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835454447-dfc58adb-7566-4de1-bdf1-bfe23b4bb4bb.png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835512714-660b0951-8111-4559-9936-b333eeed4a5f.png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835496968-cf136669-ba2b-40e8-933c-5c8a230d6eef.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835585903-3bea4989-8664-43d1-8586-1a8c7f0c8c28.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835627881-a07aaea6-2fe5-47ab-b4a6-f4e098528c2a.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757835802609-fc5c2ed1-eebe-461a-8bfc-2febcaf1c13d.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757840862053-b6ba416f-8099-499e-be9a-d3dcc88b77d1.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/IM-Gateway/">https://weimo1.github.io/posts/IM-Gateway/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Hook/" title="Hook"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Hook</div></div><div class="info-2"><div class="info-item-1">Hook钩子（Hook）是一种技术，用于拦截函数调用、消息或事件，以便在它们被目标处理之前或之后执行自定义代码。 动态插桩（Dynamic Instrumentation）是一种在程序运行时插入代码（桩代码）的技术，用于监控、分析或修改程序的行为。 可以说，钩子是动态插桩的一种特定形式或应用。动态插桩的范围更广，它包括了在程序运行时插入任何类型的监控代码，而钩子通常特指拦截函数调用或事件 linux hook机制研究Hook原理Linux系统调用Hook：从内核机制到实际落地 文件监控服务一、需求1.1 文件清单用户可以选择文件, 加入文件清单; 程序会记录选择的文件的 绝对路径, 以确...</div></div></div></a><a class="pagination-related" href="/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/" title="IM微服务划分"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">IM微服务划分</div></div><div class="info-2"><div class="info-item-1">IM 微服务划分 IM 系统微服务划分旨在将复杂的即时通讯系统按业务领域拆分为独立部署、独立扩展的服务单元。参考腾讯云 IM 的功能划分，合理拆分接入层、业务层、存储层，实现高内聚低耦合。  参考：腾讯云即时通信 IM 功能介绍 一、核心概念 定义：IM 微服务划分是基于领域驱动设计（DDD）原则，将 IM 系统按业务边界拆分为独立服务的架构设计方法。每个服务有独立的数据库、独立的部署周期和独立的技术栈选择。 关键词：微服务、领域驱动、限界上下文、接入层、业务层、存储层、服务拆分 适用场景&#x2F;边界： 大型 IM 系统（百万+ 用户） 多人团队协作开发 需要独立扩展不同模块 小规模...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#IM-Gateway"><span class="toc-number">1.</span> <span class="toc-text">IM Gateway</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84-%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键数据结构&#x2F;接口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Gateway-%E7%9A%84%E5%88%86%E5%B1%82%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6"><span class="toc-number">1.5.1.</span> <span class="toc-text">Gateway 的分层设计哲学</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E6%95%B0%E7%93%B6%E9%A2%88%E5%88%86%E6%9E%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">连接数瓶颈分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

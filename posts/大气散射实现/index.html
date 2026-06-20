@@ -1,0 +1,342 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>大气散射实现 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="大气散射实现 适用范围：Rayleigh&#x2F;Mie 散射模型、预计算大气散射、天空渲染、LUT 生成  一、一句话结论大气散射 &#x3D; Rayleigh 散射（小粒子，蓝光） + Mie 散射（大粒子，灰白） + 臭氧吸收。核心算法：沿视线方向积分单次散射（Ray Marching 6 步），每步计算太阳光到采样点的透射率 × 散射系数 × 到眼睛的透射率。倍增散射用预计算 LUT">
+<meta property="og:type" content="article">
+<meta property="og:title" content="大气散射实现">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="大气散射实现 适用范围：Rayleigh&#x2F;Mie 散射模型、预计算大气散射、天空渲染、LUT 生成  一、一句话结论大气散射 &#x3D; Rayleigh 散射（小粒子，蓝光） + Mie 散射（大粒子，灰白） + 臭氧吸收。核心算法：沿视线方向积分单次散射（Ray Marching 6 步），每步计算太阳光到采样点的透射率 × 散射系数 × 到眼睛的透射率。倍增散射用预计算 LUT">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.568Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "大气散射实现",
+  "url": "https://weimo1.github.io/posts/%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.568Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '大气散射实现',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">大气散射实现</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">大气散射实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.568Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/%E7%89%B9%E6%95%88%E4%B8%8E%E5%90%8E%E5%A4%84%E7%90%86/">特效与后处理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="大气散射实现"><a href="#大气散射实现" class="headerlink" title="大气散射实现"></a>大气散射实现</h1><blockquote>
+<p>适用范围：Rayleigh&#x2F;Mie 散射模型、预计算大气散射、天空渲染、LUT 生成</p>
+</blockquote>
+<h2 id="一、一句话结论"><a href="#一、一句话结论" class="headerlink" title="一、一句话结论"></a>一、一句话结论</h2><p>大气散射 &#x3D; <strong>Rayleigh 散射（小粒子，蓝光） + Mie 散射（大粒子，灰白） + 臭氧吸收</strong>。核心算法：沿视线方向积分单次散射（Ray Marching 6 步），每步计算太阳光到采样点的透射率 × 散射系数 × 到眼睛的透射率。倍增散射用预计算 LUT 加速。</p>
+<hr>
+<h2 id="二、核心概念解析（≥200字）"><a href="#二、核心概念解析（≥200字）" class="headerlink" title="二、核心概念解析（≥200字）"></a>二、核心概念解析（≥200字）</h2><h3 id="2-1-两种散射"><a href="#2-1-两种散射" class="headerlink" title="2.1 两种散射"></a>2.1 两种散射</h3><table>
+<thead>
+<tr>
+<th></th>
+<th>Rayleigh（瑞利散射）</th>
+<th>Mie（米氏散射）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>粒子大小</td>
+<td>远小于波长（N₂、O₂）</td>
+<td>与波长相当或更大（气溶胶、水滴）</td>
+</tr>
+<tr>
+<td>波长依赖性</td>
+<td>∝ 1&#x2F;λ⁴（蓝光散射强）</td>
+<td>几乎无关</td>
+</tr>
+<tr>
+<td>视觉效果</td>
+<td>蓝天、红色日落</td>
+<td>灰白雾霾、云</td>
+</tr>
+<tr>
+<td>相位函数</td>
+<td><code>(3/(16π))·(1+cos²θ)</code></td>
+<td>HG 相位函数（各向异性 g）</td>
+</tr>
+</tbody></table>
+<h3 id="2-2-散射方程（单次散射）"><a href="#2-2-散射方程（单次散射）" class="headerlink" title="2.2 散射方程（单次散射）"></a>2.2 散射方程（单次散射）</h3><p>对于视线上的每个点 p₁：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">inScattering(p₁) = 太阳光照 × Transmittance(太阳→p₁) × Scattering(p₁) × Transmittance(p₁→眼睛) × ds</span><br></pre></td></tr></table></figure>
+
+<p>积分用 6 步 Ray Marching 近似。</p>
+<hr>
+<h2 id="三、源码解析与实践感悟（≥1000字）"><a href="#三、源码解析与实践感悟（≥1000字）" class="headerlink" title="三、源码解析与实践感悟（≥1000字）"></a>三、源码解析与实践感悟（≥1000字）</h2><h3 id="3-1-核心积分函数"><a href="#3-1-核心积分函数" class="headerlink" title="3.1 核心积分函数"></a>3.1 核心积分函数</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vec3</span> GetSkyView(AtmosphereParameter param, <span class="type">vec3</span> eyePos, <span class="type">vec3</span> viewDir, <span class="type">vec3</span> lightDir) &#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="type">int</span> N_SAMPLE = <span class="number">6</span>;</span><br><span class="line">    <span class="type">vec3</span> color = <span class="type">vec3</span>(<span class="number">0.0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 求视线与大气层/地面的交点</span></span><br><span class="line">    <span class="type">float</span> atmosphereDist = RayIntersectSphere(<span class="type">vec3</span>(<span class="number">0</span>), param.PlanetRadius + param.AtmosphereHeight, eyePos, viewDir);</span><br><span class="line">    <span class="type">float</span> groundDist = RayIntersectSphere(<span class="type">vec3</span>(<span class="number">0</span>), param.PlanetRadius, eyePos, viewDir);</span><br><span class="line">    <span class="type">float</span> maxDist = (groundDist &gt; <span class="number">0.0</span>) ? <span class="built_in">min</span>(atmosphereDist, groundDist) : atmosphereDist;</span><br><span class="line"></span><br><span class="line">    <span class="type">float</span> ds = maxDist / <span class="type">float</span>(N_SAMPLE);</span><br><span class="line">    <span class="type">vec3</span> sunLuminance = param.SunLightColor * param.SunLightIntensity;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; N_SAMPLE; i++) &#123;</span><br><span class="line">        <span class="type">float</span> t = (<span class="type">float</span>(i) + <span class="number">0.5</span>) * ds;</span><br><span class="line">        <span class="type">vec3</span> p1 = eyePos + viewDir * t;  <span class="comment">// 采样点</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 太阳光到 p1 的光学深度</span></span><br><span class="line">        <span class="type">float</span> sunPathDist = RayIntersectSphere(<span class="type">vec3</span>(<span class="number">0</span>), param.PlanetRadius + param.AtmosphereHeight, p1, -lightDir);</span><br><span class="line">        <span class="type">vec3</span> p2 = p1 + (-lightDir) * sunPathDist;</span><br><span class="line"></span><br><span class="line">        <span class="type">vec3</span> t1 = Transmittance(param, p1, p2);  <span class="comment">// 太阳→p1 透射率</span></span><br><span class="line">        <span class="type">vec3</span> s  = Scattering(param, p1, lightDir, viewDir);  <span class="comment">// p1 点散射系数</span></span><br><span class="line">        <span class="type">vec3</span> t2 = Transmittance(param, p1, eyePos);  <span class="comment">// p1→眼睛 透射率</span></span><br><span class="line"></span><br><span class="line">        <span class="type">vec3</span> inScattering = t1 * s * t2 * ds * sunLuminance;</span><br><span class="line">        color += inScattering;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> color;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-Rayleigh-系数"><a href="#3-2-Rayleigh-系数" class="headerlink" title="3.2 Rayleigh 系数"></a>3.2 Rayleigh 系数</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vec3</span> RayleighCoefficient(AtmosphereParameter param, <span class="type">float</span> h) &#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="type">vec3</span> sigma = <span class="type">vec3</span>(<span class="number">5.802</span>, <span class="number">13.558</span>, <span class="number">33.1</span>) * <span class="number">1e-6</span>;  <span class="comment">// 海平面散射系数</span></span><br><span class="line">    <span class="type">float</span> H_R = param.RayleighScatteringScalarHeight;       <span class="comment">// 标高 ~8km</span></span><br><span class="line">    <span class="type">float</span> rho_h = <span class="built_in">exp</span>(-(h / H_R));                          <span class="comment">// 密度随高度指数衰减</span></span><br><span class="line">    <span class="keyword">return</span> sigma * rho_h;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意 sigma 三个通道差异巨大</strong>：蓝光(33.1) &gt;&gt; 红光(5.8)，解释了为什么天空是蓝色——蓝光散射效率是红光的 6 倍。</p>
+<h3 id="3-3-Mie-系数-吸收"><a href="#3-3-Mie-系数-吸收" class="headerlink" title="3.3 Mie 系数 + 吸收"></a>3.3 Mie 系数 + 吸收</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vec3</span> MieCoefficient(AtmosphereParameter param, <span class="type">float</span> h) &#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="type">vec3</span> sigma = (<span class="number">3.996</span> * <span class="number">1e-6</span>) * <span class="type">vec3</span>(<span class="number">1.0</span>);</span><br><span class="line">    <span class="comment">// 米氏散射与波长无关（vec3 三通道相等）</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">vec3</span> MieAbsorption(AtmosphereParameter param, <span class="type">float</span> h) &#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="type">vec3</span> sigma = (<span class="number">4.4</span> * <span class="number">1e-6</span>) * <span class="type">vec3</span>(<span class="number">1.0</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">vec3</span> OzoneAbsorption(AtmosphereParameter param, <span class="type">float</span> h) &#123;</span><br><span class="line">    <span class="type">vec3</span> sigma_lambda = <span class="type">vec3</span>(<span class="number">0.650</span>, <span class="number">1.881</span>, <span class="number">0.085</span>) * <span class="number">1e-6</span>;</span><br><span class="line">    <span class="comment">// 臭氧主要吸收红光/绿光，对蓝光几乎不吸收</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-透射率（Beer-Lambert-定律）"><a href="#3-4-透射率（Beer-Lambert-定律）" class="headerlink" title="3.4 透射率（Beer-Lambert 定律）"></a>3.4 透射率（Beer-Lambert 定律）</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">vec3</span> Transmittance(param, p1, p2) &#123;</span><br><span class="line">    <span class="comment">// T = exp(-opticalDepth)</span></span><br><span class="line">    <span class="comment">// opticalDepth = ∫(RayleighCoeff + MieCoeff + Absorption) ds</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-坑点记录（原笔记）"><a href="#3-5-坑点记录（原笔记）" class="headerlink" title="3.5 坑点记录（原笔记）"></a>3.5 坑点记录（原笔记）</h3><ul>
+<li><strong>单位统一</strong>：全部 km 或全部 m，混用导致数量级错误</li>
+<li><strong>earth_center &#x3D; (0, 0, -6370)</strong>：要设负数让 camera-earth_center 切线从地表看向天空</li>
+<li><strong>view_ray 方向</strong>：从相机出发指向天空，不要搞反</li>
+<li><strong>p1, p2 关系</strong>：p1 是视线上采样点，p2 是太阳光进入大气层的边缘点</li>
+</ul>
+<h3 id="3-6-预计算-LUT"><a href="#3-6-预计算-LUT" class="headerlink" title="3.6 预计算 LUT"></a>3.6 预计算 LUT</h3><p>生成 Transmittance LUT（2D 纹理，x&#x3D;高度，y&#x3D;天顶角余弦），采样查询替代实时积分，大幅加速。</p>
+<h3 id="3-7-地平线模糊的成因"><a href="#3-7-地平线模糊的成因" class="headerlink" title="3.7 地平线模糊的成因"></a>3.7 地平线模糊的成因</h3><p>采用切片法存储散射积分结果，远处切片覆盖大范围深度（500-600m），相邻像素采样到相同&#x2F;相近切片，三线性插值进一步混合——导致地平线区域产生柔和渐变。<strong>这是存储策略的自然副作用</strong>，恰好符合真实世界远景因大气透视而柔和的视觉效果。</p>
+<hr>
+<h2 id="四、面试准备"><a href="#四、面试准备" class="headerlink" title="四、面试准备"></a>四、面试准备</h2><h3 id="高频问法（≥8个）"><a href="#高频问法（≥8个）" class="headerlink" title="高频问法（≥8个）"></a>高频问法（≥8个）</h3><ol>
+<li><strong>Rayleigh 散射和 Mie 散射的区别？</strong> → Rayleigh∝1&#x2F;λ⁴（蓝光散射强，蓝天），Mie 几乎无波长依赖（白云&#x2F;雾霾）；相位函数不同</li>
+<li><strong>单次散射的积分公式是什么？</strong> → 沿视线积分：Σ(太阳光照 × T₁(太阳→p) × S(p) × T₂(p→眼睛) × ds)</li>
+<li><strong>为什么天空是蓝色，日落是红色？</strong> → 蓝光散射效率高（短波长），直射阳光中蓝光被散射掉，剩余红光穿透更远</li>
+<li><strong>臭氧吸收主要吸收哪个波段？</strong> → 红光和绿光（sigma&#x3D;(0.65, 1.88, 0.085)），蓝光几乎不被吸收</li>
+<li><strong>预计算 LUT 是什么？存什么？</strong> → 2D 纹理（高度×天顶角余弦），存储透射率，避免实时 Ray Marching</li>
+<li><strong>为什么用 6 步 Ray Marching 就够了？</strong> → 大气散射变化平滑，6 步加插值足够精度；太多步性能差</li>
+<li><strong>Beer-Lambert 定律在大气散射中怎么用？</strong> → 透射率 &#x3D; exp(-光学深度)，光学深度沿路径积分散射+吸收系数</li>
+<li><strong>密度随高度的指数衰减模型？</strong> → <code>ρ(h) = exp(-h/H)</code>，H 是标高（Rayleigh ~8km，Mie ~1.2km）</li>
+<li><strong>地平线模糊是怎么产生的？</strong> → 切片法远处覆盖大范围深度，相邻像素采样到相同切片，插值导致渐变</li>
+</ol>
+<h3 id="反问点（≥5个）"><a href="#反问点（≥5个）" class="headerlink" title="反问点（≥5个）"></a>反问点（≥5个）</h3><ul>
+<li>多次散射（multi-scattering）如何近似？</li>
+<li>为什么 earth_center 要设成负数？</li>
+<li>Mie 的各向异性参数 g 的取值范围和物理含义？</li>
+<li>如何将大气散射与体积云渲染结合？</li>
+<li>RayIntersectSphere 的数学原理？</li>
+</ul>
+<h3 id="一句话答案（≥5个）"><a href="#一句话答案（≥5个）" class="headerlink" title="一句话答案（≥5个）"></a>一句话答案（≥5个）</h3><ul>
+<li>Rayleigh &#x3D; 蓝天（蓝光散射强 6 倍）</li>
+<li>Mie &#x3D; 白云（波长无关，各向异性）</li>
+<li>单次散射 &#x3D; 沿视线加总太阳光穿透来的能量</li>
+<li>LUT &#x3D; 查表代替实时积分</li>
+<li>标高 &#x3D; 密度衰减到 1&#x2F;e 的高度</li>
+</ul>
+<hr>
+<h2 id="附录（原内容完整保留）"><a href="#附录（原内容完整保留）" class="headerlink" title="附录（原内容完整保留）"></a>附录（原内容完整保留）</h2><h3 id="原：参考链接"><a href="#原：参考链接" class="headerlink" title="原：参考链接"></a>原：参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/345916725">https://zhuanlan.zhihu.com/p/345916725</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://ebruneton.github.io/precomputed_atmospheric_scattering/">https://ebruneton.github.io/precomputed_atmospheric_scattering/</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/595576594">https://zhuanlan.zhihu.com/p/595576594</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/383020796">https://zhuanlan.zhihu.com/p/383020796</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/36498679">https://zhuanlan.zhihu.com/p/36498679</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/127026136">https://zhuanlan.zhihu.com/p/127026136</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/237502022">https://zhuanlan.zhihu.com/p/237502022</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/688734781">https://zhuanlan.zhihu.com/p/688734781</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/560705804">https://zhuanlan.zhihu.com/p/560705804</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/210745877">https://zhuanlan.zhihu.com/p/210745877</a></li>
+</ul>
+<h3 id="原：完整-GLSL-代码"><a href="#原：完整-GLSL-代码" class="headerlink" title="原：完整 GLSL 代码"></a>原：完整 GLSL 代码</h3><p>（RayleighCoefficient、MieCoefficient、MieAbsorption、OzoneAbsorption、RayIntersectSphere、GetSkyView、RayleighPhase、MiePhase、Scattering——均已在正文中展示）</p>
+<h3 id="原：LUT-生成要点"><a href="#原：LUT-生成要点" class="headerlink" title="原：LUT 生成要点"></a>原：LUT 生成要点</h3><ul>
+<li>图片格式 unsigned_byte</li>
+<li>缓冲区绑定图片纹理</li>
+<li>设置回调函数等图片生成完成</li>
+<li>帧率控制</li>
+<li>多次散射同理</li>
+</ul>
+<h3 id="原：优化切片法"><a href="#原：优化切片法" class="headerlink" title="原：优化切片法"></a>原：优化切片法</h3><ul>
+<li>平方分布 → 远处切片覆盖大范围深度</li>
+<li>相邻像素深度不同但采样到相同切片</li>
+<li>三线性插值进一步混合</li>
+<li>地平线柔和渐变是存储策略的自然副作用</li>
+</ul>
+<h3 id="原：Three-js-Sky-实现要点"><a href="#原：Three-js-Sky-实现要点" class="headerlink" title="原：Three.js Sky 实现要点"></a>原：Three.js Sky 实现要点</h3><ul>
+<li>传递顶点信息、相机参数</li>
+<li>MVP 矩阵 + NDC→世界坐标转换</li>
+<li>太阳方向&#x2F;位置</li>
+<li>相机必须在地表以上</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0/">https://weimo1.github.io/posts/%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%AD%97%E5%85%B8%E6%A0%91/" title="字典树"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">字典树</div></div><div class="info-2"><div class="info-item-1">字典树https://cloud.tencent.com/developer/article/2540764 https://oi-wiki.org/string/trie/ P8306 【模板】字典树12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849#include&lt;bits/stdc++.h&gt;using namespace std;int trie[300004][100];int cnt[3000004];int idx;string x[10...</div></div></div></a><a class="pagination-related" href="/posts/%E5%A4%A7%E5%B0%8F%E7%AB%AF%E5%88%A4%E6%96%AD/" title="大小端判断"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">大小端判断</div></div><div class="info-2"><div class="info-item-1">大小端判断在网络通信过程中，通常使用的是大端序在进行网络编程时，需要将主机字节序转换为网络字节序，也就是将数据从本地字节序转换为大端序。可以使用诸如 htonl、htons、ntohl 和 ntohs 等函数来实现字节序转换操作。 大端模式 (big-endian)：数据的高字节在内存的低地址存放，数据的低字节在内存的高地址存放 小端模式 (little-endian)：数据的高字节在内存的高地址存放，数据的低字节在内存的低地址存放 简单记忆： 大端模式：大高低 小端模式：小低低  如何区分本机字节序使用联合体 (union)12345678910int is_little_endian...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%A7%E6%B0%94%E6%95%A3%E5%B0%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">大气散射实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%BB%93%E8%AE%BA"><span class="toc-number">1.1.</span> <span class="toc-text">一、一句话结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心概念解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%A4%E7%A7%8D%E6%95%A3%E5%B0%84"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 两种散射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%95%A3%E5%B0%84%E6%96%B9%E7%A8%8B%EF%BC%88%E5%8D%95%E6%AC%A1%E6%95%A3%E5%B0%84%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 散射方程（单次散射）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码解析与实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%A0%B8%E5%BF%83%E7%A7%AF%E5%88%86%E5%87%BD%E6%95%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 核心积分函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-Rayleigh-%E7%B3%BB%E6%95%B0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 Rayleigh 系数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Mie-%E7%B3%BB%E6%95%B0-%E5%90%B8%E6%94%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 Mie 系数 + 吸收</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E9%80%8F%E5%B0%84%E7%8E%87%EF%BC%88Beer-Lambert-%E5%AE%9A%E5%BE%8B%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 透射率（Beer-Lambert 定律）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E5%9D%91%E7%82%B9%E8%AE%B0%E5%BD%95%EF%BC%88%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%89"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 坑点记录（原笔记）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E9%A2%84%E8%AE%A1%E7%AE%97-LUT"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 预计算 LUT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E5%9C%B0%E5%B9%B3%E7%BA%BF%E6%A8%A1%E7%B3%8A%E7%9A%84%E6%88%90%E5%9B%A0"><span class="toc-number">1.3.7.</span> <span class="toc-text">3.7 地平线模糊的成因</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.4.</span> <span class="toc-text">四、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8D%E9%97%AE%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">反问点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E5%AE%8C%E6%95%B4%E4%BF%9D%E7%95%99%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">附录（原内容完整保留）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.5.1.</span> <span class="toc-text">原：参考链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%AE%8C%E6%95%B4-GLSL-%E4%BB%A3%E7%A0%81"><span class="toc-number">1.5.2.</span> <span class="toc-text">原：完整 GLSL 代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9ALUT-%E7%94%9F%E6%88%90%E8%A6%81%E7%82%B9"><span class="toc-number">1.5.3.</span> <span class="toc-text">原：LUT 生成要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E4%BC%98%E5%8C%96%E5%88%87%E7%89%87%E6%B3%95"><span class="toc-number">1.5.4.</span> <span class="toc-text">原：优化切片法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AThree-js-Sky-%E5%AE%9E%E7%8E%B0%E8%A6%81%E7%82%B9"><span class="toc-number">1.5.5.</span> <span class="toc-text">原：Three.js Sky 实现要点</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

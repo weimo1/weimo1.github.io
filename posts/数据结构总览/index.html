@@ -1,0 +1,869 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>数据结构总览 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="数据结构 redis有五种基本数据结构，分别为：String(字符串)、List(列表)、Hash(哈希)、Set(集合)、Zset(有序集合) 除此之外还有，bitmap、Hyperloglog、Geo、Stream等类型 1. String（字符串）#常用操作#        操作命令 描述   SET key value 存入字符串键值对   MSET key value [key valu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据结构总览">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%80%BB%E8%A7%88/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="数据结构 redis有五种基本数据结构，分别为：String(字符串)、List(列表)、Hash(哈希)、Set(集合)、Zset(有序集合) 除此之外还有，bitmap、Hyperloglog、Geo、Stream等类型 1. String（字符串）#常用操作#        操作命令 描述   SET key value 存入字符串键值对   MSET key value [key valu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.572Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "数据结构总览",
+  "url": "https://weimo1.github.io/posts/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%80%BB%E8%A7%88/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.572Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%80%BB%E8%A7%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '数据结构总览',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">数据结构总览</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">数据结构总览</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.572Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/">系统底层408</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>15分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h1><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_c83ab153091b.png"></p>
+<p>redis有五种基本数据结构，分别为：String(字符串)、List(列表)、Hash(哈希)、Set(集合)、<strong>Zset(有序集合)</strong></p>
+<p>除此之外还有，bitmap、Hyperloglog、Geo、Stream等类型</p>
+<h3 id="1-String（字符串）"><a href="#1-String（字符串）" class="headerlink" title="1. String（字符串）#"></a>1. String（字符串）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#1-string%E5%AD%97%E7%AC%A6%E4%B8%B2">#</a></h3><h4 id="常用操作"><a href="#常用操作" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>SET key value</strong></td>
+<td>存入字符串键值对</td>
+</tr>
+<tr>
+<td><strong>MSET key value [key value …]</strong></td>
+<td>批量存储字符串键值对</td>
+</tr>
+<tr>
+<td><strong>SETNX key value</strong></td>
+<td>存入一个不存在的字符串键值对（不存在则设置）</td>
+</tr>
+<tr>
+<td><strong>GET key</strong></td>
+<td>获取一个字符串键值</td>
+</tr>
+<tr>
+<td><strong>MGET key [key …]</strong></td>
+<td>批量获取字符串键值</td>
+</tr>
+<tr>
+<td><strong>DEL key [key …]</strong></td>
+<td>删除一个或多个键</td>
+</tr>
+<tr>
+<td><strong>EXPIRE key seconds</strong></td>
+<td>设置一个键的过期时间（秒）</td>
+</tr>
+<tr>
+<td><strong>INCR key</strong></td>
+<td>将 key 中储存的数字值加 1</td>
+</tr>
+<tr>
+<td><strong>DECR key</strong></td>
+<td>将 key 中储存的数字值减 1</td>
+</tr>
+<tr>
+<td><strong>INCRBY key increment</strong></td>
+<td>将 key 所储存的值加上 increment</td>
+</tr>
+<tr>
+<td><strong>DECRBY key decrement</strong></td>
+<td>将 key 所储存的值减去 decrement</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF">#</a></h4><ul>
+<li>单值缓存：<code>SET key value</code></li>
+<li>对象缓存：两种方式</li>
+</ul>
+<ul>
+<li>方式 1：<code>set user:1 &#39;{&quot;name&quot;:&quot;roy&quot;,&quot;balance&quot;:1888}&#39;</code></li>
+<li>方式 2：<code>MSET user:1:name roy user:1:balance 1888</code>（更灵活）</li>
+</ul>
+<ul>
+<li>分布式锁：<code>SETNX product:10001 true</code>（获取锁）、<code>DEL product:10001</code>（释放锁），推荐<code>SET product:10001 true ex 10 nx</code>（防止死锁）</li>
+</ul>
+<h3 id="2-Hash（哈希）"><a href="#2-Hash（哈希）" class="headerlink" title="2. Hash（哈希）#"></a>2. Hash（哈希）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#2-hash%E5%93%88%E5%B8%8C">#</a></h3><h4 id="常用操作-1"><a href="#常用操作-1" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-1">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>HSET key field value</strong></td>
+<td>存储一个哈希表 key 的键值</td>
+</tr>
+<tr>
+<td><strong>HSETNX key field value</strong></td>
+<td>存储一个不存在的哈希表 key 的键值（field 不存在则设置）</td>
+</tr>
+<tr>
+<td><strong>HMSET key field value [field value …]</strong></td>
+<td>在一个哈希表 key 中存储多个键值对</td>
+</tr>
+<tr>
+<td><strong>HGET key field</strong></td>
+<td>获取哈希表 key 对应的 field 键值</td>
+</tr>
+<tr>
+<td><strong>HMGET key field [field …]</strong></td>
+<td>批量获取哈希表 key 中多个 field 键值</td>
+</tr>
+<tr>
+<td><strong>HDEL key field [field …]</strong></td>
+<td>删除哈希表 key 中的 field 键值</td>
+</tr>
+<tr>
+<td><strong>HLEN key</strong></td>
+<td>返回哈希表 key 中 field 的数量</td>
+</tr>
+<tr>
+<td><strong>HGETALL key</strong></td>
+<td>返回哈希表 key 中所有的键值</td>
+</tr>
+<tr>
+<td><strong>HINCRBY key field increment</strong></td>
+<td>为哈希表 key 中 field 键的值加上增量 increment</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-1"><a href="#应用场景-1" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-1">#</a></h4><ul>
+<li>对象缓存：<code>HSET user:1 name roy balance 1888</code>（比 String 更易管理对象属性）</li>
+<li>电商购物车：</li>
+</ul>
+<ul>
+<li>以用户 id 为 key（如<code>cart:1001</code>）</li>
+<li>商品 id 为 field，商品数量为 value</li>
+<li>操作：添加商品（<code>hset cart:1001 10088 1</code>）、增减数量（<code>hincrby</code>）、删除商品（<code>hdel</code>）等</li>
+</ul>
+<h4 id="优缺点"><a href="#优缺点" class="headerlink" title="优缺点#"></a>优缺点<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E4%BC%98%E7%BC%BA%E7%82%B9">#</a></h4><ul>
+<li>优点：同类数据整合存储，便于管理；比 String 更省内存和 CPU</li>
+<li>缺点：过期功能仅作用于 key，不支持 field 单独过期；Redis 集群下不适合大规模使用</li>
+</ul>
+<h3 id="3-List（列表）"><a href="#3-List（列表）" class="headerlink" title="3. List（列表）#"></a>3. List（列表）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#3-list%E5%88%97%E8%A1%A8">#</a></h3><h4 id="常用操作-2"><a href="#常用操作-2" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-2">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>LPUSH key value [value …]</strong></td>
+<td>将一个或多个值插入到 key 列表的表头（最左边）</td>
+</tr>
+<tr>
+<td><strong>RPUSH key value [value …]</strong></td>
+<td>将一个或多个值插入到 key 列表的表尾（最右边）</td>
+</tr>
+<tr>
+<td><strong>LPOP key</strong></td>
+<td>移除并返回 key 列表的头元素</td>
+</tr>
+<tr>
+<td><strong>RPOP key</strong></td>
+<td>移除并返回 key 列表的尾元素</td>
+</tr>
+<tr>
+<td><strong>LRANGE key start stop</strong></td>
+<td>返回列表 key 中指定区间内的元素（start&#x2F;stop 为偏移量）</td>
+</tr>
+<tr>
+<td><strong>BLPOP key [key …] timeout</strong></td>
+<td>从表头弹出元素，若为空则阻塞等待 timeout 秒（0 为永久）</td>
+</tr>
+<tr>
+<td><strong>BRPOP key [key …] timeout</strong></td>
+<td>从表尾弹出元素，若为空则阻塞等待 timeout 秒（0 为永久）</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-2"><a href="#应用场景-2" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-2">#</a></h4><ul>
+<li>数据结构实现：</li>
+</ul>
+<ul>
+<li>栈：<code>LPUSH + LPOP</code></li>
+<li>队列：<code>LPUSH + RPOP</code></li>
+<li>阻塞队列：<code>LPUSH + BRPOP</code></li>
+</ul>
+<ul>
+<li>实际场景：视频列表、签到列表、排队机、简化版消息队列（MQ）</li>
+</ul>
+<h4 id="注意点"><a href="#注意点" class="headerlink" title="注意点#"></a>注意点<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E6%B3%A8%E6%84%8F%E7%82%B9">#</a></h4><ul>
+<li>容量上限：2^32-1 个元素（约 40 亿），但需避免大 key 问题</li>
+<li>底层为双向链表：双端操作性能高，中间节点索引操作性能低</li>
+</ul>
+<h3 id="4-Set（集合）"><a href="#4-Set（集合）" class="headerlink" title="4. Set（集合）#"></a>4. Set（集合）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#4-set%E9%9B%86%E5%90%88">#</a></h3><h4 id="常用操作-3"><a href="#常用操作-3" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-3">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>SADD key member [member …]</strong></td>
+<td>往集合 key 中存入元素（元素存在则忽略，key 不存在则新建）</td>
+</tr>
+<tr>
+<td><strong>SREM key member [member …]</strong></td>
+<td>从集合 key 中删除元素</td>
+</tr>
+<tr>
+<td><strong>SMEMBERS key</strong></td>
+<td>获取集合 key 中所有元素</td>
+</tr>
+<tr>
+<td><strong>SCARD key</strong></td>
+<td>获取集合 key 的元素个数</td>
+</tr>
+<tr>
+<td><strong>SISMEMBER key member</strong></td>
+<td>判断 member 是否存在于集合 key 中</td>
+</tr>
+<tr>
+<td><strong>SRANDMEMBER key [count]</strong></td>
+<td>从集合 key 中选出 count 个元素（不删除）</td>
+</tr>
+<tr>
+<td><strong>SPOP key [count]</strong></td>
+<td>从集合 key 中选出 count 个元素（删除）</td>
+</tr>
+<tr>
+<td><strong>SINTER key [key …]</strong></td>
+<td>计算多个集合的交集</td>
+</tr>
+<tr>
+<td><strong>SINTERSTORE destination key [key …]</strong></td>
+<td>将交集结果存入新集合 destination</td>
+</tr>
+<tr>
+<td><strong>SUNION key [key …]</strong></td>
+<td>计算多个集合的并集</td>
+</tr>
+<tr>
+<td><strong>SUNIONSTORE destination key [key …]</strong></td>
+<td>将并集结果存入新集合 destination</td>
+</tr>
+<tr>
+<td><strong>SDIFF key [key …]</strong></td>
+<td>计算多个集合的差集</td>
+</tr>
+<tr>
+<td><strong>SDIFFSTORE destination key [key …]</strong></td>
+<td>将差集结果存入新集合 destination</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-3"><a href="#应用场景-3" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-3">#</a></h4><ul>
+<li>微信抽奖小程序：</li>
+</ul>
+<ul>
+<li>参与抽奖：<code>SADD key {userID}</code></li>
+<li>查看参与者：<code>SMEMBERS key</code></li>
+<li>抽奖：<code>SRANDMEMBER key [count]</code>（不删除）或<code>SPOP key [count]</code>（删除）</li>
+</ul>
+<ul>
+<li>点赞 &#x2F; 收藏 &#x2F; 标签：</li>
+</ul>
+<ul>
+<li>点赞：<code>SADD like:{消息ID} {用户ID}</code></li>
+<li>取消点赞：<code>SREM like:{消息ID} {用户ID}</code></li>
+<li>检查是否点赞：<code>SISMEMBER like:{消息ID} {用户ID}</code></li>
+</ul>
+<ul>
+<li>社交关系：</li>
+</ul>
+<ul>
+<li>共同关注：<code>SINTER set1 set2</code></li>
+<li>推荐好友：<code>SDIFF set1 set2</code></li>
+</ul>
+<h3 id="5-Sorted-Set（ZSet，有序集合）"><a href="#5-Sorted-Set（ZSet，有序集合）" class="headerlink" title="5. Sorted Set（ZSet，有序集合）#"></a>5. Sorted Set（ZSet，有序集合）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#5-sorted-setzset%E6%9C%89%E5%BA%8F%E9%9B%86%E5%90%88">#</a></h3><h4 id="常用操作-4"><a href="#常用操作-4" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-4">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>ZADD key score member [[score member]…]</strong></td>
+<td>往有序集合 key 中加入带分值元素</td>
+</tr>
+<tr>
+<td><strong>ZREM key member [member …]</strong></td>
+<td>从有序集合 key 中删除元素</td>
+</tr>
+<tr>
+<td><strong>ZSCORE key member</strong></td>
+<td>返回有序集合 key 中元素 member 的分值</td>
+</tr>
+<tr>
+<td><strong>ZINCRBY key increment member</strong></td>
+<td>为有序集合 key 中元素 member 的分值加 increment</td>
+</tr>
+<tr>
+<td><strong>ZCARD key</strong></td>
+<td>返回有序集合 key 中元素个数</td>
+</tr>
+<tr>
+<td><strong>ZRANGE key start stop [WITHSCORES]</strong></td>
+<td>正序获取有序集合 key 从 start 到 stop 下标的元素（带分值可选）</td>
+</tr>
+<tr>
+<td><strong>ZREVRANGE key start stop [WITHSCORES]</strong></td>
+<td>倒序获取有序集合 key 从 start 到 stop 下标的元素（带分值可选）</td>
+</tr>
+<tr>
+<td><strong>ZUNIONSTORE destkey numkeys key [key …]</strong></td>
+<td>计算多个有序集合的并集并存入 destkey</td>
+</tr>
+<tr>
+<td><strong>ZINTERSTORE destkey numkeys key [key …]</strong></td>
+<td>计算多个有序集合的交集并存入 destkey</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-4"><a href="#应用场景-4" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-4">#</a></h4><ul>
+<li>排行榜：</li>
+</ul>
+<ul>
+<li>点击新闻计数：<code>ZINCRBY hotNews:20190819 1 守护香港</code></li>
+<li>当日排行前十：<code>ZREVRANGE hotNews:20190819 0 9 WITHSCORES</code></li>
+<li>七日榜单：<code>ZUNIONSTORE</code>合并 7 天数据后查询</li>
+</ul>
+<h3 id="6-Bitmap（位图）"><a href="#6-Bitmap（位图）" class="headerlink" title="6. Bitmap（位图）#"></a>6. Bitmap（位图）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#6-bitmap%E4%BD%8D%E5%9B%BE">#</a></h3><h4 id="常用操作-5"><a href="#常用操作-5" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-5">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>SETBIT key offset value</strong></td>
+<td>将二进制数组的 offset 位置设置为 value（0 或 1）</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>GETBIT key offset</strong></td>
+<td>返回二进制数组 offset 位置的值</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>BITCOUNT key [start end [BYTE</strong></td>
+<td>BIT]]</td>
+<td>返回二进制数组中 1 的个数</td>
+</tr>
+<tr>
+<td><strong>BITPOS key bit [start [end [BYTE</strong></td>
+<td>BIT]]]</td>
+<td>返回 bitmap 中第一个值为 bit 的 offset 位置</td>
+</tr>
+<tr>
+<td>**BITOP AND</td>
+<td>OR</td>
+<td>XOR</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-5"><a href="#应用场景-5" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-5">#</a></h4><ul>
+<li>每日签到：</li>
+</ul>
+<ul>
+<li>签到记录：<code>SETBIT dailycheck:1 100 1</code>（1 号用户第 100 天签到）</li>
+<li>签到次数：<code>BITCOUNT dailycheck:1</code></li>
+<li>首次签到时间：<code>BITPOS dailycheck:1 1</code></li>
+</ul>
+<h4 id="优点"><a href="#优点" class="headerlink" title="优点#"></a>优点<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E4%BC%98%E7%82%B9">#</a></h4><ul>
+<li>快速、高效、节省空间（用 bit 存储，1 字节可存 8 天签到状态）</li>
+</ul>
+<h3 id="7-HyperLogLog"><a href="#7-HyperLogLog" class="headerlink" title="7. HyperLogLog#"></a>7. HyperLogLog<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#7-hyperloglog">#</a></h3><h4 id="作用"><a href="#作用" class="headerlink" title="作用#"></a>作用<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E4%BD%9C%E7%94%A8">#</a></h4><p>用于统计集合中不重复元素的个数（基数统计），适合大数据量场景（如 UV 统计）。</p>
+<p>功能很简单，底层的算法不简单。他的效率非常高，适合大数据量场景下的统计</p>
+<h4 id="常用操作-6"><a href="#常用操作-6" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-6">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td><strong>PFADD key element [element …]</strong></td>
+<td>添加元素到 HyperLogLog</td>
+</tr>
+<tr>
+<td><strong>PFCOUNT key</strong></td>
+<td>统计 key 中不重复元素的个数</td>
+</tr>
+<tr>
+<td><strong>PFMERGE destkey [sourcekey …]</strong></td>
+<td>合并多个 HyperLogLog 数据到 destkey</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-6"><a href="#应用场景-6" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-6">#</a></h4><ul>
+<li>网站 UV 统计：<code>PFADD visitlog 用户IP</code> 记录访问，<code>PFCOUNT visitlog</code> 统计独立访客</li>
+</ul>
+<h3 id="8-Geo（地理空间）"><a href="#8-Geo（地理空间）" class="headerlink" title="8. Geo（地理空间）#"></a>8. Geo（地理空间）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#8-geo%E5%9C%B0%E7%90%86%E7%A9%BA%E9%97%B4">#</a></h3><h4 id="常用操作-7"><a href="#常用操作-7" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-7">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td>**GEOADD key [NX</td>
+<td>XX] [CH] longitude latitude member …**</td>
+</tr>
+<tr>
+<td><strong>GEOPOS key [member …]</strong></td>
+<td>返回指定地点的经纬度</td>
+</tr>
+<tr>
+<td>**GEODIST key member1 member2 [M</td>
+<td>KM</td>
+</tr>
+<tr>
+<td><strong>GEORADIUS key longitude latitude radius 单位 [选项]</strong></td>
+<td>查询指定经纬度附近的地点（带距离、坐标等可选）</td>
+</tr>
+<tr>
+<td>**GEOSEARCH key FROMMEMBER</td>
+<td>FROMLONLAT …**</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-7"><a href="#应用场景-7" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-7">#</a></h4><ul>
+<li>地理位置相关功能：</li>
+</ul>
+<ul>
+<li>添加商家地址：<code>GEOADD changsha 113.017489 28.200454 火车站 ...</code></li>
+<li>查找附近景点：<code>GEORADIUS changsha 113.017489 28.200454 2 KM</code></li>
+</ul>
+<h3 id="9-Stream（流）"><a href="#9-Stream（流）" class="headerlink" title="9. Stream（流）#"></a>9. Stream（流）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#9-stream%E6%B5%81">#</a></h3><h4 id="作用-1"><a href="#作用-1" class="headerlink" title="作用#"></a>作用<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E4%BD%9C%E7%94%A8-1">#</a></h4><p>类似 “阻塞队列 + 发布订阅” 的结合体，可作为 Redis 版消息队列（企业应用较少）。</p>
+<h4 id="常用操作-8"><a href="#常用操作-8" class="headerlink" title="常用操作#"></a>常用操作<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-8">#</a></h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>操作命令</td>
+<td>描述</td>
+</tr>
+<tr>
+<td>**XADD key [选项] *</td>
+<td>id field value …**</td>
+</tr>
+<tr>
+<td><strong>XDEL key id [id …]</strong></td>
+<td>删除队列中的消息</td>
+</tr>
+<tr>
+<td><strong>XLEN key</strong></td>
+<td>获取队列长度</td>
+</tr>
+<tr>
+<td><strong>XRANGE key start end [COUNT count]</strong></td>
+<td>查询队列中的消息（- 表示开始，+ 表示结尾）</td>
+</tr>
+<tr>
+<td>**XGROUP CREATE key groupname 0</td>
+<td>$**</td>
+</tr>
+<tr>
+<td><strong>XREADGROUP GROUP groupname consumername COUNT n STREAMS key &gt;</strong></td>
+<td>消费者组内消费消息（&gt; 表示未消费消息）</td>
+</tr>
+</tbody></table>
+<h4 id="应用场景-8"><a href="#应用场景-8" class="headerlink" title="应用场景#"></a>应用场景<a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19078839#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-8">#</a></h4><ul>
+<li>简化版消息队列（MQ）</li>
+</ul>
+<p>数据类型和底层结构的对应关系</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>string</strong></td>
+<td><strong>list</strong></td>
+<td><strong>hash</strong></td>
+<td><strong>set</strong></td>
+<td><strong>sorted set</strong></td>
+</tr>
+<tr>
+<td>简单动态字符串</td>
+<td>双向链表、压缩链表</td>
+<td>压缩链表、哈希表</td>
+<td>压缩链表、整数数组</td>
+<td>压缩链表、跳表</td>
+</tr>
+</tbody></table>
+<p>各个底层实现的时间复杂度如下：</p>
+<p>数据类型和底层结构的对应关系</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>跳表</strong></td>
+<td><strong>双向链表</strong></td>
+<td><strong>压缩链表</strong></td>
+<td><strong>哈希表</strong></td>
+<td><strong>整数数组</strong></td>
+</tr>
+<tr>
+<td>O(logN)</td>
+<td>O(N)</td>
+<td>O(N)</td>
+<td>O(1)</td>
+<td>O(N)</td>
+</tr>
+</tbody></table>
+<p>可以看出除了 string 类型的底层实现只有一种数据结构，其他四种均有两种底层实现，这四种类型为集合类型，其中一个键对应了一个集合的数据；</p>
+<hr>
+<h1 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h1><h2 id="1-Redis-String——SDS（Simple-Dynamic-String）"><a href="#1-Redis-String——SDS（Simple-Dynamic-String）" class="headerlink" title="1. Redis String——SDS（Simple Dynamic String）"></a>1. Redis String——SDS（Simple Dynamic String）</h2><p>Redis 没有使用 C 原生的 <code>char*</code>，而是自研了 SDS。核心优化：O(1) 获取长度、二进制安全、预分配减少内存重分配。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Redis SDS 结构（sds.h，Redis 3.2+ 多类型头）</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr8</span> &#123;</span></span><br><span class="line">    <span class="type">uint8_t</span> len;         <span class="comment">// 已用长度</span></span><br><span class="line">    <span class="type">uint8_t</span> alloc;       <span class="comment">// 总分配容量（不含头+尾&#x27;\0&#x27;）</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">// 头类型标记（5/8/16/32/64）</span></span><br><span class="line">    <span class="type">char</span> buf[];          <span class="comment">// 柔性数组，实际存储内容</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// sds 指针直接指向 buf，通过 s[-1] 读 flags 反推头部——零额外指针开销</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">size_t</span> <span class="title function_">sdslen</span><span class="params">(<span class="type">const</span> sds s)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags = s[<span class="number">-1</span>];</span><br><span class="line">    <span class="keyword">switch</span>(flags &amp; SDS_TYPE_MASK) &#123;</span><br><span class="line">        <span class="keyword">case</span> SDS_TYPE_8:  <span class="keyword">return</span> SDS_HDR(<span class="number">8</span>, s)-&gt;len;</span><br><span class="line">        <span class="keyword">case</span> SDS_TYPE_16: <span class="keyword">return</span> SDS_HDR(<span class="number">16</span>, s)-&gt;len;</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 扩容策略：新容量 &lt; 1MB → 翻倍；≥ 1MB → +1MB</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="2-Redis-ZSet——跳表-哈希表的双重索引"><a href="#2-Redis-ZSet——跳表-哈希表的双重索引" class="headerlink" title="2. Redis ZSet——跳表+哈希表的双重索引"></a>2. Redis ZSet——跳表+哈希表的双重索引</h2><p>ZSet 同时维护跳表（按 score 排序）和哈希表（按 member 快速查找），用空间换时间，实现 O(logN) 范围查询 + O(1) 点查。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Redis ZSet 数据结构（server.h）</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zset</span> &#123;</span></span><br><span class="line">    dict *dict;      <span class="comment">// member→score 哈希表，O(1) 查找 score</span></span><br><span class="line">    zskiplist *zsl;  <span class="comment">// 跳表，按 score+member 排序，O(logN) 范围</span></span><br><span class="line">&#125; zset;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 跳表节点</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> &#123;</span></span><br><span class="line">    sds ele;                           <span class="comment">// member</span></span><br><span class="line">    <span class="type">double</span> score;                      <span class="comment">// 分值</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> *<span class="title">backward</span>;</span>    <span class="comment">// 后退指针（用于 ZREVRANGE）</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistLevel</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> *<span class="title">forward</span>;</span> <span class="comment">// 前进指针</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> span;            <span class="comment">// 跨度（到下一节点的距离，用于 ZRANK）</span></span><br><span class="line">    &#125; level[];                         <span class="comment">// 柔性数组，高度随机</span></span><br><span class="line">&#125; zskiplistNode;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ZADD 流程：</span></span><br><span class="line"><span class="comment">// 1. dictFind 检查 member 是否已存在</span></span><br><span class="line"><span class="comment">// 2. 存在且 score 相同 → 跳过</span></span><br><span class="line"><span class="comment">// 3. 存在但 score 不同 → zslDelete + zslInsert（更新位置）</span></span><br><span class="line"><span class="comment">// 4. 不存在 → dictAdd + zslInsert</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-Redis-List——quicklist（ziplist-双向链表的混合体）"><a href="#3-Redis-List——quicklist（ziplist-双向链表的混合体）" class="headerlink" title="3. Redis List——quicklist（ziplist + 双向链表的混合体）"></a>3. Redis List——quicklist（ziplist + 双向链表的混合体）</h2><p>Redis 3.2 后默认用 quicklist 替代 linkedlist：每个链表节点是一个压缩列表（ziplist），兼具链表的灵活性和数组的紧凑性。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// quicklist 结构（quicklist.h）</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklist</span> &#123;</span></span><br><span class="line">    quicklistNode *head;</span><br><span class="line">    quicklistNode *tail;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> count;        <span class="comment">// 所有 entry 总数</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> len;          <span class="comment">// quicklistNode 数量</span></span><br><span class="line">    <span class="type">int</span> fill : QL_FILL_BITS;    <span class="comment">// 填充因子（正数=entry数，负数=字节数）</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> compress : QL_COMP_BITS;  <span class="comment">// 两端不压缩的 node 数</span></span><br><span class="line">&#125; quicklist;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> *<span class="title">prev</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">quicklistNode</span> *<span class="title">next</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> *zl;          <span class="comment">// 指向压缩列表（ziplist）</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> sz;            <span class="comment">// zl 的字节大小</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> count : <span class="number">16</span>;    <span class="comment">// zl 中的 entry 数量</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> encoding : <span class="number">2</span>;  <span class="comment">// RAW(1) 或 LZF(2)</span></span><br><span class="line">&#125; quicklistNode;</span><br><span class="line"><span class="comment">// 设计思想：node 内 ziplist 连续内存（缓存友好），node 间指针连接（灵活扩展）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h2><ol>
+<li><strong>Redis 选择数据结构的原则是”内存效率优先”</strong>：SDS 省掉 strlen 的 O(n)；ziplist 紧凑排列省指针；intset 对纯整数自动升级编码。每个数据结构都为内存做了极致优化。</li>
+<li><strong>ZSet 的双索引是经典空间换时间</strong>：dict 实现 O(1) 的 ZSCORE，跳表实现 O(logN) 的 ZRANGE。删除需同步更新两者（zslDelete + dictDelete），务必保证原子性。</li>
+<li><strong>Hash 的小数据优化</strong>：少量 field 时用 ziplist（顺序查找省内存），超阈值 <code>hash-max-ziplist-entries</code>（512）或单 field 超 <code>hash-max-ziplist-value</code>（64B）时转 hashtable。这解释了为什么生产环境不推荐 Hash 存太多 field。</li>
+<li><strong>Bitmap 的空间效率逆天</strong>：一年签到只需 365 bits≈46 字节。10 亿用户约 46GB（分片存储）。对比 Set 存签到日期（每个 member 几十字节），相差数十倍。</li>
+<li><strong>HyperLogLog 的误差是设计权衡</strong>：标准误差 0.81%，12KB 固定内存可统计 2^64 个不同元素。核心原理是 Bernoulli 试验 + 调和平均数。适合 UV 统计（允许少量误差），不适合精确计数。</li>
+<li><strong>Stream 是 Redis 对消息队列的补课</strong>：相比 List 做 MQ（无消费者组、无 ACK），Stream 支持 XGROUP、XACK、XPENDING。但 Redis 不是专业 MQ，相比 Kafka 缺少分区有序、持久化保障、堆积能力。</li>
+</ol>
+<hr>
+<h1 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h1><h2 id="面试问答"><a href="#面试问答" class="headerlink" title="面试问答"></a>面试问答</h2><p><strong>Q1: Redis 五种基本数据结构的底层实现分别是什么？</strong><br>A: (1) String：SDS（简单动态字符串）；(2) List：3.2 后用 quicklist（ziplist+链表混合）；(3) Hash：ziplist（小数据）+ hashtable（大数据）；(4) Set：intset（纯整数）+ hashtable；(5) ZSet：ziplist（小数据）+ 跳表+hashtable（大数据）。所有”小数据用紧凑结构”的优化都是内存优先考量。</p>
+<p><strong>Q2: Redis 跳表和 MySQL B+ 树为什么使用场景完全不同？</strong><br>A: 核心差异在存储介质。Redis 是内存数据库，无磁盘 IO，跳表实现简单且 O(logN) 完全满足。MySQL 数据在磁盘，B+ 树每个节点恰好一个磁盘页（16KB），一次 IO 加载整个节点，最大分支因子 1170，3 层存 2000 万行仅 2 次 IO。跳表在磁盘上节点分散，随机 IO 过多。</p>
+<p><strong>Q3: SDS 相比 C 字符串有什么优势？</strong><br>A: (1) O(1) 获取长度（C 的 strlen 是 O(n)）；(2) 二进制安全（不依赖 <code>&#39;\0&#39;</code>，可存任意二进制数据）；(3) 杜绝缓冲区溢出（每次修改前检查空间，不够自动扩容）；(4) 空间预分配（&lt;1MB 翻倍，≥1MB +1MB）+ 惰性释放。</p>
+<p><strong>Q4: 布隆过滤器的原理？为什么会有误判？</strong><br>A: 对 key 做 k 个不同哈希函数，映射到 m 位位图的 k 个位置，全部为 1 则”可能存在”。误判来自哈希冲突：不同 key 的哈希位可能恰好相同。误判率 p ≈ (1 - e^{-kn&#x2F;m})^k。最优 k &#x3D; m&#x2F;n × ln2。只能保证”一定不存在”（无假阴性），不能保证”一定存在”（有假阳性）。</p>
+<p><strong>Q5: 100G 日志文件找出现次数最多的 IP——为什么哈希切割能解决？</strong><br>A: 核心：相同 IP 经过相同哈希函数一定落到同一个小文件。(1) 对每个 IP 计算 <code>hash(ip) % N</code>，追加到第 N 个小文件；(2) 每个小文件用 <code>unordered_map</code> 统计频率（单文件大小可控，内存放得下）；(3) 取每个文件 top1，再取全局 top1。N 选择取决于内存：1G&#x2F;64B≈1600 万个不同 IP。</p>
+<p><strong>Q6: Redis 的 ziplist（压缩列表）是什么？</strong><br>A: ziplist 是一块连续内存，所有 entry 紧密排列无指针。每个 entry 编码为 <code>&lt;prevlen, encoding, data&gt;</code>。省内存：省去了 hashtable 桶数组+指针、链表 next&#x2F;prev 指针。但插入删除需 memmove 后续元素（O(n)），仅适合元素少且小的场景。</p>
+<p><strong>Q7: 位图如何扩展支持计数（如统计出现 2 次）？</strong><br>A: 双位图法——用 2 个位图，每个元素 2 bits，表示 4 种状态（00&#x3D;未出现，01&#x3D;1次，10&#x3D;2次，11&#x3D;3次及以上）。通用方案是 Counting Bloom Filter：每个 bit 扩展为 4-bit 计数器。内存开销随计数上限线性增长。</p>
+<p><strong>Q8: Redis Geo 类型的底层是什么？</strong><br>A: Geo 底层就是 ZSet。GEOADD 将经纬度通过 GeoHash 编码为 52-bit 整数作为 score，地点名作为 member 存入 ZSet。GEORADIUS 利用 ZSet 的范围查询（ZRANGEBYSCORE）找到附近的 GeoHash 格子，再精确计算距离过滤。本质是对 ZSet 的语义包装，零额外存储。</p>
+<h2 id="陷阱与反问"><a href="#陷阱与反问" class="headerlink" title="陷阱与反问"></a>陷阱与反问</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>错误认知</th>
+<th>正确理解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Redis List 底层就是链表</td>
+<td>Redis 6.x 默认 quicklist（链表+压缩列表混合）</td>
+<td>纯双向链表已废弃，quicklist 既省内存又保留双端操作</td>
+</tr>
+<tr>
+<td>Hash 的 field 可单独设过期</td>
+<td>过期只作用于整个 key，不支持 field 级别</td>
+<td>需 field 级过期应拆分多个独立 key 或用 ZSet+score 存时间戳</td>
+</tr>
+<tr>
+<td>布隆过滤器可以说”一定存在”</td>
+<td>只能保证”一定不存在”，有假阳性</td>
+<td>布隆过滤器无假阴性（不会漏），但允许误判存在</td>
+</tr>
+<tr>
+<td>HyperLogLog 可统计精确 UV</td>
+<td>标准误差约 0.81%</td>
+<td>需精确 UV 用 Set 或 Bitmap（用户 ID 映射到 bit 位）</td>
+</tr>
+<tr>
+<td>ZSet 排名是实时遍历计算的</td>
+<td>跳表节点中 span 字段预计算了排名</td>
+<td>ZRANK 是 O(logN)，追索路径累加 span 即可</td>
+</tr>
+</tbody></table>
+<h2 id="一句话答案速记表"><a href="#一句话答案速记表" class="headerlink" title="一句话答案速记表"></a>一句话答案速记表</h2><table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SDS</td>
+<td>O(1) len + 二进制安全 + 预分配扩容，Redis 字符串基石</td>
+</tr>
+<tr>
+<td>quicklist</td>
+<td>ziplist 节点 + 双向链表，Redis 3.2+ List 默认实现</td>
+</tr>
+<tr>
+<td>ZSet 双索引</td>
+<td>dict(O(1)查分) + 跳表(O(logN)排序)，空间换时间</td>
+</tr>
+<tr>
+<td>ziplist</td>
+<td>连续内存紧凑排列，省指针，适合元素少且小的场景</td>
+</tr>
+<tr>
+<td>布隆过滤器</td>
+<td>k 个哈希→m 位位图，一定不存在权威，可能存在不权威</td>
+</tr>
+<tr>
+<td>哈希切割</td>
+<td>hash(IP)%N 分文件，相同 IP 落同一文件，治大文件神器</td>
+</tr>
+<tr>
+<td>HyperLogLog</td>
+<td>12KB 固定内存统计 2^64 UV，~0.81% 误差</td>
+</tr>
+<tr>
+<td>GeoHash</td>
+<td>经纬度→52-bit 整数，存入 ZSet，范围查&#x3D;ZRANGEBYSCORE</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%80%BB%E8%A7%88/">https://weimo1.github.io/posts/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%80%BB%E8%A7%88/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%97%A5%E5%BF%97%E5%88%86%E6%9E%90%E4%B8%8E%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5/" title="日志分析与错误排查"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">日志分析与错误排查</div></div><div class="info-2"><div class="info-item-1">日志分析与错误排查 适用范围：Linux 线上问题排查——日志分类、grep 进阶、系统诊断工具链、内核日志与网络抓包分析。  一、核心概念 定义：日志分析与错误排查是后端开发与 SRE 的核心技能，涵盖系统日志、应用日志、内核日志的分类解读，以及 grep&#x2F;journalctl&#x2F;dmesg&#x2F;strace&#x2F;tcpdump 等工具的组合使用。 关键词：系统日志（syslog&#x2F;messages）、认证日志（auth.log&#x2F;secure）、内核日志（kern.log&#x2F;dmesg）、应用日志（nginx&#x2F;自定义）、...</div></div></div></a><a class="pagination-related" href="/posts/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" title="操作系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">操作系统</div></div><div class="info-2"><div class="info-item-1">操作系统什么是操作系统 运行在计算机上的软件程序，管理计算机硬件与软件资源的程序 屏蔽了硬件层的复杂性 操作系统的内核（Kernel）是操作系统的核心部分，它负责管理了 内存管理 文件系统管理 硬件设备管理 应用程序管理  什么是系统调用先了解下用户态和系统态：  用户态：用户态运行的进程可直接读取用户程序的数据 系统态：系统态运行的进程或程序可以访问计算机的任何资源  我们运行的程序基本都在用户态，当我们需要调用系统态的功能时，此时就需要系统调用，系统调用按功能可分：  设备管理：设备的请求、释放、启动等 文件管理：文件的读写、创建、删除等 内存管理：进程的创建、撤销、阻塞、唤醒等 进...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">数据结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-String%EF%BC%88%E5%AD%97%E7%AC%A6%E4%B8%B2%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">1. String（字符串）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C"><span class="toc-number">1.1.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.1.2.</span> <span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Hash%EF%BC%88%E5%93%88%E5%B8%8C%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">2. Hash（哈希）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-1"><span class="toc-number">1.2.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-1"><span class="toc-number">1.2.2.</span> <span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">1.2.3.</span> <span class="toc-text">优缺点</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-List%EF%BC%88%E5%88%97%E8%A1%A8%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">3. List（列表）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-2"><span class="toc-number">1.3.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-2"><span class="toc-number">1.3.2.</span> <span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E7%82%B9"><span class="toc-number">1.3.3.</span> <span class="toc-text">注意点</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-Set%EF%BC%88%E9%9B%86%E5%90%88%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">4. Set（集合）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-3"><span class="toc-number">1.4.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-3"><span class="toc-number">1.4.2.</span> <span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-Sorted-Set%EF%BC%88ZSet%EF%BC%8C%E6%9C%89%E5%BA%8F%E9%9B%86%E5%90%88%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">5. Sorted Set（ZSet，有序集合）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-4"><span class="toc-number">1.5.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-4"><span class="toc-number">1.5.2.</span> <span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-Bitmap%EF%BC%88%E4%BD%8D%E5%9B%BE%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">6. Bitmap（位图）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-5"><span class="toc-number">1.6.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-5"><span class="toc-number">1.6.2.</span> <span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BC%98%E7%82%B9"><span class="toc-number">1.6.3.</span> <span class="toc-text">优点</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#7-HyperLogLog"><span class="toc-number">1.7.</span> <span class="toc-text">7. HyperLogLog</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%9C%E7%94%A8"><span class="toc-number">1.7.1.</span> <span class="toc-text">作用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-6"><span class="toc-number">1.7.2.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-6"><span class="toc-number">1.7.3.</span> <span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#8-Geo%EF%BC%88%E5%9C%B0%E7%90%86%E7%A9%BA%E9%97%B4%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">8. Geo（地理空间）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-7"><span class="toc-number">1.8.1.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-7"><span class="toc-number">1.8.2.</span> <span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#9-Stream%EF%BC%88%E6%B5%81%EF%BC%89"><span class="toc-number">1.9.</span> <span class="toc-text">9. Stream（流）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%9C%E7%94%A8-1"><span class="toc-number">1.9.1.</span> <span class="toc-text">作用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C-8"><span class="toc-number">1.9.2.</span> <span class="toc-text">常用操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF-8"><span class="toc-number">1.9.3.</span> <span class="toc-text">应用场景</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-Redis-String%E2%80%94%E2%80%94SDS%EF%BC%88Simple-Dynamic-String%EF%BC%89"><span class="toc-number">2.1.</span> <span class="toc-text">1. Redis String——SDS（Simple Dynamic String）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Redis-ZSet%E2%80%94%E2%80%94%E8%B7%B3%E8%A1%A8-%E5%93%88%E5%B8%8C%E8%A1%A8%E7%9A%84%E5%8F%8C%E9%87%8D%E7%B4%A2%E5%BC%95"><span class="toc-number">2.2.</span> <span class="toc-text">2. Redis ZSet——跳表+哈希表的双重索引</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Redis-List%E2%80%94%E2%80%94quicklist%EF%BC%88ziplist-%E5%8F%8C%E5%90%91%E9%93%BE%E8%A1%A8%E7%9A%84%E6%B7%B7%E5%90%88%E4%BD%93%EF%BC%89"><span class="toc-number">2.3.</span> <span class="toc-text">3. Redis List——quicklist（ziplist + 双向链表的混合体）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">3.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9D%A2%E8%AF%95%E9%97%AE%E7%AD%94"><span class="toc-number">3.1.</span> <span class="toc-text">面试问答</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">3.2.</span> <span class="toc-text">陷阱与反问</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0%E8%A1%A8"><span class="toc-number">3.3.</span> <span class="toc-text">一句话答案速记表</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

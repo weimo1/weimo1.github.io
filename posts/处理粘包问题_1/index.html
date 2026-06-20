@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>处理粘包问题 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="处理粘包问题处理粘包问题粘包问题当客户端连续发送多个数据包时，服务器底层tcp接受缓冲区收到的数据是连粘在一起的，比如  连粘数据 粘包原因1）socket收发原理 发送数据并不是直接发送给对端, 而是应用程序将数据发送到本机操作系统的缓存里边, 当数据量小, 发送的时间间隔短, 操作系统就会在缓存区先攒够一个TCP段再通过网卡一起发送, 接收数据也是一样的, 先在操作系统的缓存存着, 然后应用程">
+<meta property="og:type" content="article">
+<meta property="og:title" content="处理粘包问题">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98_1/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="处理粘包问题处理粘包问题粘包问题当客户端连续发送多个数据包时，服务器底层tcp接受缓冲区收到的数据是连粘在一起的，比如  连粘数据 粘包原因1）socket收发原理 发送数据并不是直接发送给对端, 而是应用程序将数据发送到本机操作系统的缓存里边, 当数据量小, 发送的时间间隔短, 操作系统就会在缓存区先攒够一个TCP段再通过网卡一起发送, 接收数据也是一样的, 先在操作系统的缓存存着, 然后应用程">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.567Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "处理粘包问题",
+  "url": "https://weimo1.github.io/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98_1/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.567Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98_1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '处理粘包问题',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">处理粘包问题</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">处理粘包问题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.567Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/boost-asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">boost-asio  网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>13分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="处理粘包问题"><a href="#处理粘包问题" class="headerlink" title="处理粘包问题"></a>处理粘包问题</h1><h1 id="处理粘包问题-1"><a href="#处理粘包问题-1" class="headerlink" title="处理粘包问题"></a><strong>处理粘包问题</strong></h1><h2 id="粘包问题"><a href="#粘包问题" class="headerlink" title="粘包问题"></a>粘包问题</h2><p>当<a target="_blank" rel="noopener external nofollow noreferrer" href="https://so.csdn.net/so/search?q=%E5%AE%A2%E6%88%B7%E7%AB%AF&spm=1001.2101.3001.7020">客户端</a>连续发送多个数据包时，服务器底层tcp接受缓冲区收到的数据是连粘在一起的，比如</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img-blog.csdnimg.cn/img_convert/5cc0fe7356757061d73bee2a3b8fcbae.webp?x-oss-process=image/format,png" title="null"></p>
+<p>连粘数据</p>
+<h2 id="粘包原因"><a href="#粘包原因" class="headerlink" title="粘包原因"></a>粘包原因</h2><p>1）<strong>socket收发原理</strong></p>
+<p>发送数据并不是直接发送给对端, 而是应用程序将数据发送到本机操作系统的缓存里边, 当数据量小, 发送的时间间隔短, 操作系统就会在缓存区先攒够一个TCP段再通过网卡一起发送, 接收数据也是一样的, 先在操作系统的缓存存着, 然后应用程序再从操作系统中取出数据。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img-blog.csdnimg.cn/img_convert/bae48dcf060a0e7c6c5c8b51b4c88a5e.webp?x-oss-process=image/format,png" title="null"></p>
+<p><strong>2）粘包原因</strong></p>
+<ul>
+<li>客户端的发送频率远高于服务器的接收频率，接收方没有及时接收缓冲区的包，造成多个包接收（客户端发送了一段数据，服务端只收了一小部分，服务端下次再收的时候还是从缓冲区拿上次遗留的数据，产生粘包）recv会产生黏包（如果recv接受的数据量(1024)小于发送的数据量，第一次只能接收规定的数据量1024，第二次接收剩余的数据量）</li>
+<li>发送端需要等缓冲区满才发送出去，造成粘包（tcp底层的安全和效率机制不允许字节数特别少的小包发送频率过高，tcp会在底层累计数据长度到一定大小才一起发送，发送数据时间间隔很短，数据也很小，会合到一起，产生粘包）send 也可能发生粘包现象。（连续send少量的数据发到输出缓冲区，由于缓冲区的机制，也可能在缓冲区中不断积压，多次写入的数据被一次性发送到网络</li>
+</ul>
+<h2 id="如何处理粘包"><a href="#如何处理粘包" class="headerlink" title="如何处理粘包"></a><strong>如何处理粘包</strong></h2><p>处理粘包的方式主要采用<strong>应用层定义收发包格式</strong>的方式，这个过程俗称切包处理，常用的协议被称为<strong>tlv协议</strong>(消息id+消息长度+消息内容)，如下图</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img-blog.csdnimg.cn/img_convert/ccf05b9eac44fc01d6133f008a3ac15d.webp?x-oss-process=image/format,png" title="null"></p>
+<ul>
+<li>固定长度的消息：认为 64 个字节就是一个完整的消息（不常用）</li>
+<li>特殊字符作为边界：HTTP 使用回车 + 换行作为报文的边界</li>
+<li>自定义消息结构：包头中包含消息的长度信息</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br></pre></td><td class="code"><pre><span class="line">void CSession::HandleRead(const boost::system::error_code&amp; error, size_t  bytes_transferred, std::shared_ptr&lt;CSession&gt; shared_self)&#123;</span><br><span class="line">    if (!error) &#123;</span><br><span class="line">        //已经移动的字符数</span><br><span class="line">        int copy_len = 0;</span><br><span class="line">        while (bytes_transferred&gt;0) &#123;</span><br><span class="line">            if (!_b_head_parse) &#123;</span><br><span class="line">                //收到的数据不足头部大小</span><br><span class="line">                if (bytes_transferred + _recv_head_node-&gt;_cur_len &lt; HEAD_LENGTH) &#123;</span><br><span class="line">                    memcpy(_recv_head_node-&gt;_data + _recv_head_node-&gt;_cur_len, _data+ copy_len, bytes_transferred);</span><br><span class="line">                    _recv_head_node-&gt;_cur_len += bytes_transferred;</span><br><span class="line">                    ::memset(_data, 0, MAX_LENGTH);</span><br><span class="line">                    _socket.async_read_some(boost::asio::buffer(_data, MAX_LENGTH), </span><br><span class="line">                        std::bind(&amp;CSession::HandleRead, this, std::placeholders::_1, std::placeholders::_2, shared_self));</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line">                //收到的数据比头部多</span><br><span class="line">                //头部剩余未复制的长度</span><br><span class="line">                int head_remain = HEAD_LENGTH - _recv_head_node-&gt;_cur_len;</span><br><span class="line">                memcpy(_recv_head_node-&gt;_data + _recv_head_node-&gt;_cur_len, _data+copy_len, head_remain);</span><br><span class="line">                //更新已处理的data长度和剩余未处理的长度</span><br><span class="line">                copy_len += head_remain;</span><br><span class="line">                bytes_transferred -= head_remain;</span><br><span class="line">                //获取头部数据</span><br><span class="line">                short data_len = 0;</span><br><span class="line">                memcpy(&amp;data_len, _recv_head_node-&gt;_data, HEAD_LENGTH);</span><br><span class="line">                cout &lt;&lt; &quot;data_len is &quot; &lt;&lt; data_len &lt;&lt; endl;</span><br><span class="line">                //头部长度非法</span><br><span class="line">                if (data_len &gt; MAX_LENGTH) &#123;</span><br><span class="line">                    std::cout &lt;&lt; &quot;invalid data length is &quot; &lt;&lt; data_len &lt;&lt; endl;</span><br><span class="line">                    _server-&gt;ClearSession(_uuid);</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line">                _recv_msg_node = make_shared&lt;MsgNode&gt;(data_len);</span><br><span class="line"></span><br><span class="line">                //消息的长度小于头部规定的长度，说明数据未收全，则先将部分消息放到接收节点里</span><br><span class="line">                if (bytes_transferred &lt; data_len) &#123;</span><br><span class="line">                    memcpy(_recv_msg_node-&gt;_data + _recv_msg_node-&gt;_cur_len, _data + copy_len, bytes_transferred);</span><br><span class="line">                    _recv_msg_node-&gt;_cur_len += bytes_transferred;</span><br><span class="line">                    ::memset(_data, 0, MAX_LENGTH);</span><br><span class="line">                    _socket.async_read_some(boost::asio::buffer(_data, MAX_LENGTH), </span><br><span class="line">                        std::bind(&amp;CSession::HandleRead, this, std::placeholders::_1, std::placeholders::_2, shared_self));</span><br><span class="line">                    //头部处理完成</span><br><span class="line">                    _b_head_parse = true;</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                memcpy(_recv_msg_node-&gt;_data + _recv_msg_node-&gt;_cur_len, _data + copy_len, data_len);</span><br><span class="line">                _recv_msg_node-&gt;_cur_len += data_len;</span><br><span class="line">                copy_len += data_len;</span><br><span class="line">                bytes_transferred -= data_len;</span><br><span class="line">                _recv_msg_node-&gt;_data[_recv_msg_node-&gt;_total_len] = &#x27;\0&#x27;;</span><br><span class="line">                cout &lt;&lt; &quot;receive data is &quot; &lt;&lt; _recv_msg_node-&gt;_data &lt;&lt; endl;</span><br><span class="line">                //此处可以调用Send发送测试</span><br><span class="line">                Send(_recv_msg_node-&gt;_data, _recv_msg_node-&gt;_total_len);</span><br><span class="line">                //继续轮询剩余未处理数据</span><br><span class="line">                _b_head_parse = false;</span><br><span class="line">                _recv_head_node-&gt;Clear();</span><br><span class="line">                if (bytes_transferred &lt;= 0) &#123;</span><br><span class="line">                    ::memset(_data, 0, MAX_LENGTH);</span><br><span class="line">                    _socket.async_read_some(boost::asio::buffer(_data, MAX_LENGTH), </span><br><span class="line">                        std::bind(&amp;CSession::HandleRead, this, std::placeholders::_1, std::placeholders::_2, shared_self));</span><br><span class="line">                    return;</span><br><span class="line">                &#125;</span><br><span class="line">                continue;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            //已经处理完头部，处理上次未接受完的消息数据</span><br><span class="line">            //接收的数据仍不足剩余未处理的</span><br><span class="line">            int remain_msg = _recv_msg_node-&gt;_total_len - _recv_msg_node-&gt;_cur_len;</span><br><span class="line">            if (bytes_transferred &lt; remain_msg) &#123;</span><br><span class="line">                memcpy(_recv_msg_node-&gt;_data + _recv_msg_node-&gt;_cur_len, _data + copy_len, bytes_transferred);</span><br><span class="line">                _recv_msg_node-&gt;_cur_len += bytes_transferred;</span><br><span class="line">                ::memset(_data, 0, MAX_LENGTH);</span><br><span class="line">                _socket.async_read_some(boost::asio::buffer(_data, MAX_LENGTH), </span><br><span class="line">                    std::bind(&amp;CSession::HandleRead, this, std::placeholders::_1, std::placeholders::_2, shared_self));</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">            memcpy(_recv_msg_node-&gt;_data + _recv_msg_node-&gt;_cur_len, _data + copy_len, remain_msg);</span><br><span class="line">            _recv_msg_node-&gt;_cur_len += remain_msg;</span><br><span class="line">            bytes_transferred -= remain_msg;</span><br><span class="line">            copy_len += remain_msg;</span><br><span class="line">            _recv_msg_node-&gt;_data[_recv_msg_node-&gt;_total_len] = &#x27;\0&#x27;;</span><br><span class="line">            cout &lt;&lt; &quot;receive data is &quot; &lt;&lt; _recv_msg_node-&gt;_data &lt;&lt; endl;</span><br><span class="line">            //此处可以调用Send发送测试</span><br><span class="line">            Send(_recv_msg_node-&gt;_data, _recv_msg_node-&gt;_total_len);</span><br><span class="line">            //继续轮询剩余未处理数据</span><br><span class="line">            _b_head_parse = false;</span><br><span class="line">            _recv_head_node-&gt;Clear();</span><br><span class="line">            if (bytes_transferred &lt;= 0) &#123;</span><br><span class="line">                ::memset(_data, 0, MAX_LENGTH);</span><br><span class="line">                _socket.async_read_some(boost::asio::buffer(_data, MAX_LENGTH),</span><br><span class="line">                    std::bind(&amp;CSession::HandleRead, this, std::placeholders::_1, std::placeholders::_2, shared_self));</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">            continue;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;handle read failed, error is &quot; &lt;&lt; error.what() &lt;&lt; endl;</span><br><span class="line">        Close();</span><br><span class="line">        _server-&gt;ClearSession(_uuid);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>1   copy_len记录的是已经处理过数据的长度，因为存在一次接收多个包的情况，所以copy_len用来做已经处理的数据长度的。</p>
+<p>5   因为存在_b_head_parse为true，也就是包头接收并处理完的情况，但是包体未接受完，再次触发HandleRead，此时要继续处理上次未接受完的消息体，大体逻辑和3，4一样。<br>以上就是处理粘包的过程，我们绘制流程图更明了一些<br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.llfc.club/1683373951566.jpg?x-oss-process=image/watermark,type_d3F5LW1pY3JvaGVp,size_23,text_5oGL5oGL6aOO6L6wemFjaw==,color_FFFFFF,shadow_50,t_80,g_se,x_10,y_10" title="null"></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：TCP 粘包是指发送端多次发送的小数据包在接收端被合并或拆分，导致应用层无法正确识别消息边界。解决方案是通过<strong>应用层协议</strong>（TLV：Type-Length-Value）在每个消息前添加头部，包含消息 ID 和消息长度</li>
+<li><strong>关键词</strong>：粘包&#x2F;拆包、TLV 协议、消息边界、<code>async_read_some</code> 循环读取、<code>HeadNode</code>&#x2F;<code>MsgNode</code>、Nagle 算法</li>
+<li><strong>适用场景&#x2F;边界</strong>：所有 TCP 应用层协议都必须处理粘包问题。UDP 天然无粘包（有消息边界）</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——粘包产生的根因</strong>：TCP 是字节流协议，无消息边界。发送端连续 <code>send</code> 多次小数据 → Nagle 算法合并为一个 TCP 段发送（粘包）；或一次 <code>send</code> 大数据被 TCP 拆为多个 MSS 分多次发送（拆包）。接收端 <code>recv</code> 可能一次读到多个消息或半个消息</li>
+<li><strong>第二层——TLV 协议解包流程</strong>：头部固定 2 字节存消息长度（HEAD_LENGTH）。<code>HandleRead</code> 中的状态机：<code>_b_head_parse=false</code> 时先凑齐头部 → 解析长度 → 创建 <code>MsgNode</code> → <code>_b_head_parse=true</code> → 继续读取直到凑齐消息体 → 回调处理 → 重置头部状态。<strong>关键：一次 <code>HandleRead</code> 可能处理多个完整包</strong>（<code>while(bytes_transferred &gt; 0)</code> 循环）</li>
+<li><strong>第三层——边界条件处理</strong>：收到的数据不足头部大小 → 缓存到 <code>HeadNode</code> 继续异步读；收到头部但消息体不足 → 缓存到 <code>MsgNode</code> 继续异步读；头部长度非法（&gt; MAX_LENGTH）→ 断开连接防恶意包</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>HeadNode</code>（缓存未完整头部）、<code>MsgNode</code>（缓存未完整消息体）、<code>_b_head_parse</code>（头部解析状态标志）、<code>copy_len</code>（已处理字节数偏移）</li>
+<li><strong>关键公式</strong>：单次接收处理 &#x3D; 循环直到 <code>bytes_transferred == 0</code>；头部长度验证：<code>if (data_len &gt; MAX_LENGTH) → 断开连接</code></li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="type">const</span> <span class="type">int</span> HEAD_LEN = <span class="number">2</span>;</span><br><span class="line"><span class="type">const</span> <span class="type">int</span> MAX_LEN = <span class="number">1024</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 简易 TLV 解包</span></span><br><span class="line"><span class="function">std::vector&lt;std::string&gt; <span class="title">unpack</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* data, <span class="type">size_t</span> len)</span> </span>&#123;</span><br><span class="line">    std::vector&lt;std::string&gt; msgs;</span><br><span class="line">    <span class="type">size_t</span> offset = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span> (offset + HEAD_LEN &lt;= len) &#123;</span><br><span class="line">        <span class="type">uint16_t</span> msg_len;</span><br><span class="line">        <span class="built_in">memcpy</span>(&amp;msg_len, data + offset, HEAD_LEN);</span><br><span class="line">        offset += HEAD_LEN;</span><br><span class="line">        <span class="keyword">if</span> (msg_len &gt; MAX_LEN || offset + msg_len &gt; len) <span class="keyword">break</span>;</span><br><span class="line">        msgs.<span class="built_in">emplace_back</span>(data + offset, msg_len);</span><br><span class="line">        offset += msg_len;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> msgs;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 模拟粘包：两个消息连在一起</span></span><br><span class="line">    <span class="type">char</span> buf[] = <span class="string">&quot;\x05\x00Hello\x06\x00World!&quot;</span>;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; m : <span class="built_in">unpack</span>(buf, <span class="built_in">sizeof</span>(buf)<span class="number">-1</span>))</span><br><span class="line">        std::cout &lt;&lt; m &lt;&lt; std::endl;  <span class="comment">// Hello / World!</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="三种粘包方案对比"><a href="#三种粘包方案对比" class="headerlink" title="三种粘包方案对比"></a>三种粘包方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>实现</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>固定长度</td>
+<td>每条消息 64 字节</td>
+<td>实现最简单</td>
+<td>浪费带宽，不灵活</td>
+</tr>
+<tr>
+<td>分隔符</td>
+<td>HTTP <code>\r\n</code></td>
+<td>可读性好</td>
+<td>需转义数据中的分隔符</td>
+</tr>
+<tr>
+<td>TLV 长度前缀</td>
+<td>2&#x2F;4 字节头部</td>
+<td>灵活高效，最通用</td>
+<td>需状态机处理</td>
+</tr>
+</tbody></table>
+<h3 id="HTTP-的分块传输（Chunked-Transfer）"><a href="#HTTP-的分块传输（Chunked-Transfer）" class="headerlink" title="HTTP 的分块传输（Chunked Transfer）"></a>HTTP 的分块传输（Chunked Transfer）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">HTTP/1.1 200 OK</span><br><span class="line">Transfer-Encoding: chunked</span><br><span class="line"></span><br><span class="line">5\r\n                ← 下一块 5 字节</span><br><span class="line">Hello\r\n</span><br><span class="line">0\r\n                ← 长度为 0 表示结束</span><br><span class="line">\r\n</span><br></pre></td></tr></table></figure>
+
+<h3 id="处理恶意包（非法长度攻击）"><a href="#处理恶意包（非法长度攻击）" class="headerlink" title="处理恶意包（非法长度攻击）"></a>处理恶意包（非法长度攻击）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (data_len &gt; MAX_LENGTH) &#123;</span><br><span class="line">    <span class="comment">// 恶意客户端可能发送 0xFFFF 长度导致分配巨量内存</span></span><br><span class="line">    _server-&gt;<span class="built_in">ClearSession</span>(_uuid);</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 生产环境还需加超时机制——如果 30s 内未收完消息体，断开连接</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>工程经验</strong>：(1) 永远不要信任对端发来的长度字段——必须做上限检查；(2) <code>async_read_some</code> 可能只返回部分数据，必须循环读 + 状态机；(3) TLV 头部用 <code>uint16_t</code> 还是 <code>uint32_t</code> 取决于最大消息长度（2B&#x3D;64KB, 4B&#x3D;4GB）。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="TLV-协议解码状态机"><a href="#TLV-协议解码状态机" class="headerlink" title="TLV 协议解码状态机"></a>TLV 协议解码状态机</h4><p>粘包处理的本质是一个<strong>有限状态机</strong>，核心状态转换如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">初始状态 → HEAD_PARSE(读2字节头) → BODY_PARSE(读头指定的N字节) → 回调 → HEAD_PARSE...</span><br><span class="line">            ↓ 不足则缓存后重新 async_read_some            ↓ 不足同样缓存</span><br></pre></td></tr></table></figure>
+
+<p>关键代码结构：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> (bytes_transferred &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!_b_head_parse) &#123;</span><br><span class="line">        <span class="comment">// 状态A: 尝试读取头部(固定 HEAD_LENGTH 字节)</span></span><br><span class="line">        <span class="keyword">if</span> (buffered + received &lt; HEAD_LENGTH) &#123;</span><br><span class="line">            <span class="built_in">memcpy</span>(head_buf + buffered, data, received);  <span class="comment">// 缓存不足部分</span></span><br><span class="line">            buffered += received;</span><br><span class="line">            <span class="keyword">return</span>;  <span class="comment">// 再次 async_read_some</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 头部收齐，解析 body_len</span></span><br><span class="line">        <span class="type">short</span> body_len = *(<span class="type">short</span>*)head_buf;</span><br><span class="line">        _b_head_parse = <span class="literal">true</span>;  <span class="comment">// 状态转移</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 状态B: 读取 body_len 字节的消息体</span></span><br><span class="line">    <span class="keyword">if</span> (buffered &lt; body_len) &#123;</span><br><span class="line">        <span class="built_in">memcpy</span>(body_buf + buffered, data, received);</span><br><span class="line">        <span class="keyword">return</span>;  <span class="comment">// 再次等待</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 一条完整消息 = 回调处理</span></span><br><span class="line">    <span class="built_in">callback</span>(body_buf, body_len);</span><br><span class="line">    _b_head_parse = <span class="literal">false</span>;  <span class="comment">// 状态重置</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="粘包的-TCP-层面根因"><a href="#粘包的-TCP-层面根因" class="headerlink" title="粘包的 TCP 层面根因"></a>粘包的 TCP 层面根因</h4><p>TCP 是<strong>面向字节流</strong>的协议，不保留消息边界。发送端 <code>send(&quot;ABC&quot;)</code> + <code>send(&quot;DEF&quot;)</code> 在接收端可能一次 <code>recv</code> 收到 <code>&quot;ABCDEF&quot;</code>（粘包）或分两次收到 <code>&quot;AB&quot;</code> + <code>&quot;CDEF&quot;</code>（拆包）。TCP 只保证字节序和可靠性，不做消息边界保护。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li>固定头部长度的 TLV 是最简单可靠的自定义协议方案，2 字节头支持 0~65535 字节消息体</li>
+<li><code>async_read_some</code> 每次只读部分数据，必须用循环 + 状态机处理多次触发</li>
+<li>头部长度校验（<code>data_len &gt; MAX_LENGTH</code>）防止恶意超大包攻击（内存耗尽）</li>
+<li><code>recv_msg_node</code> 用 <code>shared_ptr</code> 管理，避免多线程环境下的生命周期问题</li>
+<li>接收缓冲区 <code>_data</code> 每次处理完后 <code>memset</code> 清零，防止残留数据污染下一条消息</li>
+<li>HTTP 用 <code>\r\n\r\n</code> 做边界也是一种粘包方案，但 TLV 更高效（不需要逐字节扫描分隔符）</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：TCP 为什么会粘包？</strong></p>
+<p>A：TCP 是字节流协议，不保留消息边界。发送端 Nagle 算法合并小包、接收端缓冲区积压、应用层读取不及时都会导致多条消息粘连。</p>
+<p><strong>Q2：粘包和拆包的区别？</strong></p>
+<p>A：粘包：接收端一次 <code>recv</code> 读到多条消息；拆包：一条消息被分到多次 <code>recv</code> 中收到。本质都是 TCP 不保留消息边界。</p>
+<p><strong>Q3：常见的粘包解决方案有哪些？</strong></p>
+<p>A：(1) 固定长度消息；(2) 特殊分隔符（如 HTTP 的 <code>\r\n</code>、Redis 的 <code>\r\n</code>）；(3) TLV 协议——头定长+体变长；(4) 消息头+消息体。TLV 是最通用的方案。</p>
+<p><strong>Q4：为什么 <code>async_read_some</code> 需要循环处理？</strong></p>
+<p>A：<code>async_read_some</code> 不保证读取指定字节数，可能返回部分数据。循环处理确保每次回调中尽可能多地消费缓冲区数据。</p>
+<p><strong>Q5：头部长度校验为什么重要？</strong></p>
+<p>A：防止恶意或损坏的包声明超大 <code>body_len</code>，导致分配过量内存（如声明 2^31-1 字节），引发 OOM。</p>
+<p><strong>Q6：<code>_b_head_parse</code> 标志位的作用？</strong></p>
+<p>A：记录当前状态机处于”解析头部”还是”解析体”阶段，确保重入 <code>HandleRead</code> 时能正确恢复状态。</p>
+<p><strong>Q7：<code>copy_len</code> 变量的作用？</strong></p>
+<p>A：记录已从接收缓冲区消费的字节数。一次 <code>async_read_some</code> 可能包含多条完整消息+一条不完整消息，<code>copy_len</code> 追踪消费进度。</p>
+<p><strong>Q8：<code>http</code> 协议怎么处理粘包？</strong></p>
+<p>A：HTTP&#x2F;1.1 通过 <code>Content-Length</code> 头（定长体）或 <code>Transfer-Encoding: chunked</code>（分块传输）来确定消息边界，不需要额外的 TLV 包装。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：忘记 <code>memset(_data, 0, MAX_LENGTH)</code> 清零 → 残留数据污染下一条消息<br><strong>陷阱2</strong>：头部长度字段为大端序，直接 <code>memcpy</code> → 字节序错误（网络序通常大端）<br><strong>陷阱3</strong>：<code>data_len</code> 为 0 时不处理 → 空消息泄漏到回调<br><strong>陷阱4</strong>：状态机未在连接关闭时重置 → 下次重连状态错乱<br><strong>陷阱5</strong>：<code>body_len</code> 超过 <code>MAX_LENGTH</code> 只打印日志不断连 → 攻击者持续发送恶意包</p>
+<p><strong>反问</strong>：UDP 有粘包问题吗？<br><em>答案：没有。UDP 是面向数据报的协议，每个 <code>sendto</code> 对应一个独立数据报，接收端 <code>recvfrom</code> 一次只收一个。但如果 UDP 包大于路径 MTU 会发生 IP 分片，这是另一个问题。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>粘包原因</strong>：TCP 字节流不保留消息边界 + Nagle 算法合并小包</li>
+<li><strong>TLV 协议</strong>：Type-Length-Value，头定长标记消息体长度，最通用的粘包方案</li>
+<li><strong>状态机处理</strong>：<code>_b_head_parse</code> 切换 HEAD&#x2F;BODY 状态，支持分次接收</li>
+<li><strong>async_read_some</strong>：只读部分数据，需循环 + 状态机配合处理</li>
+<li><strong>长度校验</strong>：防止恶意包声明超大 body 导致 OOM</li>
+<li><strong>copy_len</strong>：追踪缓冲区消费进度，处理一条 <code>read</code> 含多包的情况</li>
+<li><strong>内容长度 vs 分块传输</strong>：HTTP 的两种边界方案，对应 TLV 和分隔符思路</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98_1/">https://weimo1.github.io/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98_1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%A4%9A%E6%80%81%E5%86%85%E5%AD%98%E8%B5%84%E6%BA%90(PMR)/" title="多态内存资源(PMR)"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">多态内存资源(PMR)</div></div><div class="info-2"><div class="info-item-1">多态内存资源(PMR) 适用范围：C++17 PMR（Polymorphic Memory Resource）——运行时多态内存分配、STL 容器与自定义内存策略集成、monotonic&#x2F;pool_resource 的使用与原理  参考链接：  https://zhuanlan.zhihu.com/p/703967014 https://zhuanlan.zhihu.com/p/527327054  一、核心概念 定义：PMR 是 C++17 引入的多态内存资源系统，核心是 std::pmr::memory_resource 抽象基类 + std::pmr::polymorph...</div></div></div></a><a class="pagination-related" href="/posts/%E5%A4%9A%E6%80%81/" title="多态"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">多态</div></div><div class="info-2"><div class="info-item-1">多态如何优雅地实现C++编译期多态？-腾讯云开发者社区-腾讯云 123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118#include &lt;stdio....</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">处理粘包问题</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98-1"><span class="toc-number">2.</span> <span class="toc-text">处理粘包问题</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98"><span class="toc-number">2.1.</span> <span class="toc-text">粘包问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B2%98%E5%8C%85%E5%8E%9F%E5%9B%A0"><span class="toc-number">2.2.</span> <span class="toc-text">粘包原因</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85"><span class="toc-number">2.3.</span> <span class="toc-text">如何处理粘包</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">2.4.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">2.5.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">2.6.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">2.7.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E7%A7%8D%E7%B2%98%E5%8C%85%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">2.7.1.</span> <span class="toc-text">三种粘包方案对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTTP-%E7%9A%84%E5%88%86%E5%9D%97%E4%BC%A0%E8%BE%93%EF%BC%88Chunked-Transfer%EF%BC%89"><span class="toc-number">2.7.2.</span> <span class="toc-text">HTTP 的分块传输（Chunked Transfer）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%84%E7%90%86%E6%81%B6%E6%84%8F%E5%8C%85%EF%BC%88%E9%9D%9E%E6%B3%95%E9%95%BF%E5%BA%A6%E6%94%BB%E5%87%BB%EF%BC%89"><span class="toc-number">2.7.3.</span> <span class="toc-text">处理恶意包（非法长度攻击）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.8.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.8.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#TLV-%E5%8D%8F%E8%AE%AE%E8%A7%A3%E7%A0%81%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">2.8.1.1.</span> <span class="toc-text">TLV 协议解码状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B2%98%E5%8C%85%E7%9A%84-TCP-%E5%B1%82%E9%9D%A2%E6%A0%B9%E5%9B%A0"><span class="toc-number">2.8.1.2.</span> <span class="toc-text">粘包的 TCP 层面根因</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.8.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">2.9.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">2.9.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">2.9.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

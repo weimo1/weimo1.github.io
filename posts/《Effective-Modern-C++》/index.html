@@ -1,0 +1,340 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>《Effective Modern C++》 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="《Effective Modern C++》 适用范围：《Effective Modern C++》核心条款笔记——C++11&#x2F;14 最佳实践。  参考：https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;592921281 一、核心概念 定义：Scott Meyers 著的《Effective Modern C++》总结了 C++11&#x2F;14 时代的 42 个最佳实践条款">
+<meta property="og:type" content="article">
+<meta property="og:title" content="《Effective Modern C++》">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E3%80%8AEffective-Modern-C++%E3%80%8B/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="《Effective Modern C++》 适用范围：《Effective Modern C++》核心条款笔记——C++11&#x2F;14 最佳实践。  参考：https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;592921281 一、核心概念 定义：Scott Meyers 著的《Effective Modern C++》总结了 C++11&#x2F;14 时代的 42 个最佳实践条款">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.562Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "《Effective Modern C++》",
+  "url": "https://weimo1.github.io/posts/%E3%80%8AEffective-Modern-C++%E3%80%8B/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.562Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E3%80%8AEffective-Modern-C++%E3%80%8B/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '《Effective Modern C++》',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">《Effective Modern C++》</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">《Effective Modern C++》</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.562Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="《Effective-Modern-C-》"><a href="#《Effective-Modern-C-》" class="headerlink" title="《Effective Modern C++》"></a>《Effective Modern C++》</h1><blockquote>
+<p>适用范围：《Effective Modern C++》核心条款笔记——C++11&#x2F;14 最佳实践。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/592921281">https://zhuanlan.zhihu.com/p/592921281</a></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Scott Meyers 著的《Effective Modern C++》总结了 C++11&#x2F;14 时代的 42 个最佳实践条款，涵盖类型推导、auto、智能指针、移动语义、lambda 表达式等核心主题。</li>
+<li><strong>关键词</strong>：<code>nullptr</code>、<code>using</code> vs <code>typedef</code>、<code>auto</code>、<code>decltype</code>、移动语义、智能指针、lambda</li>
+<li><strong>适用场景&#x2F;边界</strong>：C++11&#x2F;14 项目的最佳实践参考</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="核心条款分类"><a href="#核心条款分类" class="headerlink" title="核心条款分类"></a>核心条款分类</h3><p>类型推导（Item 1-4）、auto（Item 5-6）、现代 C++ 特性（Item 7-17）、智能指针（Item 18-22）、移动语义与完美转发（Item 23-30）、lambda 表达式（Item 31-34）、并发 API（Item 35-40）、微调（Item 41-42）。</p>
+<h3 id="三层递进"><a href="#三层递进" class="headerlink" title="三层递进"></a>三层递进</h3><p><strong>第一层</strong>：<code>nullptr</code> 替代 0&#x2F;NULL，<code>using</code> 替代 <code>typedef</code><br><strong>第二层</strong>：理解引用折叠与完美转发<br><strong>第三层</strong>：移动语义的对象生命周期管理</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="优先使用-nullptr-，而不是-0-或-NULL"><a href="#优先使用-nullptr-，而不是-0-或-NULL" class="headerlink" title="优先使用 nullptr ，而不是 0 或 NULL"></a><strong>优先使用</strong> <code>nullptr</code> <strong>，而不是 0 或</strong> <code>NULL</code></h3><p><code>nullptr</code> 是 C++11 引入的纯右值，其类型为 <code>nullptr_t</code> ，可以隐式转换为任何指针类型。</p>
+<p>因此，相比 0 和 <code>NULL</code> ， <code>nullptr_t</code> 可以避免调用到接受其他类型形参的函数重载版本。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void f(int);</span><br><span class="line">void f(bool);</span><br><span class="line">void f(void*);</span><br><span class="line"></span><br><span class="line">f(0);       // 调用 f(int)</span><br><span class="line">f(NULL);    // 在大部分编译器下编译失败</span><br><span class="line">f(nullptr); // 调用 f(void*)</span><br></pre></td></tr></table></figure>
+
+<h3 id="优先使用using，而不是typedef"><a href="#优先使用using，而不是typedef" class="headerlink" title="优先使用using，而不是typedef"></a><strong>优先使用</strong><code>using</code><strong>，而不是</strong><code>typedef</code></h3><ol>
+<li><code>using</code> 可读性更好</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">typedef void (*FP)(int, const std::string&amp;);</span><br><span class="line">using FP = void (*)(int, const std::string&amp;);</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>using</code> 支持模板化，但 <code>typedef</code> 不支持</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">template&lt;class T&gt;</span><br><span class="line">struct Alloc &#123;&#125;;</span><br><span class="line">template&lt;class T&gt;</span><br><span class="line">using Vec = vector&lt;T, Alloc&lt;T&gt;&gt;; // type-id is vector&lt;T, Alloc&lt;T&gt;&gt;</span><br><span class="line">Vec&lt;int&gt; v; // Vec&lt;int&gt; is the same as vector&lt;int, Alloc&lt;int&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>using</code> 模板可以避免 <code>::type</code> 后缀，同时也不需要考虑模板内带依赖类型的 <code>typename</code> 前缀；C++14 正是在 type traits 中引入了 <code>using</code> ，使其语法友好了很多</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">std::remove_const&lt;T&gt;::type // C++11</span><br><span class="line">std::remove_const_t&lt;T&gt;     // C++14</span><br></pre></td></tr></table></figure>
+
+<h3 id="优先使用enum-class，而不是enum"><a href="#优先使用enum-class，而不是enum" class="headerlink" title="优先使用enum class，而不是enum"></a><strong>优先使用</strong><code>enum class</code><strong>，而不是</strong><code>enum</code></h3><ol>
+<li><code>enum class</code> 可以避免 <code>enum</code> 带来的命名空间污染</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">enum Color &#123; red, green, blue &#125;;</span><br><span class="line">auto red = false; // Compile error，enum Color 污染了当前的命名空间</span><br><span class="line"></span><br><span class="line">enum class Color &#123; red, green, blue &#125;;</span><br><span class="line">Color c1 = red;        // Compile error</span><br><span class="line">Color c2 = Color::red; // OK</span><br><span class="line">auto  c3 = Color::red; // OK</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>enum class</code> 不能隐式转换为其他类型</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">enum Color &#123; red, green, blue &#125;;</span><br><span class="line">Color c = red;</span><br><span class="line">if (c &lt; 11.4); // OK</span><br><span class="line"></span><br><span class="line">enum class Color &#123; red, green, blue &#125;;</span><br><span class="line">Color c = Color::red;</span><br><span class="line">if (c &lt; 11.4) &#123;&#125; // Compile error</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>enum class</code> 的默认底层类型是 <code>int</code> ，而 <code>enum</code> 没有默认底层类型（节省空间） 这意味 <code>enum</code> 仅在指定底层类型的情况下才可以进行前置声明；同时默认情况下，若 <code>enum</code> 的定义发生扩充（例如新增了一个枚举）， <code>enum</code> 的底层类型就可能会改变，依赖到 <code>enum</code> 的编译单元都需要重新编译了</li>
+</ol>
+<h3 id="为需要改写的函数都显式添加override声明"><a href="#为需要改写的函数都显式添加override声明" class="headerlink" title="为需要改写的函数都显式添加override声明"></a><strong>为需要改写的函数都显式添加</strong><code>override</code><strong>声明</strong></h3><p>发生函数重载是需要一些条件的：</p>
+<ul>
+<li>函数名称相同</li>
+<li>形参类型相同</li>
+<li>常量性相同</li>
+<li>返回值和异常类型可兼容</li>
+<li>函数引用限定符（C++11，用于限制函数仅用于左值或右值）相同</li>
+</ul>
+<p>在编写重写的函数时，可能会因为某些条件没有满足导致没有真正重写（有可能发生 function shadowing），这时候加上 <code>override</code> 就能让编译器产生错误信息了。</p>
+<h3 id="确定函数不会异常后，可以加上noexcept声明"><a href="#确定函数不会异常后，可以加上noexcept声明" class="headerlink" title="确定函数不会异常后，可以加上noexcept声明"></a><strong>确定函数不会异常后，可以加上</strong><code>noexcept</code><strong>声明</strong></h3><ol>
+<li>加上 <code>noexcept</code> 声明有利于函数编译器更好地优化代码</li>
+<li>编写类的移动构造函数时，加上 <code>noexcept</code> 声明可以在其作为 <code>vector</code> 等容器的元素时，在容器发生 resize 的情况下，将元素的复制操作替换成低成本的移动操作</li>
+<li>大部分函数是异常中立的，函数本身不抛出异常，但其调用的函数不保证不产生异常（在我们的业务代码中，涉及 RPC 调用的代码基本都属于这种情况，可能只有少部分工具类代码可保证不产生异常）</li>
+</ol>
+<h3 id="优先使用constexpr，而不是const"><a href="#优先使用constexpr，而不是const" class="headerlink" title="优先使用constexpr，而不是const"></a><strong>优先使用</strong><code>constexpr</code><strong>，而不是</strong><code>const</code></h3><p><code>constexpr</code> 是 C++11 引入的编译期常量表达式的修饰符，相比而言 <code>const</code> 则仅保证某个变量在运行时保持不变。具备编译期可知的特性之后，用 <code>constexpr</code> 修饰的变量就可以用于标识数组大小、switch case label 等场景了。</p>
+<h3 id="使用std-function代替函数指针"><a href="#使用std-function代替函数指针" class="headerlink" title="使用std::function代替函数指针"></a><strong>使用</strong><code>std::function</code><strong>代替函数指针</strong></h3><p><code>std::function</code> 是 C++11 标准库中的一个模板，将函数指针的思想推广为任何的可调用对象（即重载了 <code>()</code> 操作符的对象）。相比函数指针，其适用性更广，代码可读性也更好，还可以跟 <code>std::bind</code> 、 <code>absl::bind_front</code> 、 <a href="https://link.zhihu.com/?target=https://en.cppreference.com/w/cpp/language/lambda" rel="external nofollow noreferrer"><strong>Lambda 表达式</strong></a>等特性结合。</p>
+<h3 id="使用chrono时间工具库"><a href="#使用chrono时间工具库" class="headerlink" title="使用chrono时间工具库"></a><strong>使用</strong><code>chrono</code><strong>时间工具库</strong></h3><p><a href="https://link.zhihu.com/?target=https://en.cppreference.com/w/cpp/chrono" rel="external nofollow noreferrer"><strong>chrono</strong></a> 时间工具库相比 <code>std::time</code> 不管是从表达力还是从易用性上都好很多，<a href="https://link.zhihu.com/?target=https://en.cppreference.com/w/cpp/chrono/duration%23Literals" rel="external nofollow noreferrer"><strong>chrono_literals</strong></a> 的加入更是让代码可读性更上一个台阶。日常业务开发中我们时常会有计算某段子例程执行时间的需求，这时候用 chrono 就很合适。</p>
+<h3 id="减少函数代码的方法：重写"><a href="#减少函数代码的方法：重写" class="headerlink" title="减少函数代码的方法：重写"></a>减少函数代码的方法：重写</h3><p>使用const_cast&lt;&gt; 重写const 版本的函数 直接转换</p>
+<p>使用constexpr 常量表达式 在传入非常量时可以自动退化 不用重写普通版本</p>
+<h3 id="C-C-宏中-do-while-0-的“零次循环”技巧"><a href="#C-C-宏中-do-while-0-的“零次循环”技巧" class="headerlink" title="C&#x2F;C++ 宏中 do { ... } while (0) 的“零次循环”技巧"></a><strong>C&#x2F;C++ 宏中 <code>do { ... } while (0)</code> 的“零次循环”技巧</strong></h3><h4 id="do-while-0"><a href="#do-while-0" class="headerlink" title="do { ... } while (0)"></a><code>do { ... } while (0)</code></h4><p>把宏体包装在 <strong>单次执行的 do-while 循环</strong> 中：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#define FOO(x) \</span><br><span class="line">    do &#123; stmt1; stmt2; &#125; while (0)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>语义</strong>：循环体只执行一次，与 <code>if/else</code>、<code>for</code>、<code>while</code> 等结构无缝衔接。</li>
+<li><strong>语法</strong>：<code>do { ... } while (0);</code> 末尾自带分号，用户正常写 <code>FOO(x);</code> 即可通过编译。</li>
+</ul>
+<ol>
+<li>宏体含多条语句、内部变量定义或需要“单语句”语义时，<strong>务必</strong>使用 <code>do { ... } while (0)</code>。</li>
+<li>对于只含一条表达式的宏，可省略此技巧，但保持一致性亦可保留。</li>
+<li>现代 C++ 推荐用 <code>inline</code> 函数或模板替代宏；若必须用宏，则遵循此范式。</li>
+</ol>
+<h3 id="在访问c-variant的时候记得避开std-get，因为会抛异常。"><a href="#在访问c-variant的时候记得避开std-get，因为会抛异常。" class="headerlink" title="在访问c++ variant的时候记得避开std::get，因为会抛异常。"></a>在访问<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=239665199&content_type=Article&match_order=1&q=c+++variant&zhida_source=entity">c++ variant</a>的时候记得避开std::get，因为会抛异常。</h3><p>在访问<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=239665199&content_type=Article&match_order=1&q=c+++variant&zhida_source=entity">c++ variant</a>的时候记得避开std::get，因为会抛异常。如果你的编译器够新的话就用std::visit，如果比较旧就用<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=239665199&content_type=Article&match_order=1&q=std::get_if&zhida_source=entity">std::get_if</a>，因为有些旧编译器对std::visit的编译优化不够好。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-类型推导规则速查"><a href="#1-类型推导规则速查" class="headerlink" title="1. 类型推导规则速查"></a>1. 类型推导规则速查</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Item 1-2: auto 推导 = 模板参数推导（除了 initializer_list）</span></span><br><span class="line"><span class="keyword">auto</span> x = <span class="number">42</span>;   <span class="comment">// int</span></span><br><span class="line"><span class="keyword">auto</span> y = &#123;<span class="number">42</span>&#125;; <span class="comment">// std::initializer_list&lt;int&gt;（auto 特有规则）</span></span><br><span class="line"><span class="keyword">auto</span> z&#123;<span class="number">42</span>&#125;;    <span class="comment">// int (C++17), std::initializer_list&lt;int&gt; (C++14)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Item 3: decltype 保留引用</span></span><br><span class="line"><span class="type">int</span> a = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">decltype</span>(a) b = a;  <span class="comment">// int</span></span><br><span class="line"><span class="keyword">decltype</span>((a)) c = a; <span class="comment">// int&amp; (注意括号)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-现代-C-关键实践"><a href="#2-现代-C-关键实践" class="headerlink" title="2. 现代 C++ 关键实践"></a>2. 现代 C++ 关键实践</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Item 14: noexcept 是移动语义的保证</span></span><br><span class="line"><span class="comment">// vector::push_back 检测 noexcept 移动 → memmove 优化</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Item 23: 移动优于拷贝，但不能盲目</span></span><br><span class="line">Widget w2 = std::<span class="built_in">move</span>(w1); <span class="comment">// w1 被&quot;掏空&quot;但仍可析构/赋新值</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>auto&amp;&amp; 万能引用</strong>：<code>for (auto&amp;&amp; x : range)</code> 适配任何值类型</li>
+<li><strong>override 关键字的必要性</strong>：防止拼写错误导致未覆盖基类虚函数</li>
+<li><strong>nullptr 替代 0&#x2F;NULL</strong>：避免重载决议选择 int 而非指针版本</li>
+<li><strong>enum class 替代 enum</strong>：强类型枚举防止隐式转换</li>
+<li><strong>&#x3D;delete 替代 private 不实现</strong>：更清晰的错误消息</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: 这本书讲了什么？</strong><br>A: 42 个条款覆盖 C++11&#x2F;14 最佳实践：类型推导、auto、智能指针、移动语义、lambda、并发</p>
+<p><strong>Q2: auto 唯一的特殊规则是什么？</strong><br>A: <code>auto x = {1,2,3}</code> 推导为 initializer_list，模板推导不这样做</p>
+<p><strong>Q3: 什么时候用 decltype(auto)？</strong><br>A: 完美转发返回值，保留引用性质：<code>decltype(auto) f() { return x; }</code></p>
+<p><strong>Q4: unique_ptr 为什么比 shared_ptr 更优先？</strong><br>A: 零开销（大小等于裸指针），独占所有权语义清晰，可转为 shared_ptr</p>
+<p><strong>Q5: 如何避免 lambda 的悬垂引用？</strong><br>A: 用 init capture 移动捕获：<code>[v = std::move(local)] { use(v); }</code></p>
+<p><strong>Q6: 完美转发失败的场景？</strong><br>A: 大括号初始化器、0&#x2F;NULL 作为空指针、位域、重载函数名&#x2F;模板名</p>
+<p><strong>Q7: const T&amp;&amp; 有用吗？</strong><br>A: 几乎没用，const 右值引用绑定 const 右值，但无法移动（const 不可修改）</p>
+<p><strong>Q8: 为什么用 emplace_back 而非 push_back？</strong><br>A: 直接构造而非构造临时对象+移动，节省一次构造</p>
+<p><strong>Q9: Pimpl 和 unique_ptr 的析构问题？</strong><br>A: Pimpl 在 .h 中用 unique_ptr 声明，在 .cpp 中实现析构，需要完整类型定义</p>
+<p><strong>Q10: 引用折叠的规则？</strong><br>A: &amp; + &amp; &#x3D; &amp;; &amp; + &amp;&amp; &#x3D; &amp;; &amp;&amp; + &amp; &#x3D; &amp;; &amp;&amp; + &amp;&amp; &#x3D; &amp;&amp;. 只有全都是 &amp;&amp; 时才折叠为 &amp;&amp;</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：<code>auto x = {1,2}</code> → initializer_list，<code>auto x{1}</code>→int (C++17)，规则不一致</li>
+<li><strong>反问</strong>：Effective 系列过时了吗？→ 核心原则不变，但需要关注 C++17&#x2F;20 更新</li>
+<li><strong>陷阱</strong>：万能引用 <code>T&amp;&amp;</code> 匹配一切，需要 SFINAE&#x2F;requires 约束</li>
+<li><strong>反问</strong>：现代 C++ 的核心是什么？→ 类型安全 + 资源安全 + 性能 &#x3D; auto + 智能指针 + 移动语义</li>
+<li><strong>陷阱</strong>：默认移动操作如果成员有 deleted 移动→不会自动生成</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>auto 推导</strong>：模板推导 + initializer_list 特例</li>
+<li><strong>decltype</strong>：保留引用&#x2F;const，<code>((x))</code> 得引用</li>
+<li><strong>nullptr</strong>：永远用 nullptr，不用 0&#x2F;NULL</li>
+<li><strong>override</strong>：显式覆盖，防止拼写错误</li>
+<li><strong>enum class</strong>：强类型枚举，不隐式转换</li>
+<li><strong>&#x3D;delete</strong>：显式禁止，比 private 方案好</li>
+<li><strong>完美转发</strong>：万能引用 + forward</li>
+<li><strong>Pimpl</strong>：编译防火墙，隐藏实现细节</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E3%80%8AEffective-Modern-C++%E3%80%8B/">https://weimo1.github.io/posts/%E3%80%8AEffective-Modern-C++%E3%80%8B/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E4%B8%87%E4%BA%BA%E7%BE%A4%E8%81%8A/" title="万人群聊"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">万人群聊</div></div><div class="info-2"><div class="info-item-1">万人群聊 万人群聊是 IM 系统的极限挑战场景。一条消息需要触达群内所有人，在写扩散模型下产生巨大的写入放大效应。通过并发控制、消息合并、推拉结合、读扩散降级等策略解决性能瓶颈。  一、核心概念 定义：万人群聊指一个群组内成员数达到万级别（甚至十万级别）的聊天场景。核心挑战：一条消息需要分发给数万成员，消息写入量和推送量呈线性放大。 关键词：写放大、读扩散、并发控制、消息合并、信令通知、推拉结合、HotRing 热点识别 适用场景&#x2F;边界： 直播聊天室、超级群组 推送通知群 大规模社交群聊    二、详细解析（≥200字）原理拆解（三层递进）第一层：万人群聊的核心问题 写扩散模型...</div></div></div></a><a class="pagination-related" href="/posts/vector-list-array/" title="vector  list  array"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">vector  list  array</div></div><div class="info-2"><div class="info-item-1">vector  list  array打破迷思：为什么资深C++开发者几乎总是选择vector而非list - 江小康 - 博客园   一、理论上：vector和list各是什么？先来个直观的比喻：  vector就像一排连续的座位：大家坐在一起，找人超快，但中间插入一个人就需要后面的人都往后挪。 list就像一群手拉手的人：每个人只知道自己左右邻居是谁，找到第n个人必须从头数，但中间插入一个人只需要改变两边人的”指向”。  技术上讲：  vector：连续内存，支持随机访问（可以直接访问任意位置），内存布局紧凑 list：双向链表，只支持顺序访问（必须从头&#x2F;尾遍历），内存布局...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E3%80%8AEffective-Modern-C-%E3%80%8B"><span class="toc-number">1.</span> <span class="toc-text">《Effective Modern C++》</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E6%9D%A1%E6%AC%BE%E5%88%86%E7%B1%BB"><span class="toc-number">1.2.1.</span> <span class="toc-text">核心条款分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B"><span class="toc-number">1.2.2.</span> <span class="toc-text">三层递进</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%98%E5%85%88%E4%BD%BF%E7%94%A8-nullptr-%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF-0-%E6%88%96-NULL"><span class="toc-number">1.4.1.</span> <span class="toc-text">优先使用 nullptr ，而不是 0 或 NULL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%98%E5%85%88%E4%BD%BF%E7%94%A8using%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AFtypedef"><span class="toc-number">1.4.2.</span> <span class="toc-text">优先使用using，而不是typedef</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%98%E5%85%88%E4%BD%BF%E7%94%A8enum-class%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AFenum"><span class="toc-number">1.4.3.</span> <span class="toc-text">优先使用enum class，而不是enum</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E9%9C%80%E8%A6%81%E6%94%B9%E5%86%99%E7%9A%84%E5%87%BD%E6%95%B0%E9%83%BD%E6%98%BE%E5%BC%8F%E6%B7%BB%E5%8A%A0override%E5%A3%B0%E6%98%8E"><span class="toc-number">1.4.4.</span> <span class="toc-text">为需要改写的函数都显式添加override声明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A1%AE%E5%AE%9A%E5%87%BD%E6%95%B0%E4%B8%8D%E4%BC%9A%E5%BC%82%E5%B8%B8%E5%90%8E%EF%BC%8C%E5%8F%AF%E4%BB%A5%E5%8A%A0%E4%B8%8Anoexcept%E5%A3%B0%E6%98%8E"><span class="toc-number">1.4.5.</span> <span class="toc-text">确定函数不会异常后，可以加上noexcept声明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%98%E5%85%88%E4%BD%BF%E7%94%A8constexpr%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AFconst"><span class="toc-number">1.4.6.</span> <span class="toc-text">优先使用constexpr，而不是const</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8std-function%E4%BB%A3%E6%9B%BF%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88"><span class="toc-number">1.4.7.</span> <span class="toc-text">使用std::function代替函数指针</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8chrono%E6%97%B6%E9%97%B4%E5%B7%A5%E5%85%B7%E5%BA%93"><span class="toc-number">1.4.8.</span> <span class="toc-text">使用chrono时间工具库</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%8F%E5%B0%91%E5%87%BD%E6%95%B0%E4%BB%A3%E7%A0%81%E7%9A%84%E6%96%B9%E6%B3%95%EF%BC%9A%E9%87%8D%E5%86%99"><span class="toc-number">1.4.9.</span> <span class="toc-text">减少函数代码的方法：重写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#C-C-%E5%AE%8F%E4%B8%AD-do-while-0-%E7%9A%84%E2%80%9C%E9%9B%B6%E6%AC%A1%E5%BE%AA%E7%8E%AF%E2%80%9D%E6%8A%80%E5%B7%A7"><span class="toc-number">1.4.10.</span> <span class="toc-text">C&#x2F;C++ 宏中 do { ... } while (0) 的“零次循环”技巧</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#do-while-0"><span class="toc-number">1.4.10.1.</span> <span class="toc-text">do { ... } while (0)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8%E8%AE%BF%E9%97%AEc-variant%E7%9A%84%E6%97%B6%E5%80%99%E8%AE%B0%E5%BE%97%E9%81%BF%E5%BC%80std-get%EF%BC%8C%E5%9B%A0%E4%B8%BA%E4%BC%9A%E6%8A%9B%E5%BC%82%E5%B8%B8%E3%80%82"><span class="toc-number">1.4.11.</span> <span class="toc-text">在访问c++ variant的时候记得避开std::get，因为会抛异常。</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC%E8%A7%84%E5%88%99%E9%80%9F%E6%9F%A5"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. 类型推导规则速查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%8E%B0%E4%BB%A3-C-%E5%85%B3%E9%94%AE%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. 现代 C++ 关键实践</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.3.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

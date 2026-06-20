@@ -1,0 +1,430 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>move  forward  swap | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="move  forward  swap 适用范围：C++11 std::move移动语义、std::forward完美转发、std::swap交换、引用折叠规则  一、核心概念 定义：std::move 无条件将左值转为右值引用（触发移动语义）；std::forward 根据模板参数保持原值类别（左&#x2F;右值）的转发；std::swap 高效交换两个对象的所有权 关键词：移动语义(move">
+<meta property="og:type" content="article">
+<meta property="og:title" content="move  forward  swap">
+<meta property="og:url" content="https://weimo1.github.io/posts/move-forward-swap/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="move  forward  swap 适用范围：C++11 std::move移动语义、std::forward完美转发、std::swap交换、引用折叠规则  一、核心概念 定义：std::move 无条件将左值转为右值引用（触发移动语义）；std::forward 根据模板参数保持原值类别（左&#x2F;右值）的转发；std::swap 高效交换两个对象的所有权 关键词：移动语义(move">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.559Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "move  forward  swap",
+  "url": "https://weimo1.github.io/posts/move-forward-swap/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.559Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/move-forward-swap/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'move  forward  swap',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">move  forward  swap</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">move  forward  swap</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.559Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>18分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="move-forward-swap"><a href="#move-forward-swap" class="headerlink" title="move  forward  swap"></a>move  forward  swap</h1><blockquote>
+<p>适用范围：C++11 std::move移动语义、std::forward完美转发、std::swap交换、引用折叠规则</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::move</code> 无条件将左值转为右值引用（触发移动语义）；<code>std::forward</code> 根据模板参数保持原值类别（左&#x2F;右值）的转发；<code>std::swap</code> 高效交换两个对象的所有权</li>
+<li><strong>关键词</strong>：移动语义(move semantics)、完美转发(perfect forwarding)、右值引用、引用折叠(reference collapsing)、万能引用(forwarding reference)</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>避免不必要的深拷贝（unique_ptr转移所有权、大容器返回值优化）</li>
+<li>泛型编程中保持参数值类别传递（工厂模式、emplace_back）</li>
+<li>边界：move后对象处于有效但未指定状态；forward只能用于万能引用上下文(T&amp;&amp;)</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-std-move-原理"><a href="#2-1-std-move-原理" class="headerlink" title="2.1 std::move 原理"></a>2.1 std::move 原理</h3><p><code>std::move</code> 的本质是静态_cast：<code>static_cast&lt;std::remove_reference_t&lt;T&gt;&amp;&amp;&gt;(t)</code>。它不做任何运行时操作，只是类型转换——将左值标记为”可移动”。真正的资源转移发生在移动构造函数&#x2F;移动赋值运算符内部。</p>
+<p><strong>关键误区</strong>：<code>std::move</code> 不移动任何东西，它只是”允许”移动。如果目标类型没有移动构造函数，退化为拷贝。</p>
+<h3 id="2-2-std-forward-原理"><a href="#2-2-std-forward-原理" class="headerlink" title="2.2 std::forward 原理"></a>2.2 std::forward 原理</h3><p><code>std::forward</code> 利用引用折叠规则：</p>
+<ul>
+<li><code>T&amp; &amp;</code> → <code>T&amp;</code></li>
+<li><code>T&amp; &amp;&amp;</code> → <code>T&amp;</code></li>
+<li><code>T&amp;&amp; &amp;</code> → <code>T&amp;</code></li>
+<li><code>T&amp;&amp; &amp;&amp;</code> → <code>T&amp;&amp;</code></li>
+</ul>
+<p>当 <code>T</code> 被推导为左值引用时，<code>T&amp;&amp;</code> 折叠为 <code>T&amp;</code>（左值引用）。当 <code>T</code> 被推导为非引用类型时，<code>T&amp;&amp;</code> 保持为右值引用。<code>std::forward&lt;T&gt;(t)</code> 据此恢复参数原始值类别。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h2 id="1、std-move"><a href="#1、std-move" class="headerlink" title="1、std::move"></a>1、std::move</h2><p>std::move() 函数获得一个右值引用</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/// since C++11, until C++14</span><br><span class="line">template&lt; class T &gt;</span><br><span class="line">typename std::remove_reference&lt;T&gt;::type&amp;&amp; move( T&amp;&amp; t ) noexcept;</span><br><span class="line"></span><br><span class="line">/// since C++14</span><br><span class="line">template&lt; class T &gt;</span><br><span class="line">constexpr std::remove_reference_t&lt;T&gt;&amp;&amp; move( T&amp;&amp; t ) noexcept;</span><br></pre></td></tr></table></figure>
+
+<p>右值引用可以触发移动语义，使用资源交换而不是拷贝的方法完成赋值。例如下面的示例，（2）触发移动语义，调用完成，str 成为了空字符串，因为进行了资源交换。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;string&gt;</span><br><span class="line">#include &lt;utility&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::string str = &quot;Salut&quot;;</span><br><span class="line">    std::vector&lt;std::string&gt; v;</span><br><span class="line"></span><br><span class="line">    v.push_back(str); // (1)</span><br><span class="line">    std::cout &lt;&lt; &quot;After copy, str is &quot; &lt;&lt; str &lt;&lt; &#x27;\n&#x27;;</span><br><span class="line"></span><br><span class="line">    v.push_back(std::move(str)); // (2)</span><br><span class="line">    std::cout &lt;&lt; &quot;After move, str is &quot; &lt;&lt; str &lt;&lt; &#x27;\n&#x27;;</span><br><span class="line"></span><br><span class="line">    std::cout &lt;&lt; &quot;The contents of the vector are &#123; &quot;;</span><br><span class="line">    for (auto&amp; elm : v) &#123;</span><br><span class="line">        std::cout &lt;&lt; elm &lt;&lt; &#x27; &#x27;;</span><br><span class="line">    &#125;</span><br><span class="line">    std::cout &lt;&lt; &quot;&#125;\n&quot;;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>执行的输出为</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">After copy, str is Salut</span><br><span class="line">After move, str is </span><br><span class="line">The contents of the vector are &#123; Salut Salut &#125;</span><br></pre></td></tr></table></figure>
+
+<p>std::move() 的实现非常简单</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">/// include/bits/move.h</span><br><span class="line">template&lt;typename _Tp&gt;</span><br><span class="line">_GLIBCXX_NODISCARD</span><br><span class="line">constexpr typename std::remove_reference&lt;_Tp&gt;::type&amp;&amp;</span><br><span class="line">move(_Tp&amp;&amp; __t) noexcept</span><br><span class="line">&#123; return static_cast&lt;typename std::remove_reference&lt;_Tp&gt;::type&amp;&amp;&gt;(__t); &#125;</span><br></pre></td></tr></table></figure>
+
+<p>理解 std::move() 需要明白如下两点</p>
+<p>（1）引用折叠</p>
+<ul>
+<li><strong>间接创建</strong>（只能间接，如类型别名或模板参数，语法不支持直接创建）引用的引用，这些引用会形成“折叠”</li>
+<li>T&amp; &amp;、T&amp; &amp;&amp;、T&amp;&amp; &amp; 都会折叠成左值引用 T&amp;</li>
+<li>T&amp;&amp; &amp;&amp; 折叠成右值引用 T&amp;&amp;</li>
+</ul>
+<p>（2）模板右值引用参数</p>
+<ul>
+<li>模板函数形参类型是 T&amp;&amp;，而实参是一个左值，推断出的模板实参类型将是 T&amp;，且函数参数将被实例化一个普通的左值引用参数 T&amp;</li>
+<li>模板函数形参类型是 T&amp;&amp;，而实参是一个右值，推断出的模板实参类型将是 T，且函数参数将被实例化一个普通参数 T</li>
+</ul>
+<p>（3）从一个左值 static_cast 到一个右值引用是允许的</p>
+<p>明白上述（1）（2）（3）三点就可以理解 std::move() 的原理了。</p>
+<p>如果 std::move() 实参是右值，如下所示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">auto s2 = std::move(std::string(&quot;bye!&quot;));</span><br></pre></td></tr></table></figure>
+
+<p>模板函数 move 函数将会被实例化为如下类型</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">std::string&amp;&amp; move(std::string&amp;&amp; t);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>模板参数 Tp 被推断为 std::string 类型</li>
+<li>形参类型右值引用 std::string&amp;&amp;</li>
+<li>std::remove_reference 用 std::string 实例化</li>
+<li>std::remove_reference<a href="std::string" rel="external nofollow noreferrer">std::string</a> 的 type 成员是 std::string</li>
+<li>返回类型是 std::string&amp;&amp;</li>
+</ul>
+<p>如果 std::move() 实参是左值，如下所示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">std::string s1 = std::string(&quot;bye&quot;); </span><br><span class="line">auto s2 = std::move(s1);</span><br></pre></td></tr></table></figure>
+
+<p>模板函数 move 将会被实例化为</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">std::string&amp;&amp; move(std::string&amp; t);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>模板参数 Tp 被推断为 std::string&amp; 类型</li>
+<li>形参类型是 std::string&amp; &amp;&amp;，引用折叠为左值引用 std::string&amp;</li>
+<li>std::remove_reference 用 std::string&amp; 实例化</li>
+<li>std::remove_reference<a href="std::string&" rel="external nofollow noreferrer">std::string&amp;</a> 的 type 成员是 std::string</li>
+<li>返回类型是 std::string&amp;&amp;</li>
+</ul>
+<h2 id="2、std-swap"><a href="#2、std-swap" class="headerlink" title="2、std::swap()"></a>2、std::swap()</h2><p>通过移动类交换两个变量。它要求传入的变量是可以移动的（具有移动构造函数和重载移动赋值运算符）。宏定义 _GLIBCXX_MOVE 在 C++11 展开为 std::move()。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">/// include/bits/move.h</span><br><span class="line">template&lt;typename _Tp&gt;</span><br><span class="line">_GLIBCXX20_CONSTEXPR</span><br><span class="line">inline</span><br><span class="line">#if __cplusplus &gt;= 201103L</span><br><span class="line">typename enable_if&lt;__and_&lt;__not_&lt;__is_tuple_like&lt;_Tp&gt;&gt;,</span><br><span class="line">is_move_constructible&lt;_Tp&gt;,</span><br><span class="line">is_move_assignable&lt;_Tp&gt;&gt;::value&gt;::type</span><br><span class="line">#else</span><br><span class="line">void</span><br><span class="line">#endif</span><br><span class="line">swap(_Tp&amp; __a, _Tp&amp; __b)</span><br><span class="line">_GLIBCXX_NOEXCEPT_IF(__and_&lt;is_nothrow_move_constructible&lt;_Tp&gt;,</span><br><span class="line">is_nothrow_move_assignable&lt;_Tp&gt;&gt;::value)</span><br><span class="line">&#123;</span><br><span class="line">    #if __cplusplus &lt; 201103L</span><br><span class="line">    ///...</span><br><span class="line">    #endif</span><br><span class="line">    _Tp __tmp = _GLIBCXX_MOVE(__a);</span><br><span class="line">    __a = _GLIBCXX_MOVE(__b);</span><br><span class="line">    __b = _GLIBCXX_MOVE(__tmp);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename _Tp, size_t _Nm&gt;</span><br><span class="line">_GLIBCXX20_CONSTEXPR</span><br><span class="line">inline</span><br><span class="line">#if __cplusplus &gt;= 201103L</span><br><span class="line">typename enable_if&lt;__is_swappable&lt;_Tp&gt;::value&gt;::type</span><br><span class="line">#else</span><br><span class="line">void</span><br><span class="line">#endif</span><br><span class="line">swap(_Tp (&amp;__a)[_Nm], _Tp (&amp;__b)[_Nm])</span><br><span class="line">_GLIBCXX_NOEXCEPT_IF(__is_nothrow_swappable&lt;_Tp&gt;::value)</span><br><span class="line">&#123;</span><br><span class="line">    for (size_t __n = 0; __n &lt; _Nm; ++__n)</span><br><span class="line">        swap(__a[__n], __b[__n]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在移动的过程中，不会有资源的申请和释放。看下面的例子：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">#define ADD_MOVE</span><br><span class="line"></span><br><span class="line">class Test &#123;</span><br><span class="line">public:</span><br><span class="line">explicit Test(size_t l): len_(l), data_(new unsigned char[l]) &#123;</span><br><span class="line">    printf(&quot;Test Ctor\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line">Test(const Test&amp; other): len_(other.len_), data_(new unsigned char[len_]) &#123;</span><br><span class="line">    printf(&quot;Test Copy Ctor\n&quot;);</span><br><span class="line">    memmove(data_, other.data_, len_);</span><br><span class="line">&#125;</span><br><span class="line">Test&amp; operator=(const Test&amp; rhs) &#123;</span><br><span class="line">    printf(&quot;Test operator=\n&quot;);</span><br><span class="line">    if(this != &amp;rhs) &#123;</span><br><span class="line">        len_ = rhs.len_;</span><br><span class="line">        data_ = new unsigned char[len_];</span><br><span class="line">        memmove(data_, rhs.data_, len_);</span><br><span class="line">        return *this;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">#ifdef ADD_MOVE</span><br><span class="line">Test(Test&amp;&amp; other): len_(len_), data_(other.data_) &#123;</span><br><span class="line">    printf(&quot;Test Move Ctor\n&quot;);</span><br><span class="line">    other.len_ = 0;</span><br><span class="line">    other.data_ = nullptr;</span><br><span class="line">&#125;</span><br><span class="line">Test&amp; operator=(Test&amp;&amp; rhs) &#123;</span><br><span class="line">    printf(&quot;Test Move operator=\n&quot;);</span><br><span class="line">    if(this != &amp;rhs) &#123;</span><br><span class="line">        len_ = rhs.len_;</span><br><span class="line">        data_ = rhs.data_;</span><br><span class="line">        rhs.len_ = 0;</span><br><span class="line">        rhs.data_ = nullptr;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">#endif</span><br><span class="line">~Test() &#123;</span><br><span class="line">    printf(&quot;Test Dtor\n&quot;);</span><br><span class="line">    delete[] data_;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">size_t len_;</span><br><span class="line">unsigned char* data_;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>我们重载 operator new() 和 operator delete() 输出分配或释放内存操作</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">void* operator new(size_t size) &#123;</span><br><span class="line">    printf(&quot;allocate memory\n&quot;);</span><br><span class="line">    return malloc(size);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void operator delete(void* ptr) &#123;</span><br><span class="line">    printf(&quot;free memory\n&quot;);</span><br><span class="line">    free(ptr);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>进行交换测试</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">  Test a(1), b(1);</span><br><span class="line">  printf(&quot;===========Swap==========\n&quot;);</span><br><span class="line">  std::swap(a, b);</span><br><span class="line">  printf(&quot;===========Done==========\n&quot;);</span><br><span class="line">  return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在对象“无法”移送的时候（没有显式移动构造函数和移动赋值运算符），交换需要拷贝资源</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">+Allocate Memory</span><br><span class="line">Test Ctor</span><br><span class="line">+Allocate Memory</span><br><span class="line">Test Ctor</span><br><span class="line">===========Swap==========</span><br><span class="line">+Allocate Memory</span><br><span class="line">Test Copy Ctor</span><br><span class="line">Test operator=</span><br><span class="line">+Allocate Memory</span><br><span class="line">Test operator=</span><br><span class="line">+Allocate Memory</span><br><span class="line">Test Dtor</span><br><span class="line">-Free Memory</span><br><span class="line">===========Done==========</span><br><span class="line">Test Dtor</span><br><span class="line">-Free Memory</span><br><span class="line">Test Dtor</span><br><span class="line">-Free Memory</span><br></pre></td></tr></table></figure>
+
+<p>当对象可以移动时，交换没有资源的拷贝</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">+Allocate Memory</span><br><span class="line">Test Ctor</span><br><span class="line">+Allocate Memory</span><br><span class="line">Test Ctor</span><br><span class="line">===========Swap==========</span><br><span class="line">Test Move Ctor</span><br><span class="line">Test Move operator=</span><br><span class="line">Test Move operator=</span><br><span class="line">Test Dtor</span><br><span class="line">===========Done==========</span><br><span class="line">Test Dtor</span><br><span class="line">-Free Memory</span><br><span class="line">Test Dtor</span><br><span class="line"></span><br><span class="line">-Free Memory</span><br></pre></td></tr></table></figure>
+
+<h2 id="3、std-forward"><a href="#3、std-forward" class="headerlink" title="3、std::forward()"></a>3、std::forward()</h2><p>std::forward() 是为了支持 C++11 转发。</p>
+<p>某些函数需要将其一个或多个实参连同类型不变地转发给其他函数，在此情况下，我们需要保持被转发实参的所有性质，包括实参类型是否是 const 的以及实参是左值还是右值。</p>
+<p>比如如下例子，Data 构造函数可以接受参数类型是 int&amp;&amp;, int&amp;，模板函数 MakeData 可以接受左值和右值（和 std::move() 相同的原理）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;memory&gt;</span><br><span class="line">#include &lt;utility&gt;</span><br><span class="line"></span><br><span class="line">struct Data &#123;</span><br><span class="line">Data(int&amp;&amp; n) &#123; std::cout &lt;&lt; &quot;rvalue overload, n=&quot; &lt;&lt; n &lt;&lt; &#x27;\n&#x27;; &#125;</span><br><span class="line">Data(int&amp; n) &#123; std::cout &lt;&lt; &quot;lvalue overload, n=&quot; &lt;&lt; n &lt;&lt; &#x27;\n&#x27;; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;typename Tp&gt;</span><br><span class="line">std::unique_ptr&lt;Data&gt; MakeData(Tp&amp;&amp; value) &#123;</span><br><span class="line">    return std::unique_ptr&lt;Data&gt;(new Data(value));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    auto data1 = MakeData(1); // rvalue</span><br><span class="line">    int n = 2;</span><br><span class="line">    auto data2 = MakeData(n); // lvalue</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>但是无论传递给 MakeData() 的是左值还是右值，都是调用参数类型为 int&amp; 的构造函数。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">lvalue overload, n=1</span><br><span class="line">lvalue overload, n=2</span><br></pre></td></tr></table></figure>
+
+<p>如果使用 std::forward() 函数，则可以将 value 的类型完全转发。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;memory&gt;</span><br><span class="line">#include &lt;utility&gt;</span><br><span class="line"></span><br><span class="line">struct Data &#123;</span><br><span class="line">Data(int&amp;&amp; n) &#123; std::cout &lt;&lt; &quot;rvalue overload, n=&quot; &lt;&lt; n &lt;&lt; &#x27;\n&#x27;; &#125;</span><br><span class="line">Data(int&amp; n) &#123; std::cout &lt;&lt; &quot;lvalue overload, n=&quot; &lt;&lt; n &lt;&lt; &#x27;\n&#x27;; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;typename Tp&gt;</span><br><span class="line">std::unique_ptr&lt;Data&gt; MakeData(Tp&amp;&amp; value) &#123;</span><br><span class="line">    return std::unique_ptr&lt;Data&gt;(new Data(std::forward&lt;Tp&gt;(value)));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    auto data1 = MakeData(1);</span><br><span class="line">    int n = 2;</span><br><span class="line">    auto data2 = MakeData(n);</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>传入右值可以调用到参数类型为 int&amp;&amp; 的构造函数。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">rvalue overload, n=1</span><br><span class="line">lvalue overload, n=2</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是，std::forward() 必须通过显式模板实参来调用。std::forward() 返回该显式实参类型的右值引用。通过其返回类型上的引用折叠，std::forward() 可以保持给定实参的左值&#x2F;右值属性。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">/// include/bits/move.h</span><br><span class="line">template&lt;typename _Tp&gt;</span><br><span class="line">_GLIBCXX_NODISCARD</span><br><span class="line">constexpr _Tp&amp;&amp;</span><br><span class="line">forward(typename std::remove_reference&lt;_Tp&gt;::type&amp; __t) noexcept</span><br><span class="line">&#123; return static_cast&lt;_Tp&amp;&amp;&gt;(__t); &#125;</span><br><span class="line"></span><br><span class="line">template&lt;typename _Tp&gt;</span><br><span class="line">_GLIBCXX_NODISCARD</span><br><span class="line">constexpr _Tp&amp;&amp;</span><br><span class="line">forward(typename std::remove_reference&lt;_Tp&gt;::type&amp;&amp; __t) noexcept</span><br><span class="line">&#123;</span><br><span class="line">    static_assert(!std::is_lvalue_reference&lt;_Tp&gt;::value,</span><br><span class="line">    &quot;std::forward must not be used to convert an rvalue to an lvalue&quot;);</span><br><span class="line">    return static_cast&lt;_Tp&amp;&amp;&gt;(__t);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>std::forward() 的需要结合右值引用模板函数，才能实现完美转发。如果 MakeData() 函数一样</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">template &lt;typename Tp&gt;</span><br><span class="line">std::unique_ptr&lt;Data&gt; MakeData(Tp&amp;&amp; value) &#123;</span><br><span class="line">    return std::unique_ptr&lt;Data&gt;(new Data(std::forward&lt;Tp&gt;(value)));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>如果 MakeData() 函数实参是左值，模板参数被推断为 Tp&amp;，std::forward() 的返回值为 Tp&amp; &amp;&amp;，引用折叠后是 Tp&amp;，保持参数左值属性</li>
+<li>如果 MakeData() 函数实参是右值，模板参数被推断为 Tp，std::forward() 的返回值为 Tp&amp;&amp;，保持参数右值属性</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-完美转发的工程应用"><a href="#4-1-完美转发的工程应用" class="headerlink" title="4.1 完美转发的工程应用"></a>4.1 完美转发的工程应用</h3><p>完美转发是泛型工厂模式的核心：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">std::unique_ptr&lt;T&gt; <span class="title">make_unique</span><span class="params">(Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">unique_ptr</span>&lt;T&gt;(<span class="keyword">new</span> <span class="built_in">T</span>(std::forward&lt;Args&gt;(args)...));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::vector::emplace_back</code> 同样依赖完美转发——将构造参数无损传递给元素的构造函数。</p>
+<h3 id="4-2-引用折叠的完整规则"><a href="#4-2-引用折叠的完整规则" class="headerlink" title="4.2 引用折叠的完整规则"></a>4.2 引用折叠的完整规则</h3><table>
+<thead>
+<tr>
+<th>模板参数T</th>
+<th>T&amp;&amp;（万能引用）</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>int&amp;</td>
+<td>int&amp; &amp;&amp;</td>
+<td>int&amp;（左值引用）</td>
+</tr>
+<tr>
+<td>int&amp;&amp;</td>
+<td>int&amp;&amp; &amp;&amp;</td>
+<td>int&amp;&amp;（右值引用）</td>
+</tr>
+<tr>
+<td>int</td>
+<td>int&amp;&amp;</td>
+<td>int&amp;&amp;（右值引用）</td>
+</tr>
+</tbody></table>
+<p>关键：只要T本身是左值引用，结果就是左值引用（T&amp;优先级高于&amp;&amp;）。</p>
+<h3 id="4-3-std-move-的常见陷阱"><a href="#4-3-std-move-的常见陷阱" class="headerlink" title="4.3 std::move 的常见陷阱"></a>4.3 std::move 的常见陷阱</h3><ul>
+<li><strong>move后不要使用原对象</strong>（除非重新赋值）：移后对象处于”有效但未指定”状态</li>
+<li><strong>const对象不能移动</strong>：对const对象move退化为拷贝（移动构造函数需要非const右值引用参数）</li>
+<li><strong>不要move返回值</strong>：编译器自动优化（RVO&#x2F;NRVO），手动move反而阻止优化</li>
+</ul>
+<h3 id="4-4-与其他主题的关联"><a href="#4-4-与其他主题的关联" class="headerlink" title="4.4 与其他主题的关联"></a>4.4 与其他主题的关联</h3><ul>
+<li><strong>引用折叠</strong>：完美转发的底层机制，解释了为什么template + T&amp;&amp;是万能引用</li>
+<li><strong>移动语义</strong>：move + 移动构造函数&#x2F;移动赋值运算符实现零拷贝资源转移</li>
+<li><strong>emplace_back</strong>：利用完美转发在原位构造元素</li>
+<li><strong>noexcept</strong>：移动操作标记 noexcept 允许vector扩容时安全移动</li>
+</ul>
+<h3 id="4-5-工程中的最佳实践"><a href="#4-5-工程中的最佳实践" class="headerlink" title="4.5 工程中的最佳实践"></a>4.5 工程中的最佳实践</h3><ul>
+<li><strong>forward用于万能引用</strong>：<code>template&lt;T&gt; void f(T&amp;&amp; t)</code> 中用 <code>std::forward&lt;T&gt;(t)</code></li>
+<li><strong>move用于所有权转移</strong>：明确要放弃对象所有权时使用</li>
+<li><strong>返回局部变量不用move</strong>：信任编译器RVO</li>
+<li><strong>swap实现用移动</strong>：<code>using std::swap; swap(a, b);</code> ADL两阶段</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-std-move-的实现本质"><a href="#1-std-move-的实现本质" class="headerlink" title="1. std::move 的实现本质"></a>1. std::move 的实现本质</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// move 只是类型转换，不生成任何运行时代码</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> std::<span class="type">remove_reference_t</span>&lt;T&gt;&amp;&amp; <span class="title">move</span><span class="params">(T&amp;&amp; t)</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;std::<span class="type">remove_reference_t</span>&lt;T&gt;&amp;&amp;&gt;(t);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// move 的本质: 无条件将参数转为右值引用</span></span><br><span class="line"><span class="comment">// 汇编: 完全被优化掉，零指令</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-std-forward-的条件转换"><a href="#2-std-forward-的条件转换" class="headerlink" title="2. std::forward 的条件转换"></a>2. std::forward 的条件转换</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// forward 依赖引用折叠，保留参数的原始值类别</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> T&amp;&amp; <span class="title">forward</span><span class="params">(std::<span class="type">remove_reference_t</span>&lt;T&gt;&amp; t)</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">static_cast</span>&lt;T&amp;&amp;&gt;(t);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 调用: forward&lt;Arg&gt;(arg)</span></span><br><span class="line"><span class="comment">// Arg 推断为 int&amp; → 返回 int&amp; &amp;&amp; → int&amp; (左值)</span></span><br><span class="line"><span class="comment">// Arg 推断为 int  → 返回 int&amp;&amp;     → int&amp;&amp; (右值)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 引用折叠规则: &amp; + &amp; = &amp;; &amp; + &amp;&amp; = &amp;; &amp;&amp; + &amp; = &amp;; &amp;&amp; + &amp;&amp; = &amp;&amp;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-swap-的编译期优化"><a href="#3-swap-的编译期优化" class="headerlink" title="3. swap 的编译期优化"></a>3. swap 的编译期优化</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 标准 swap 用移动语义替代三次拷贝</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">swap</span><span class="params">(T&amp; a, T&amp; b)</span> <span class="title">noexcept</span><span class="params">(is_nothrow_move_constructible_v&lt;T&gt;</span></span></span><br><span class="line"><span class="params"><span class="function">                               &amp;&amp; is_nothrow_move_assignable_v&lt;T&gt;)</span> </span>&#123;</span><br><span class="line">    T tmp = std::<span class="built_in">move</span>(a);  <span class="comment">// 移动构造</span></span><br><span class="line">    a = std::<span class="built_in">move</span>(b);      <span class="comment">// 移动赋值</span></span><br><span class="line">    b = std::<span class="built_in">move</span>(tmp);    <span class="comment">// 移动赋值</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// vector 扩容时如果元素移动构造是 noexcept，用 memmove 替代逐元素拷贝</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>move 不移动，forward 不转发</strong>：两者都是编译期类型转换，move 无条件转右值，forward 条件转右值</li>
+<li><strong>右值引用本身是左值</strong>：<code>void f(int&amp;&amp; x) { auto y = move(x); }</code> 必须有 move——x 有名字就是左值</li>
+<li><strong>forward 的模板参数必须是 T</strong>：<code>forward&lt;T&gt;(arg)</code> 中 T 必须是模板参数推导的原始类型，不能手动指定</li>
+<li><strong>swap 的 noexcept 影响 vector 性能</strong>：元素类型移动构造为 noexcept 时，vector 扩容用 memmove 而非逐元素</li>
+<li><strong>在 return 语句中不需要 move</strong>：编译器自动做 NRVO&#x2F;RVO，加 move 反而禁用优化</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: std::move 做了什么？</strong><br>A: 无条件的类型转换——将参数转为其右值引用类型。不移动任何数据，只是一个 static_cast</p>
+<p><strong>Q2: std::forward 和 std::move 的区别？</strong><br>A: move 无条件转右值；forward 保留参数的原始值类别（左值→左值，右值→右值）</p>
+<p><strong>Q3: 什么是引用折叠？</strong><br>A: C++11 规则——两个引用组合时：只有 &amp;&amp;+&amp;&amp;→&amp;&amp;，其他组合→&amp;。forward 依赖此规则</p>
+<p><strong>Q4: 为什么右值引用变量本身是左值？</strong><br>A: 任何有名字的变量都是左值（可寻址）。要重新获得其右值属性需再 move</p>
+<p><strong>Q5: 完美转发是什么意思？</strong><br>A: 将参数的值类别（左值&#x2F;右值）原封不动传递给下一层调用，依赖万能引用 + forward</p>
+<p><strong>Q6: swap 为什么需要 noexcept？</strong><br>A: 标准库容器在扩容时检测 swap&#x2F;noexcept 移动构造来选择高效路径</p>
+<p><strong>Q7: move 之后对象处于什么状态？</strong><br>A: 处于 valid-but-unspecified——可安全析构或赋新值，但不保证原值</p>
+<p><strong>Q8: 万能引用和右值引用的语法区别？</strong><br>A: 语法相同 <code>T&amp;&amp;</code>，当 T 被推导且形如 <code>T&amp;&amp;</code> 时是万能引用；<code>int&amp;&amp;</code> 或 <code>std::vector&lt;T&gt;&amp;&amp;</code> 不是</p>
+<p><strong>Q9: forward 的参数能否省略模板参数？</strong><br>A: 不能，forward 需要模板参数来区分左值&#x2F;右值版本，<code>forward(arg)</code> 无法编译</p>
+<p><strong>Q10: RVO&#x2F;NRVO 和 move 的关系？</strong><br>A: RVO 直接在调用方栈帧构造对象（零拷贝），比 move 更优。return move(x) 会禁用 RVO</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：<code>return std::move(local_var)</code>→禁用 NRVO，反而多一次移动构造</li>
+<li><strong>反问</strong>：move 后对象能读吗？→ 能（valid-but-unspecified），但不应依赖其值</li>
+<li><strong>陷阱</strong>：const 对象 move→不会调用移动构造（移动构造需要非 const 右值引用）</li>
+<li><strong>反问</strong>：有万能引用还需重载吗？→ 万能引用是贪婪的，可能劫持拷贝&#x2F;移动构造，通常需要 SFINAE 约束</li>
+<li><strong>陷阱</strong>：<code>auto&amp;&amp; x = expr</code> 中 x 是万能引用，expr 是右值时 x 是右值引用，左值时 x 是左值引用</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>move 本质</strong>：<code>static_cast&lt;T&amp;&amp;&gt;</code>，编译期类型转换</li>
+<li><strong>forward 本质</strong>：<code>static_cast&lt;T&amp;&amp;&gt;</code> + 引用折叠保留值类别</li>
+<li><strong>引用折叠</strong>：T&amp; &amp;&#x2F;T&amp; &amp;&amp;&#x2F;T&amp;&amp; &amp; → T&amp;；T&amp;&amp; &amp;&amp; → T&amp;&amp;</li>
+<li><strong>完美转发语法</strong>：<code>template&lt;class T&gt; void f(T&amp;&amp; x) { g(forward&lt;T&gt;(x)); }</code></li>
+<li><strong>swap 三步骤</strong>：移动构造 tmp、移动赋值 a、移动赋值 b</li>
+<li><strong>NRVO 条件</strong>：返回局部变量且类型匹配，不加 move</li>
+<li><strong>const T&amp; 也能绑定右值</strong>：但会延长临时对象生命周期</li>
+<li><strong>移动操作后状态</strong>：valid-but-unspecified</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/move-forward-swap/">https://weimo1.github.io/posts/move-forward-swap/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/new-malloc/" title="new    malloc"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">new    malloc</div></div><div class="info-2"><div class="info-item-1">new &#x2F; malloc 适用范围：C++ 中 new&#x2F;delete 与 malloc&#x2F;free 的对比——分配位置、类型安全、构造函数调用、重载机制、POD 与非 POD 类型混用的可行性  一、核心概念 定义：new&#x2F;delete 是 C++ 运算符，在自由存储区（free store）分配&#x2F;释放内存并调用构造&#x2F;析构函数；malloc&#x2F;free 是 C 标准库函数，在堆（heap）上分配&#x2F;释放原始内存，不调用构造&#x2F;析构函数。 关键词：new、delete、malloc、free、operator...</div></div></div></a><a class="pagination-related" href="/posts/mutex/" title="mutex"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">mutex</div></div><div class="info-2"><div class="info-item-1">mutex — pthread_mutex 底层实现深度剖析 适用范围：glibc pthread_mutex 源码走读、多平台互斥锁实现对比、自适应自旋与 futex 机制分析。  一、项目&#x2F;模块概述 模块定位：深度解析 Linux glibc 中 pthread_mutex_t 的底层数据结构、自适应自旋算法、futex 系统调用协作机制，并横向对比 Windows SRWLock 和 macOS os_unfair_lock 的实现差异。 技术栈与依赖：glibc 2.31 源码、Linux futex 系统调用、x86 cmpxchg&#x2F;pause 指令、ARM...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#move-forward-swap"><span class="toc-number">1.</span> <span class="toc-text">move  forward  swap</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-std-move-%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 std::move 原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-std-forward-%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 std::forward 原理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1%E3%80%81std-move"><span class="toc-number">1.4.</span> <span class="toc-text">1、std::move</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%E3%80%81std-swap"><span class="toc-number">1.5.</span> <span class="toc-text">2、std::swap()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3%E3%80%81std-forward"><span class="toc-number">1.6.</span> <span class="toc-text">3、std::forward()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%AE%8C%E7%BE%8E%E8%BD%AC%E5%8F%91%E7%9A%84%E5%B7%A5%E7%A8%8B%E5%BA%94%E7%94%A8"><span class="toc-number">1.7.1.</span> <span class="toc-text">4.1 完美转发的工程应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%BC%95%E7%94%A8%E6%8A%98%E5%8F%A0%E7%9A%84%E5%AE%8C%E6%95%B4%E8%A7%84%E5%88%99"><span class="toc-number">1.7.2.</span> <span class="toc-text">4.2 引用折叠的完整规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-std-move-%E7%9A%84%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1"><span class="toc-number">1.7.3.</span> <span class="toc-text">4.3 std::move 的常见陷阱</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.7.4.</span> <span class="toc-text">4.4 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.7.5.</span> <span class="toc-text">4.5 工程中的最佳实践</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.8.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-std-move-%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.8.1.</span> <span class="toc-text">1. std::move 的实现本质</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-std-forward-%E7%9A%84%E6%9D%A1%E4%BB%B6%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.8.2.</span> <span class="toc-text">2. std::forward 的条件转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-swap-%E7%9A%84%E7%BC%96%E8%AF%91%E6%9C%9F%E4%BC%98%E5%8C%96"><span class="toc-number">1.8.3.</span> <span class="toc-text">3. swap 的编译期优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.8.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">1.9.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.9.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.9.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

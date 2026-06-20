@@ -1,0 +1,338 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>断点续传 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="断点续传 断点续传是文件传输中的关键功能，允许在网络中断后从已完成的部分继续传输，而不必从头开始。在 IM 系统中用于图片、视频、文件等多媒体消息的上传和下载。  参考：腾讯云断点续传实现 一、核心概念 定义：断点续传指在下载或上传时，如果碰到网络故障，可以从已上传&#x2F;下载的部分继续传输，无需重头开始。适用于大文件在网络不稳定环境下的传输。 关键词：文件分块、断点记录、Range 请求、分">
+<meta property="og:type" content="article">
+<meta property="og:title" content="断点续传">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="断点续传 断点续传是文件传输中的关键功能，允许在网络中断后从已完成的部分继续传输，而不必从头开始。在 IM 系统中用于图片、视频、文件等多媒体消息的上传和下载。  参考：腾讯云断点续传实现 一、核心概念 定义：断点续传指在下载或上传时，如果碰到网络故障，可以从已上传&#x2F;下载的部分继续传输，无需重头开始。适用于大文件在网络不稳定环境下的传输。 关键词：文件分块、断点记录、Range 请求、分">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.572Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "断点续传",
+  "url": "https://weimo1.github.io/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.572Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '断点续传',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">断点续传</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">断点续传</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.572Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="断点续传"><a href="#断点续传" class="headerlink" title="断点续传"></a>断点续传</h1><blockquote>
+<p>断点续传是文件传输中的关键功能，允许在网络中断后从已完成的部分继续传输，而不必从头开始。在 IM 系统中用于图片、视频、文件等多媒体消息的上传和下载。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2457416">腾讯云断点续传实现</a></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：断点续传指在下载或上传时，如果碰到网络故障，可以从已上传&#x2F;下载的部分继续传输，无需重头开始。适用于大文件在网络不稳定环境下的传输。</li>
+<li>关键词：文件分块、断点记录、Range 请求、分片上传、续传日志、进度恢复</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>IM 中的大文件（图片&#x2F;视频&#x2F;文件）上传</li>
+<li>弱网环境下的可靠文件传输</li>
+<li>适合 &gt;1MB 的文件；小文件断点续传收益不大</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本实现思路</strong></p>
+<p>将大文件均分成几块后，每个线程&#x2F;协程分别处理一块数据的读取和写入。每次写入都要更新记录的日志文件，断网或暂停后重新开始时，根据日志文件继续传输。</p>
+<p><strong>第二层：关键步骤</strong></p>
+<ol>
+<li><strong>文件分块</strong>：将文件分成多个固定大小的数据块（如 1MB）</li>
+<li><strong>发送文件信息</strong>：发送文件名、文件大小、文件块数、文件 hash（用于完整性校验）</li>
+<li><strong>发送文件块</strong>：按顺序发送每个数据块，记录已发送的块数</li>
+<li><strong>接收文件信息</strong>：接收基本信息，根据信息创建文件和日志</li>
+<li><strong>接收文件块</strong>：按顺序接收并写入文件</li>
+<li><strong>断点续传</strong>：出错或中断时记录已传输块数，下次续传</li>
+</ol>
+<p><strong>第三层：HTTP Range 请求</strong></p>
+<p>HTTP 协议原生支持断点续传——通过 <code>Range</code> 请求头和 <code>206 Partial Content</code> 响应：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">GET /file HTTP/1.1</span><br><span class="line">Range: bytes=1048576-2097151</span><br></pre></td></tr></table></figure>
+
+<h3 id="关键公式-复杂度"><a href="#关键公式-复杂度" class="headerlink" title="关键公式&#x2F;复杂度"></a>关键公式&#x2F;复杂度</h3><p>分块数 &#x3D; 文件大小 &#x2F; 块大小<br>传输进度 &#x3D; 已完成块数 &#x2F; 总分块数<br>续传后总耗时 &#x3D; (总块数 - 已完成块数) × 单块耗时</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 断点续传上传实现</span></span><br><span class="line"><span class="keyword">type</span> ResumableUploader <span class="keyword">struct</span> &#123;</span><br><span class="line">    chunkSize   <span class="type">int64</span></span><br><span class="line">    logFile     <span class="type">string</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(u *ResumableUploader)</span></span> Upload(filePath <span class="type">string</span>, serverURL <span class="type">string</span>) <span class="type">error</span> &#123;</span><br><span class="line">    file, _ := os.Open(filePath)</span><br><span class="line">    fileInfo, _ := file.Stat()</span><br><span class="line">    totalSize := fileInfo.Size()</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 读取断点日志</span></span><br><span class="line">    completed := u.readLog()</span><br><span class="line">    file.Seek(completed, <span class="number">0</span>)</span><br><span class="line">    </span><br><span class="line">    buf := <span class="built_in">make</span>([]<span class="type">byte</span>, u.chunkSize)</span><br><span class="line">    <span class="keyword">for</span> offset := completed; offset &lt; totalSize; &#123;</span><br><span class="line">        n, err := file.Read(buf)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &amp;&amp; err != io.EOF &#123;</span><br><span class="line">            <span class="comment">// 网络错误 → 记录断点</span></span><br><span class="line">            u.writeLog(offset)</span><br><span class="line">            <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 分块上传</span></span><br><span class="line">        <span class="keyword">if</span> err := u.uploadChunk(serverURL, buf[:n], offset, totalSize); err != <span class="literal">nil</span> &#123;</span><br><span class="line">            u.writeLog(offset)</span><br><span class="line">            <span class="keyword">return</span> err</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        offset += <span class="type">int64</span>(n)</span><br><span class="line">        u.writeLog(offset)  <span class="comment">// 更新断点</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    os.Remove(u.logFile)  <span class="comment">// 完成，删除日志</span></span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>HTTP Range</strong>：HTTP 协议原生断点续传支持</li>
+<li><strong>局部敏感哈希</strong>：文件去重——相同文件不重复上传</li>
+<li><strong>分片上传 + 合并</strong>：对象存储（MinIO&#x2F;S3）的 multipart upload</li>
+<li><strong>校验和</strong>：MD5&#x2F;SHA256 校验文件完整性</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>腾讯云 COS</strong>：分片上传 API，每片独立上传，支持并发分片</li>
+<li><strong>MinIO&#x2F;S3</strong>：Multipart Upload 支持断点续传</li>
+<li><strong>微信文件传输</strong>：大文件分片传输 + 断点续传</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>并发分片</strong>：多线程同时上传不同分片，提升速度</li>
+<li><strong>增量 hash 校验</strong>：对整个文件和每个分片计算 hash，确保完整性</li>
+<li><strong>去重</strong>：局部敏感哈希识别重复文件，避免重传</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="断点续传的边界条件"><a href="#断点续传的边界条件" class="headerlink" title="断点续传的边界条件"></a>断点续传的边界条件</h3><ol>
+<li><strong>文件被修改</strong>：上传中断期间文件内容变化 → 通过文件 hash 校验检测，提示用户重新上传</li>
+<li><strong>服务端分片过期</strong>：服务端临时存储的分片有过期时间（如 24 小时），过期后需重新上传</li>
+<li><strong>并发续传</strong>：慎防多个续传请求互相覆盖断点日志</li>
+</ol>
+<h3 id="断点记录的存储位置"><a href="#断点记录的存储位置" class="headerlink" title="断点记录的存储位置"></a>断点记录的存储位置</h3><ul>
+<li><strong>本地日志</strong>：简单但切换设备无法续传</li>
+<li><strong>服务端记录</strong>：切换设备可续传，但增加服务端状态</li>
+<li><strong>Redis 记录</strong>：临时存储分片进度，TTL 自动过期</li>
+</ul>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>断点续传的核心不是”快”，而是”可靠”——在不可靠网络下保证文件最终完整性</li>
+<li>小文件（&lt;1MB）不需要断点续传——断点记录开销可能大于重传开销</li>
+<li>分片大小需要权衡：太小→HTTP 请求开销大，太大→重传浪费多。1-5MB 是常用值</li>
+<li>文件去重比断点续传更常用——相同文件直接秒传，避免任何传输</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：什么是断点续传？</p>
+<p>A：文件传输过程中断网后，可以从已完成的部分继续传输，而非从头开始。通过文件分块 + 断点日志记录实现。</p>
+<p>Q2：断点续传的实现思路是什么？</p>
+<p>A：1) 文件分块 2) 逐块传输 3) 每完成一块记录断点到日志 4) 中断后从日志恢复，继续剩余块。</p>
+<p>Q3：HTTP 协议如何支持断点续传？</p>
+<p>A：通过 <code>Range</code> 请求头指定字节范围，服务端返回 <code>206 Partial Content</code>。常用于下载场景。</p>
+<p>Q4：对象存储的分片上传原理是什么？</p>
+<p>A：Initiate → Upload Part（每片独立上传，可并发）→ Complete（合并）。每片上传时可以重试，分片间独立。</p>
+<p>Q5：断点日志应该存在哪里？</p>
+<p>A：本地文件（简单但不跨设备）、Redis（临时，TTL 自动过期）、服务端数据库（持久但增加服务端状态）。根据场景选择。</p>
+<p>Q6：文件上传过程中文件被修改了怎么办？</p>
+<p>A：开始上传时计算文件 hash，上传完成时校验文件 hash。不一致则提示用户文件已变更，需重新上传。</p>
+<p>Q7：并发分片上传如何保证顺序？</p>
+<p>A：每片有编号（PartNumber），所有片上传完成后按编号顺序合并。分片间无顺序依赖。</p>
+<p>Q8：如何实现秒传（相同文件跳过上传）？</p>
+<p>A：上传前计算文件 MD5&#x2F;SHA256 hash，查询服务端是否已存在相同 hash 的文件。存在则直接引用，无需上传。</p>
+<p>Q9：分片大小如何选择？</p>
+<p>A：太小→HTTP 请求开销大（大量小请求），太大→重传浪费多。1-5MB 是常用折中值。网络好的环境下可加大。</p>
+<p>Q10：分片上传时部分分片失败怎么办？</p>
+<p>A：只重传失败的分片。已完成的分片服务端保留（有过期时间）。通过 ListParts 接口查询已完成分片。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司的文件上传使用的是哪种断点续传方案？有没有遇到过并发续传的冲突问题？</p>
+</li>
+<li><p>大文件传输在弱网环境下的成功率如何？做了哪些特殊优化？</p>
+</li>
+<li><p>陷阱 1：”断点续传就是 HTTP Range？” — Range 主要用于下载的断点续传。上传的断点续传通常通过分片上传（Multipart Upload）实现。</p>
+</li>
+<li><p>陷阱 2：”所有文件都需要断点续传？” — 不需要。小于 1MB 的文件重传开销小，断点续传的日志维护成本可能大于收益。</p>
+</li>
+<li><p>陷阱 3：”分片越多上传越快？” — 不一定。分片过多导致 HTTP 请求次数暴增，连接建立和头部开销增加。且服务端并发处理分片有上限。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>断点续传的核心是：文件分块 + 逐块传输 + 断点日志 + 中断恢复。</li>
+<li>分片上传的优势是：并发分片加速 + 失败只重试失败分片 + 支持断点续传。</li>
+<li>秒传的实现原理是：上传前计算文件 hash → 查询服务端是否已存在 → 存在则跳过上传。</li>
+<li>分片大小的选择是：1-5MB 折中——避免过多 HTTP 请求，又不会因为单片失败浪费太多。</li>
+<li>当被问到”如何实现断点续传”时回答：”文件分块、逐块上传、每完成一块记录进度。中断后从上次完成的块续传。服务端分片上传 API 原生支持。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>原笔记完整内容（定义、实现思路、步骤）已整合入正文。<br>参考资料：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2457416">https://cloud.tencent.com/developer/article/2457416</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2384234">https://cloud.tencent.com/developer/article/2384234</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1688461">https://cloud.tencent.com/developer/article/1688461</a></li>
+</ul>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/">https://weimo1.github.io/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/" title="智能指针"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">智能指针</div></div><div class="info-2"><div class="info-item-1">智能指针 C++ 智能指针是 RAII 思想在堆内存管理上的直接体现，通过 unique_ptr（独占所有权）、shared_ptr（共享所有权）和 weak_ptr（弱引用）实现自动内存释放，从根本上消除了”忘记 delete”和”double free”两类最常见的内存错误。  一、核心概念 定义：智能指针是封装裸指针的 RAII 类模板，在析构函数中自动调用 delete 或自定义删除器，将堆对象的生命周期与栈对象绑定。C++11 引入 std::unique_ptr、std::shared_ptr、std::weak_ptr，C++14 补充 std::make_unique，C...</div></div></div></a><a class="pagination-related" href="/posts/%E6%97%A5%E5%BF%97%E5%88%86%E6%9E%90%E4%B8%8E%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5/" title="日志分析与错误排查"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">日志分析与错误排查</div></div><div class="info-2"><div class="info-item-1">日志分析与错误排查 适用范围：Linux 线上问题排查——日志分类、grep 进阶、系统诊断工具链、内核日志与网络抓包分析。  一、核心概念 定义：日志分析与错误排查是后端开发与 SRE 的核心技能，涵盖系统日志、应用日志、内核日志的分类解读，以及 grep&#x2F;journalctl&#x2F;dmesg&#x2F;strace&#x2F;tcpdump 等工具的组合使用。 关键词：系统日志（syslog&#x2F;messages）、认证日志（auth.log&#x2F;secure）、内核日志（kern.log&#x2F;dmesg）、应用日志（nginx&#x2F;自定义）、...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0"><span class="toc-number">1.</span> <span class="toc-text">断点续传</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%85%AC%E5%BC%8F-%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键公式&#x2F;复杂度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0%E7%9A%84%E8%BE%B9%E7%95%8C%E6%9D%A1%E4%BB%B6"><span class="toc-number">1.5.1.</span> <span class="toc-text">断点续传的边界条件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%AD%E7%82%B9%E8%AE%B0%E5%BD%95%E7%9A%84%E5%AD%98%E5%82%A8%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.5.2.</span> <span class="toc-text">断点记录的存储位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

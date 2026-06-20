@@ -1,0 +1,367 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Leveldb | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Leveldb 适用范围：LevelDB 写放大问题分析与性能调优  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释必须全部保留。 代码块必须标注语言。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：LevelDB 作为 LSM-Tree 的经典实现，写放大（Write Amplification）是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Leveldb">
+<meta property="og:url" content="https://weimo1.github.io/posts/Leveldb/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Leveldb 适用范围：LevelDB 写放大问题分析与性能调优  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释必须全部保留。 代码块必须标注语言。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：LevelDB 作为 LSM-Tree 的经典实现，写放大（Write Amplification）是">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.547Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Leveldb",
+  "url": "https://weimo1.github.io/posts/Leveldb/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.547Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Leveldb/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Leveldb',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Leveldb</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Leveldb</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.547Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E/">存储引擎</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Leveldb"><a href="#Leveldb" class="headerlink" title="Leveldb"></a>Leveldb</h1><blockquote>
+<p>适用范围：LevelDB 写放大问题分析与性能调优</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释必须全部保留。</li>
+<li><strong>代码块必须标注语言</strong>。</li>
+<li><strong>字数硬指标</strong>：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：LevelDB 作为 LSM-Tree 的经典实现，写放大（Write Amplification）是其最核心的性能问题。本笔记分析写放大的四个来源及其优化方向。</li>
+<li><strong>技术栈与依赖</strong>：LSM-Tree、Compaction、SSTable</li>
+<li><strong>模块边界</strong>：性能分析与工程调优指导</li>
+</ul>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="第一层：写放大的四大来源"><a href="#第一层：写放大的四大来源" class="headerlink" title="第一层：写放大的四大来源"></a>第一层：写放大的四大来源</h3><p>写放大：由于 LSM-Tree 的 Compaction 机制，实际写入磁盘的数据量远超应用层写入量。LevelDB 中写放大的四个主要来源：</p>
+<ol>
+<li><strong>多版本存储</strong>：同一key的多次更新产生多个版本，所有版本都参与Compaction</li>
+<li><strong>冗余数据移动</strong>：Compaction时读取旧文件，写入新文件，有效数据和无效数据一起移动</li>
+<li><strong>元数据开销</strong>：索引块、过滤器块、元数据块，每次Compaction都要重写</li>
+<li><strong>对齐和填充</strong>：块对齐、页对齐的填充，文件格式的固定开销</li>
+</ol>
+<h3 id="第二层：写放大量化"><a href="#第二层：写放大量化" class="headerlink" title="第二层：写放大量化"></a>第二层：写放大量化</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">写放大 = 实际写入磁盘字节数 / 应用层写入字节数 ≈ 10-30×</span><br><span class="line"></span><br><span class="line">典型 LevelDB 配置下：</span><br><span class="line">- Level 0 → Level 1: 10× 写放大（Level 1 大 10×）</span><br><span class="line">- Level 1 → Level 2: 10× 写放大</span><br><span class="line">- 总写放大 ≈ 层数 × 10（粗略估计）</span><br></pre></td></tr></table></figure>
+
+<h3 id="第三层：缓解策略"><a href="#第三层：缓解策略" class="headerlink" title="第三层：缓解策略"></a>第三层：缓解策略</h3><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>增大 MemTable</td>
+<td>减少 dump 次数，Level 0 文件更大但更少</td>
+</tr>
+<tr>
+<td>增大 Level 大小倍数</td>
+<td>减少 Compaction 频率，但增加单次开销</td>
+</tr>
+<tr>
+<td>使用 RocksDB 的 Universal Compaction</td>
+<td>写放大降到 ~2×（但空间放大增加）</td>
+</tr>
+<tr>
+<td>减少 key 大小（压缩前缀）</td>
+<td>数据量减小，Compaction I&#x2F;O 减小</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><blockquote>
+<p>补充：LevelDB 的 Compaction 策略：</p>
+<ul>
+<li>Level 0 → Level 1：当 Level 0 文件数 ≥ 4 时触发</li>
+<li>Level N → Level N+1：当 Level N 的总大小超过阈值时触发</li>
+<li>阈值：Level 1 &#x3D; 10MB, Level 2 &#x3D; 100MB, Level 3 &#x3D; 1GB, …</li>
+<li>Compaction 选择与目标 Level 的 key 范围重叠最小的文件</li>
+</ul>
+</blockquote>
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="4-1-监控关键指标"><a href="#4-1-监控关键指标" class="headerlink" title="4.1 监控关键指标"></a>4.1 监控关键指标</h3><ul>
+<li><strong>写放大因子</strong>：通过 <code>iostat</code> 监控磁盘写入量 vs 应用写入量</li>
+<li><strong>Compaction 频率</strong>：每秒 Compaction 次数</li>
+<li><strong>Level 0 文件数</strong>：&gt; 4 说明写入压力大</li>
+<li><strong>各 Level 大小</strong>：与配置的阈值对比</li>
+</ul>
+<h3 id="4-2-调优参数"><a href="#4-2-调优参数" class="headerlink" title="4.2 调优参数"></a>4.2 调优参数</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>LevelDB 默认</th>
+<th>调优建议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MemTable 大小</td>
+<td>4MB</td>
+<td>增大至 64MB（减少 Level 0 碎片）</td>
+</tr>
+<tr>
+<td>Level 0 触发 Compaction 的文件数</td>
+<td>4</td>
+<td>增大至 8（减少 Compaction 频率）</td>
+</tr>
+<tr>
+<td>Block Size</td>
+<td>4KB</td>
+<td>SSD 上调至 16-64KB</td>
+</tr>
+<tr>
+<td>SSTable 大小</td>
+<td>2MB</td>
+<td>增大至 64MB</td>
+</tr>
+</tbody></table>
+<h3 id="4-3-RocksDB-的改进"><a href="#4-3-RocksDB-的改进" class="headerlink" title="4.3 RocksDB 的改进"></a>4.3 RocksDB 的改进</h3><p>RocksDB 针对写放大的改进：</p>
+<ul>
+<li><strong>Universal Compaction</strong>：不按层级，按时间窗口合并，写放大 ~2×</li>
+<li><strong>Leveled Compaction + FIFO</strong>：最老数据直接删除，零 Compaction</li>
+<li><strong>动态调整 Compaction 并发</strong>：根据写入压力自适应</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-写放大是-LSM-的原罪"><a href="#5-1-写放大是-LSM-的原罪" class="headerlink" title="5.1 写放大是 LSM 的原罪"></a>5.1 写放大是 LSM 的原罪</h3><p>LSM-Tree 的设计哲学是”以写放大换取写入吞吐量”。顺序写入 SSTable 获得极高吞吐，但 Compaction 时的重写是不可避免的代价。理解这个权衡是使用 LevelDB 的前提。</p>
+<h3 id="5-2-难点与易错点"><a href="#5-2-难点与易错点" class="headerlink" title="5.2 难点与易错点"></a>5.2 难点与易错点</h3><p><strong>陷阱1：忽略元数据开销</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">对于小 value（如 16 字节）的 KV 场景</span><br><span class="line">元数据（索引、过滤器、Footer）可能占文件大小的 30%+</span><br><span class="line">每次 Compaction 重写这些元数据——写放大的隐藏来源</span><br></pre></td></tr></table></figure>
+
+<p><strong>陷阱2：Level 0 文件数爆炸</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">如果写入速度 &gt; Compaction 速度</span><br><span class="line">Level 0 文件数持续增长 → 读性能急剧下降（每次读需检查所有 Level 0 文件）</span><br><span class="line">需要监控 + 限流 + 动态调整 Compaction 并发</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-经验总结"><a href="#5-3-经验总结" class="headerlink" title="5.3 经验总结"></a>5.3 经验总结</h3><ol>
+<li><strong>写放大无法消除，只能管理</strong>——通过合适的 Compaction 策略和参数调优控制在可接受范围</li>
+<li><strong>写放大、读放大、空间放大三者权衡</strong>——降低一个通常会增加另外两个</li>
+<li><strong>SSD 时代写放大的影响降低但仍需关注</strong>——SSD 有写入寿命（TBW），写放大会加速磨损</li>
+</ol>
+<h2 id="六、面试准备（≥10问法-5反问-5一句话，均带回答）"><a href="#六、面试准备（≥10问法-5反问-5一句话，均带回答）" class="headerlink" title="六、面试准备（≥10问法+5反问+5一句话，均带回答）"></a>六、面试准备（≥10问法+5反问+5一句话，均带回答）</h2><p><strong>Q1：什么是写放大？LSM-Tree 的写放大来源？</strong><br>A：写放大 &#x3D; 实际磁盘写入 &#x2F; 应用层写入。四大来源：多版本存储、冗余数据移动（Compaction）、元数据开销、对齐填充。</p>
+<p><strong>Q2：LevelDB 的典型写放大是多少？</strong><br>A：10-30×。主要来自 Compaction 反复重写数据——每层合并时所有数据（包括未修改的）都参与。</p>
+<p><strong>Q3：如何降低写放大？</strong><br>A：增大 MemTable（减少 dump 频率）、增大 Level 大小倍数（减少 Compaction 频率）、使用 RocksDB Universal Compaction（~2×）、减少 key 大小。</p>
+<p><strong>Q4：Compaction 为什么要移动未修改的数据？</strong><br>A：因为 SSTable 不可变——要删除旧版本的数据，必须将有效数据从旧文件复制到新文件。不能原地修改。</p>
+<p><strong>Q5：RocksDB 的写放大为什么比 LevelDB 低？</strong><br>A：RocksDB 支持多种 Compaction 策略——Universal Compaction 按时间窗口合并，不反复重写深层数据，写放大可降到 2×。</p>
+<p><strong>Q6：SSD 上写放大需要关心吗？</strong><br>A：需要。SSD 有写入寿命（DWPD&#x2F;TBW）——如果写放大 30×，SSD 的有效寿命只有预期的 1&#x2F;30。</p>
+<p><strong>Q7：Level 0 文件数爆炸的原因和解决方案？</strong><br>A：原因——写入速度超过 Compaction 速度。方案——增大 Compaction 线程、限制写入速率、增大 MemTable 减少 Level 0 碎片。</p>
+<p><strong>Q8：写放大、读放大、空间放大的关系？</strong><br>A：三者权衡——降低 Compaction 频率（减写放大）→ 更多旧版本存在（增空间放大 + 读放大）。RocksDB 提供多种 Compaction 策略供不同场景选择。</p>
+<p><strong>Q9：如何监控 LevelDB 的写放大？</strong><br>A：通过 LevelDB 的 stats（<code>GetProperty(&quot;leveldb.stats&quot;)</code>）获取 Compaction 读写量，或通过 OS 级 <code>iostat</code> 监控磁盘写入量。</p>
+<p><strong>Q10：B+Tree 有写放大吗？</strong><br>A：有，但性质不同——B+Tree 的写放大来自页分裂、WAL&#x2F;Redo Log 双重写入，以及就地更新导致的随机 I&#x2F;O 放大。一般比 LSM 低但延迟不可预测。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>你们的 LevelDB&#x2F;RocksDB 生产环境中写放大大概多少？是通过哪些参数控制的？</p>
+</li>
+<li><p>对于写入密集型的业务场景，你们是如何权衡 Compaction 带来的延迟抖动的？</p>
+</li>
+<li><p><strong>陷阱1</strong>：”增大 MemTable 一定能减少写放大吗？”——不一定。过大的 MemTable 崩溃恢复时间长，且 dump 出的大文件让 Compaction 粒度变粗。</p>
+</li>
+<li><p><strong>陷阱2</strong>：”关闭 Compaction 就没有写放大了？”——是的，但读放大会无限增长（无数据归并），磁盘空间耗尽。Compaction 是必要之恶。</p>
+</li>
+<li><p><strong>陷阱3</strong>：”元数据开销可以忽略不计。”——大 value 场景可以忽略，小 value 场景（如 16 字节 value）元数据可能占 30%+。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>写放大的本质：<strong>LSM 用 Compaction 重写数据换取写入吞吐——写放大是代价。</strong></li>
+<li>四大来源：<strong>多版本 + 冗余移动 + 元数据 + 对齐填充。</strong></li>
+<li>缓解写放大的三招：<strong>增大 MemTable、减少 Compaction 频率、换 RocksDB Universal。</strong></li>
+<li>写放大无法消除：<strong>只能管理，需要与读放大、空间放大三者权衡。</strong></li>
+<li>当被问到”LevelDB 适合什么场景？”——回答：”写入密集 + 数据量大 + 可接受偶发 Compaction 延迟抖动。”</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><blockquote>
+<p>原笔记全部内容已按六大段结构组织完毕。写放大的四个来源完整保留于二段。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Leveldb/">https://weimo1.github.io/posts/Leveldb/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Linux/" title="Linux"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Linux</div></div><div class="info-2"><div class="info-item-1">Linux 操作系统概述Linux 是一个开源的类 Unix 操作系统内核，最初由 Linus Torvalds 于 1991 年创建。它采用宏内核架构，支持多任务、多用户、虚拟内存、动态链接等特性。Linux 内核是整个操作系统的核心，负责管理硬件资源、提供系统调用接口、调度进程、管理内存、处理网络请求等。 核心子系统进程管理：Linux 使用 CFS（完全公平调度器）管理进程调度，采用红黑树组织可运行队列。从 6.6 版本开始引入 EEVDF 调度器进一步优化调度延迟。进程创建通过 fork&#x2F;clone 系统调用实现，采用写时复制（COW）技术优化内存使用。 内存管理：采用...</div></div></div></a><a class="pagination-related" href="/posts/LSM%E6%A0%91/" title="LSM树"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">LSM树</div></div><div class="info-2"><div class="info-item-1">LSM树WiscKey: 在SSD存储中分离键和值 WiscKey 发布的五年后，工业界用上了 KV 分离吗？ 常见的 LSM 存储引擎，如 LevelDB 和 RocksDB，将用户写入的一组的 key 和 value 存放在一起，按顺序写入 SST。在 compaction 过程中，**引擎将上层的 SST 与下层 SST 合并，产生新的 SST 文件。这一过程中，SST 里面的 key 和 value 都会被重写一遍，**带来较大的写放大。如果 value 的大小远大于 key，compaction 过程带来的写放大会引入巨大的开销。  在 WiscKey (FAST ‘16) 中...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Leveldb"><span class="toc-number">1.</span> <span class="toc-text">Leveldb</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9A%E5%86%99%E6%94%BE%E5%A4%A7%E7%9A%84%E5%9B%9B%E5%A4%A7%E6%9D%A5%E6%BA%90"><span class="toc-number">1.3.1.</span> <span class="toc-text">第一层：写放大的四大来源</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E5%86%99%E6%94%BE%E5%A4%A7%E9%87%8F%E5%8C%96"><span class="toc-number">1.3.2.</span> <span class="toc-text">第二层：写放大量化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E7%BC%93%E8%A7%A3%E7%AD%96%E7%95%A5"><span class="toc-number">1.3.3.</span> <span class="toc-text">第三层：缓解策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E7%9B%91%E6%8E%A7%E5%85%B3%E9%94%AE%E6%8C%87%E6%A0%87"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 监控关键指标</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E8%B0%83%E4%BC%98%E5%8F%82%E6%95%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 调优参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-RocksDB-%E7%9A%84%E6%94%B9%E8%BF%9B"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 RocksDB 的改进</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E5%86%99%E6%94%BE%E5%A4%A7%E6%98%AF-LSM-%E7%9A%84%E5%8E%9F%E7%BD%AA"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 写放大是 LSM 的原罪</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E2%89%A510%E9%97%AE%E6%B3%95-5%E5%8F%8D%E9%97%AE-5%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（≥10问法+5反问+5一句话，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.8.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

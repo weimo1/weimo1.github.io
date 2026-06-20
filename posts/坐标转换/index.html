@@ -1,0 +1,436 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>坐标转换 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="坐标转换 适用范围：图形学中坐标空间变换的完整链路——MVP 矩阵、视锥体构建、全屏三角形优化、深度重建世界坐标。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要">
+<meta property="og:type" content="article">
+<meta property="og:title" content="坐标转换">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="坐标转换 适用范围：图形学中坐标空间变换的完整链路——MVP 矩阵、视锥体构建、全屏三角形优化、深度重建世界坐标。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.567Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "坐标转换",
+  "url": "https://weimo1.github.io/posts/%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.567Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '坐标转换',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">坐标转换</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">坐标转换</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.567Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/%E5%9F%BA%E7%A1%80%E7%90%86%E8%AE%BA/">基础理论</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>12分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="坐标转换"><a href="#坐标转换" class="headerlink" title="坐标转换"></a>坐标转换</h1><blockquote>
+<p>适用范围：图形学中坐标空间变换的完整链路——MVP 矩阵、视锥体构建、全屏三角形优化、深度重建世界坐标。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong></li>
+<li><strong>只做归纳重组+增加</strong></li>
+<li><strong>放不进的进附录</strong></li>
+<li><strong>动笔前先搜索</strong></li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。</li>
+<li>先结论后细节，每节至少3条要点。</li>
+<li><strong>代码块必须标注语言</strong>。</li>
+<li>图示统一放在 <code>资源/图片/</code>。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：坐标转换是将顶点从模型自身的局部空间，经过世界空间、观察空间、裁剪空间，最终映射到屏幕空间的完整变换链路。核心是 MVP 矩阵（Model-View-Projection）及其逆变换。</li>
+<li>关键词：MVP 矩阵、齐次坐标、透视除法、NDC、视锥体、全屏三角形、Guard-band Clipping</li>
+<li>适用场景&#x2F;边界：所有渲染管线的顶点处理阶段；Shader 中任何需要空间转换的场景（光照计算、后处理、深度重建）</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：五大坐标空间</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">局部空间(Local) → 世界空间(World) → 观察空间(View) → 裁剪空间(Clip) → 屏幕空间(Screen)</span><br><span class="line">     Model矩阵          View矩阵         Projection矩阵     透视除法+视口变换</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>空间</th>
+<th>含义</th>
+<th>变换矩阵</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>局部空间</td>
+<td>物体自身坐标系，建模时的原点</td>
+<td>—</td>
+</tr>
+<tr>
+<td>世界空间</td>
+<td>场景全局坐标系</td>
+<td>Model</td>
+</tr>
+<tr>
+<td>观察空间</td>
+<td>以摄像机为原点的坐标系</td>
+<td>View</td>
+</tr>
+<tr>
+<td>裁剪空间</td>
+<td>投影后的齐次坐标，范围为 [-w, w]</td>
+<td>Projection</td>
+</tr>
+<tr>
+<td>NDC</td>
+<td>透视除法后，范围 [-1, 1]</td>
+<td>—</td>
+</tr>
+<tr>
+<td>屏幕空间</td>
+<td>像素坐标</td>
+<td>Viewport</td>
+</tr>
+</tbody></table>
+<p><strong>第二层：正向 MVP 与逆向 MVP</strong></p>
+<p>正向 MVP（渲染管线）：<code>P_clip = Projection × View × Model × P_local</code></p>
+<p>逆向 MVP（射线生成）：<code>Ray_world = inverse(Projection) × inverse(View) × P_clip</code></p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 标准顶点着色器中的正向 MVP</span></span><br><span class="line"><span class="type">void</span> main() &#123;</span><br><span class="line">    <span class="built_in">gl_Position</span> = projection * view * model * <span class="type">vec4</span>(a_position, <span class="number">1.0</span>);</span><br><span class="line">    <span class="comment">// 等价于：</span></span><br><span class="line">    <span class="comment">// vec4 world_pos = model * vec4(a_position, 1.0);</span></span><br><span class="line">    <span class="comment">// vec4 view_pos  = view * world_pos;</span></span><br><span class="line">    <span class="comment">// vec4 clip_pos  = projection * view_pos;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>逆向 MVP 用于从屏幕坐标反推世界空间射线（Ray Tracing&#x2F;屏幕空间效果的基础）：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 输入：屏幕中心点 → 反推世界空间方向</span></span><br><span class="line"><span class="type">vec4</span> vertex = <span class="type">vec4</span>(<span class="number">0.0</span>, <span class="number">0.0</span>, <span class="number">0.0</span>, <span class="number">1.0</span>);  <span class="comment">// 裁剪空间中心</span></span><br><span class="line"><span class="type">mat4</span> view_from_clip = <span class="built_in">inverse</span>(projection);</span><br><span class="line"><span class="type">mat4</span> model_from_view = <span class="built_in">inverse</span>(view);</span><br><span class="line"><span class="type">vec4</span> view_space = view_from_clip * vertex;</span><br><span class="line"><span class="type">vec4</span> view_dir = <span class="type">vec4</span>(view_space.xyz, <span class="number">0.0</span>);</span><br><span class="line"><span class="type">vec4</span> world_dir = model_from_view * view_dir;</span><br></pre></td></tr></table></figure>
+
+<p><strong>第三层：透视除法和齐次坐标</strong></p>
+<p>投影矩阵将观察空间的 z 值编码到 w 分量中：<code>w_clip = -z_view</code>（OpenGL 约定）。透视除法 <code>(x/w, y/w, z/w)</code> 实现近大远小——离相机越远的点，w 越大，除以后坐标越小。这是 GPU 硬件固定功能，在顶点着色器输出后自动执行。</p>
+<h3 id="关键公式"><a href="#关键公式" class="headerlink" title="关键公式"></a>关键公式</h3><p>视锥体构建（从 FOV 和宽高比计算射线方向）：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">float</span> vlen = <span class="built_in">tan</span>(cameraFOV / <span class="number">2.0</span>);</span><br><span class="line"><span class="type">float</span> hlen = vlen * cameraAspect;</span><br><span class="line"><span class="type">vec3</span> forward = <span class="built_in">normalize</span>(cameraCenter - cameraEye);</span><br><span class="line">rd = <span class="built_in">normalize</span>(forward +</span><br><span class="line">    cameraRight * (uv.x - <span class="number">0.5</span>) * hlen * <span class="number">2.0</span> +</span><br><span class="line">    cameraUp    * (uv.y - <span class="number">0.5</span>) * vlen * <span class="number">2.0</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-GetCamera-—-从-UV-坐标生成相机射线"><a href="#3-1-GetCamera-—-从-UV-坐标生成相机射线" class="headerlink" title="3.1 GetCamera — 从 UV 坐标生成相机射线"></a>3.1 GetCamera — 从 UV 坐标生成相机射线</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> cameraEye;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> cameraCenter;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> cameraUp;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">vec3</span> cameraRight;</span><br><span class="line"><span class="keyword">uniform</span> <span class="type">float</span> cameraFOV;    <span class="comment">// 弧度</span></span><br><span class="line"><span class="keyword">uniform</span> <span class="type">float</span> cameraAspect;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> GetCamera(<span class="type">vec2</span> uv, <span class="type">vec3</span> res, <span class="keyword">out</span> <span class="type">vec3</span> ro, <span class="keyword">out</span> <span class="type">vec3</span> rd)</span><br><span class="line">&#123;</span><br><span class="line">    ro = cameraEye;</span><br><span class="line">    <span class="type">vec2</span> uv_centered = uv - <span class="number">0.5</span>;  <span class="comment">// [-0.5, 0.5]</span></span><br><span class="line"></span><br><span class="line">    <span class="type">float</span> vlen = <span class="built_in">tan</span>(cameraFOV / <span class="number">2.0</span>);</span><br><span class="line">    <span class="type">float</span> hlen = vlen * cameraAspect;</span><br><span class="line"></span><br><span class="line">    <span class="type">vec3</span> forward = <span class="built_in">normalize</span>(cameraCenter - cameraEye);</span><br><span class="line">    rd = <span class="built_in">normalize</span>(</span><br><span class="line">        forward +</span><br><span class="line">        cameraRight * (uv_centered.x * hlen * <span class="number">2.0</span>) +</span><br><span class="line">        cameraUp    * (uv_centered.y * vlen * <span class="number">2.0</span>)</span><br><span class="line">    );</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">vec2</span> GetUV(<span class="type">vec3</span> rd, <span class="type">vec3</span> res)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">return</span> rd.xy / (rd.z / CAM_Z) / <span class="type">vec2</span>(res.x / res.y, <span class="number">1.0</span>) + <span class="number">0.5</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-全屏三角形顶点着色器"><a href="#3-2-全屏三角形顶点着色器" class="headerlink" title="3.2 全屏三角形顶点着色器"></a>3.2 全屏三角形顶点着色器</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">VertexOutput ScreenTriangleVertexShader(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)</span><br><span class="line">&#123;</span><br><span class="line">    VertexOutput output = (VertexOutput)0;</span><br><span class="line"></span><br><span class="line">    // 只需3个顶点覆盖整个屏幕 [-1, 1]</span><br><span class="line">    float2 uv = -1.0f;</span><br><span class="line">    uv = vertexId == 1 ? float2(-1.0f, 3.0f) : uv;</span><br><span class="line">    uv = vertexId == 2 ? float2( 3.0f,-1.0f) : uv;</span><br><span class="line">    output.position = float4(uv, 0.0f, 1.0f);</span><br><span class="line"></span><br><span class="line">    output.sliceId = instanceId;</span><br><span class="line">    return output;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对应 C++ 端顶点缓冲：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">VertexType vertices[<span class="number">3</span>];</span><br><span class="line">vertices[<span class="number">0</span>] = &#123; &#123; <span class="number">0.0f</span>, <span class="number">0.0f</span>, <span class="number">0.0f</span> &#125; &#125;;</span><br><span class="line">vertices[<span class="number">1</span>] = &#123; &#123; <span class="number">0.0f</span>, <span class="number">0.5f</span>, <span class="number">0.0f</span> &#125; &#125;;</span><br><span class="line">vertices[<span class="number">2</span>] = &#123; &#123; <span class="number">0.5f</span>, <span class="number">0.0f</span>, <span class="number">0.0f</span> &#125; &#125;;</span><br><span class="line">uint32 indices[<span class="number">3</span>] = &#123; <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span> &#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>延迟渲染</strong>：GBuffer 解码世界坐标时，用深度值 + 逆 MVP 重建世界位置，避免在 GBuffer 中存储完整 3D 坐标</li>
+<li><strong>后处理</strong>：全屏三角形是现代后处理的标准做法，Blit Pass、Tone Mapping、Bloom 都基于此</li>
+<li><strong>光线追踪</strong>：从屏幕像素生成世界空间射线，本质是逆 MVP + 视锥体参数</li>
+</ul>
+<h3 id="全屏三角形-vs-全屏四边形"><a href="#全屏三角形-vs-全屏四边形" class="headerlink" title="全屏三角形 vs 全屏四边形"></a>全屏三角形 vs 全屏四边形</h3><p>后处理传统做法是渲染一个屏幕大小的四边形（2 个三角形），现代做法改用 1 个超大三角形（Full Scene Triangle）：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>Full Scene Quad (2△)</th>
+<th>Full Scene Triangle (1△)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>顶点数</td>
+<td>4→6</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Tile Overdraw</td>
+<td>对角线处重复光栅化</td>
+<td>无重叠</td>
+</tr>
+<tr>
+<td>L1&#x2F;L2 缓存命中率</td>
+<td>~87%</td>
+<td>~95%</td>
+</tr>
+<tr>
+<td>相对性能</td>
+<td>100%</td>
+<td>~108%</td>
+</tr>
+</tbody></table>
+<p><strong>Tile Overdraw 原理</strong>：现代 GPU 以 Tile（至少 4×4 像素组）为单位光栅化。两个三角形对角线交界处会产生重叠 Tile，同一像素执行两次 fragment shader。单个三角形没有对角线，无此问题。</p>
+<p><strong>缓存命中率</strong>：两个三角形缺乏空间连续性，光栅化从左下角切换到右上角时缓存预测中断。单个三角形的光栅化顺序连续，纹理采样时的空间局部性更好。</p>
+<h3 id="Guard-band-Clipping"><a href="#Guard-band-Clipping" class="headerlink" title="Guard-band Clipping"></a>Guard-band Clipping</h3><p>GPU 处理全屏三角形时不会真的裁剪成多个小三角形，因为现代 GPU 使用 Guard-band clipping：</p>
+<ul>
+<li>ViewPort（白色蓝框）外有一个”保护带”（红色区域）</li>
+<li>只有完全超出保护带的三角形才被裁剪</li>
+<li>全屏三角形虽超出 ViewPort 但仍在保护带内，保持为一个三角形</li>
+</ul>
+<h3 id="从深度图重建世界坐标"><a href="#从深度图重建世界坐标" class="headerlink" title="从深度图重建世界坐标"></a>从深度图重建世界坐标</h3><p>全屏三角形下需要用相似三角形重新推导：</p>
+<ul>
+<li>近平面 BCDE 四个角坐标可通过 FOV + 宽高比计算</li>
+<li>对于屏幕上任意像素，通过其 UV 在近平面四角间插值得到近平面交点</li>
+<li>乘以 <code>depth * farPlaneDir</code> 得到世界坐标</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong>投影矩阵的逆矩阵推导（补充）</strong></p>
+<p>透视投影矩阵（OpenGL 右手坐标系）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">P = | 2n/(r-l)    0       (r+l)/(r-l)     0     |</span><br><span class="line">    |    0     2n/(t-b)   (t+b)/(t-b)     0     |</span><br><span class="line">    |    0        0      -(f+n)/(f-n)  -2fn/(f-n)|</span><br><span class="line">    |    0        0          -1            0     |</span><br></pre></td></tr></table></figure>
+
+<p>其中 n&#x3D;近平面, f&#x3D;远平面, l&#x2F;r&#x2F;t&#x2F;b&#x3D;近平面边界。</p>
+<p>逆矩阵：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">P⁻¹ = | (r-l)/(2n)   0          0        (r+l)/(2n) |</span><br><span class="line">      |    0      (t-b)/(2n)     0        (t+b)/(2n) |</span><br><span class="line">      |    0          0          0          -1       |</span><br><span class="line">      |    0          0     -(f-n)/(2fn)  (f+n)/(2fn)|</span><br></pre></td></tr></table></figure>
+
+<p>关键洞察：P⁻¹ 的第 4 列不是 (0,0,0,1)，意味着逆投影会改变 w 分量。从 NDC 坐标 <code>(x_ndc, y_ndc, z_ndc, 1)</code> 逆推时，得到的 <code>w_view</code> 不再是 1，需要通过除法恢复正确的观察空间坐标。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><p><strong>陷阱1：法线变换不能用 MVP</strong></p>
+<p>法线是方向向量（w&#x3D;0），且需要保持垂直于表面。非均匀缩放会破坏垂直性。正确做法是用 Model 矩阵的逆转置：</p>
+<figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">mat3</span> normalMatrix = <span class="built_in">transpose</span>(<span class="built_in">inverse</span>(<span class="type">mat3</span>(model)));</span><br><span class="line"><span class="type">vec3</span> worldNormal = normalMatrix * a_normal;</span><br></pre></td></tr></table></figure>
+<p>如果 Model 矩阵只有旋转和均匀缩放，可以简化为 <code>mat3(model)</code>。</p>
+<p><strong>陷阱2：深度重建时的精度问题</strong></p>
+<p>从深度缓冲反推世界坐标时，<code>z_ndc</code> 先映射回 <code>z_view</code>，再乘以远平面方向。但 <code>z_view</code> 对近平面的变化非常敏感——近平面附近 1mm 的深度误差可能对应远处几米的误差。工程上常用 Reverse-Z（近平面&#x3D;1.0, 远平面&#x3D;0.0）来平衡精度分布。</p>
+<p><strong>陷阱3：全屏三角形的 UV 推导</strong></p>
+<p>全屏三角形只有 3 个顶点，没有显式的 UV 坐标。需要在 shader 中用 <code>SV_Position</code> 或 <code>gl_FragCoord</code> 反推 UV。注意 Vulkan 的 NDC Y 轴向上（与 OpenGL 相反），<code>gl_FragCoord.y</code> 需要翻转。</p>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li><strong>MVP 是管线的骨架</strong>：理解 MVP 的每一层的物理意义比记住公式更重要——Model 回答”物体在哪”，View 回答”相机怎么看”，Projection 回答”如何投影到屏幕”</li>
+<li><strong>全屏三角形是现代后处理的标配</strong>：UE5、Unity HDRP 的后处理链都默认使用 Full Scene Triangle，少一个对角线 &#x3D; 少 8% 的 fragment 开销</li>
+<li><strong>深度重建优于存世界坐标</strong>：在 GBuffer 中存深度值（1 float）再用逆 MVP 重建世界坐标，比直接存世界坐标（3 float）节省 2&#x2F;3 带宽，且精度可控（选 Reverse-Z）</li>
+<li><strong>Guard-band 是个好设计</strong>：它避免了屏幕边缘三角形的拆分开销，是硬件层面的”免费午餐”</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥8个）"><a href="#6-1-高频问法（≥8个）" class="headerlink" title="6.1 高频问法（≥8个）"></a>6.1 高频问法（≥8个）</h3><p><strong>基础理解：</strong></p>
+<p>Q1：MVP 三个矩阵分别做了什么？</p>
+<p>A：Model 将物体从局部空间变换到世界空间（位移+旋转+缩放）；View 将世界空间变换到以相机为原点的观察空间；Projection 将观察空间投影到裁剪空间（透视&#x2F;正交），最终经透视除法和视口变换到屏幕。</p>
+<p>Q2：为什么用 4×4 齐次坐标而不是 3×3？</p>
+<p>A：3×3 只能表示线性变换，不能表示平移。齐次坐标将平移写入第 4 列，且 w 分量支持透视除法。</p>
+<p>Q3：全屏三角形比全屏四边形好在哪？</p>
+<p>A：两点：1) 少一个对角线，避免 Tile Overdraw（重叠 tile 的重复 fragment 计算），性能约 +8%；2) 光栅化顺序连续，L1&#x2F;L2 缓存命中率从 87% 提升到 95%。</p>
+<p><strong>原理深入：</strong></p>
+<p>Q4：透视除法的数学原理是什么？</p>
+<p>A：投影矩阵将观察空间的 z 编码到 w 分量：<code>w_clip = -z_view</code>。透视除法 <code>(x/w, y/w, z/w)</code> 使远物体坐标缩小，实现近大远小。这是 GPU 硬件固定功能，顶点着色器输出后自动执行。</p>
+<p>Q5：如何从深度图重建世界坐标？</p>
+<p>A：1) 从深度缓冲采样 depth，映射回 NDC 的 z；2) 用逆投影矩阵将 NDC 坐标变换回观察空间；3) 乘以观察空间中的远平面方向（由 FOV + 宽高比 + UV 算出）；4) 用逆 View 矩阵变换到世界空间。</p>
+<p><strong>实践应用：</strong></p>
+<p>Q6：法线变换为什么用逆转置矩阵？</p>
+<p>A：非均匀缩放会破坏法线的垂直性。对法线 n 做变换 <code>(M⁻¹)ᵀ n</code> 可以保证变换后的法线仍垂直于变换后的表面。如果 M 只有旋转和均匀缩放，可以简化为 <code>M</code> 本身。</p>
+<p>Q7：不同图形 API 的 NDC 差异如何适配？</p>
+<p>A：OpenGL NDC：z∈[-1,1]，Y 轴向上；Vulkan NDC：z∈[0,1]，Y 轴向下；DirectX NDC：z∈[0,1]，Y 轴向上。适配方法：投影矩阵调整 z 映射范围；shader 中 <code>gl_FragCoord.y</code> 翻转。</p>
+<p>Q8：Guard-band clipping 是什么？为什么重要？</p>
+<p>A：GPU 在 ViewPort 外设置一个”保护带”，只有完全超出保护带的三角形才被裁剪。这避免了屏幕边缘三角形被拆分的开销，使全屏三角形优化得以生效。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li>您在实际项目中有遇到因为 NDC 差异导致的跨平台渲染 bug 吗？通常怎么统一处理？</li>
+<li>贵公司的后处理链用 Full Scene Triangle 还是 Quad？有没有 Profile 过两者差距？</li>
+<li>Reverse-Z 在移动端 GPU 上也同样有效吗？Adreno&#x2F;Mali 的深度精度分布和桌面 GPU 有什么不同？</li>
+</ul>
+<p><strong>常见陷阱：</strong></p>
+<ul>
+<li>陷阱1：忘记了 <code>gl_Position.w</code> 在透视除法前的含义——w 必须是 <code>-z_view</code>（OpenGL）或 <code>z_view</code>（Vulkan），否则透视除法后坐标错误。</li>
+<li>陷阱2：深度重建时直接用 <code>z_ndc</code> 而没做线性化——NDC 的 z 是非线性的（1&#x2F;z 分布），需要先转换回线性深度。</li>
+<li>陷阱3：全屏三角形在 OpenGL 中用 <code>gl_VertexID</code>，在 Vulkan&#x2F;DX12 中用 <code>SV_VertexID</code>，但默认行为可能不同——Vulkan 需要启用 <code>VK_KHR_shader_draw_parameters</code> 或使用 push constant 传入 vertex ID。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>MVP 是从物体到屏幕的唯一必经之路：Model→World, View→Camera, Projection→Screen。</li>
+<li>透视除法的本质：用 w 分量存储深度信息，除法实现近大远小。</li>
+<li>全屏三角形好于四边形的根本原因：没有对角线，避免了 Tile Overlap 和缓存中断。</li>
+<li>深度重建的性价比：存 1 个 float 的深度 + 重建计算 &lt;&lt; 存 3 个 float 的世界坐标。</li>
+<li>Reverse-Z 的价值：将 z 精度从近平面集中改为远平面均匀分布，解决远处 z-fighting。</li>
+</ul>
+<p><strong>情景模拟：</strong></p>
+<ul>
+<li>被问到”法线变换注意事项”→ “非均匀缩放时法线要用逆转置矩阵变换，否则法线不再垂直于表面，光照计算全错。”</li>
+<li>被问到”如何生成屏幕空间射线”→ “从像素的 NDC 坐标出发，用逆 Projection 到 View Space，再用逆 View 到 World Space，方向 &#x3D; WorldPos - CameraPos。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="坐标空间详解"><a href="#坐标空间详解" class="headerlink" title="坐标空间详解"></a>坐标空间详解</h3><p>局部空间是指物体所在的坐标空间。在建模软件中创建的立方体原点可能位于 (0,0,0)，所有顶点都相对于物体自身。</p>
+<p>世界空间使用模型矩阵将物体从局部坐标变换到世界坐标，支持位移、缩放、旋转。</p>
+<p>观察空间通过观察矩阵将世界坐标变换到以摄像机为原点的空间，是从摄像机视角观察到的空间。</p>
+<p>裁剪空间通过投影矩阵将观察坐标变换到裁剪坐标。所有在指定范围外的坐标被裁剪。投影矩阵创建的观察箱称为平截头体（Frustum）。</p>
+<p>屏幕空间通过视口变换将 NDC 坐标映射到实际屏幕像素坐标。</p>
+<h3 id="视锥体参考链接"><a href="#视锥体参考链接" class="headerlink" title="视锥体参考链接"></a>视锥体参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/679453452">https://zhuanlan.zhihu.com/p/679453452</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://ninter6.github.io/2024/03/02/%E4%BB%8E%E6%8A%95%E5%BD%B1%E5%92%8C%E8%A7%82%E5%AF%9F%E7%9F%A9%E9%98%B5%E6%8F%90%E5%8F%96%E8%A7%86%E9%94%A5%E4%BD%93/">https://ninter6.github.io/2024/03/02/从投影和观察矩阵提取视锥体/</a></li>
+</ul>
+<h3 id="光栅化顺序参考"><a href="#光栅化顺序参考" class="headerlink" title="光栅化顺序参考"></a>光栅化顺序参考</h3><p>全屏三角形 vs 全屏四边形的缓存命中率对比数据来源：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://michaldrobot.com/2014/04/01/gcn-execution-patterns-in-full-screen-passes/">https://michaldrobot.com/2014/04/01/gcn-execution-patterns-in-full-screen-passes/</a></p>
+<ul>
+<li>Two Triangles：87% L1&#x2F;L2 命中率，100% 性能</li>
+<li>Full Scene Triangle：95% L1&#x2F;L2 命中率，108% 性能</li>
+</ul>
+<p>关于光栅化顺序的详细分析：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/22232448">https://zhuanlan.zhihu.com/p/22232448</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2/">https://weimo1.github.io/posts/%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98/" title="处理粘包问题"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">处理粘包问题</div></div><div class="info-2"><div class="info-item-1">处理粘包问题处理粘包问题粘包问题当客户端连续发送多个数据包时，服务器底层tcp接受缓冲区收到的数据是连粘在一起的，比如  连粘数据 粘包原因1）socket收发原理 发送数据并不是直接发送给对端, 而是应用程序将数据发送到本机操作系统的缓存里边, 当数据量小, 发送的时间间隔短, 操作系统就会在缓存区先攒够一个TCP段再通过网卡一起发送, 接收数据也是一样的, 先在操作系统的缓存存着, 然后应用程序再从操作系统中取出数据。  2）粘包原因  客户端的发送频率远高于服务器的接收频率，接收方没有及时接收缓冲区的包，造成多个包接收（客户端发送了一段数据，服务端只收了一小部分，服务端下次再收的时...</div></div></div></a><a class="pagination-related" href="/posts/%E5%9B%BE%E5%BD%A2%E6%95%B0%E5%AD%A6/" title="图形数学"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">图形数学</div></div><div class="info-2"><div class="info-item-1">图形数学 适用范围：图形学中核心数学工具——向量运算、光线求交、反射折射推导，是渲染、物理模拟的基础。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要点。 代码块必须标注语言：C++ 用 c++，GLSL 用 glsl，HLSL 用 hlsl。 图示统一放在 资源/图片/。  一、核心概念 定义：图形数学是计算机图形学的数学基础，涵盖向量代数、矩阵变换、...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9D%90%E6%A0%87%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.</span> <span class="toc-text">坐标转换</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%85%AC%E5%BC%8F"><span class="toc-number">1.3.2.</span> <span class="toc-text">关键公式</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-GetCamera-%E2%80%94-%E4%BB%8E-UV-%E5%9D%90%E6%A0%87%E7%94%9F%E6%88%90%E7%9B%B8%E6%9C%BA%E5%B0%84%E7%BA%BF"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 GetCamera — 从 UV 坐标生成相机射线</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%85%A8%E5%B1%8F%E4%B8%89%E8%A7%92%E5%BD%A2%E9%A1%B6%E7%82%B9%E7%9D%80%E8%89%B2%E5%99%A8"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 全屏三角形顶点着色器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.5.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%A8%E5%B1%8F%E4%B8%89%E8%A7%92%E5%BD%A2-vs-%E5%85%A8%E5%B1%8F%E5%9B%9B%E8%BE%B9%E5%BD%A2"><span class="toc-number">1.5.2.</span> <span class="toc-text">全屏三角形 vs 全屏四边形</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Guard-band-Clipping"><span class="toc-number">1.5.3.</span> <span class="toc-text">Guard-band Clipping</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E6%B7%B1%E5%BA%A6%E5%9B%BE%E9%87%8D%E5%BB%BA%E4%B8%96%E7%95%8C%E5%9D%90%E6%A0%87"><span class="toc-number">1.5.4.</span> <span class="toc-text">从深度图重建世界坐标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.6.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9D%90%E6%A0%87%E7%A9%BA%E9%97%B4%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.8.1.</span> <span class="toc-text">坐标空间详解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%86%E9%94%A5%E4%BD%93%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.2.</span> <span class="toc-text">视锥体参考链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%89%E6%A0%85%E5%8C%96%E9%A1%BA%E5%BA%8F%E5%8F%82%E8%80%83"><span class="toc-number">1.8.3.</span> <span class="toc-text">光栅化顺序参考</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

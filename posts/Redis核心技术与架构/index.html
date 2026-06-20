@@ -1,0 +1,512 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Redis核心技术与架构 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Redis 核心技术与架构 适用范围：Redis 分布式缓存——数据结构底层、持久化 RDB&#x2F;AOF、主从复制与哨兵、缓存穿透&#x2F;击穿&#x2F;雪崩、过期与淘汰策略。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis核心技术与架构">
+<meta property="og:url" content="https://weimo1.github.io/posts/Redis%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Redis 核心技术与架构 适用范围：Redis 分布式缓存——数据结构底层、持久化 RDB&#x2F;AOF、主从复制与哨兵、缓存穿透&#x2F;击穿&#x2F;雪崩、过期与淘汰策略。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.550Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Redis核心技术与架构",
+  "url": "https://weimo1.github.io/posts/Redis%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.550Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Redis%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Redis核心技术与架构',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Redis核心技术与架构</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Redis核心技术与架构</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.550Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>13分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Redis-核心技术与架构"><a href="#Redis-核心技术与架构" class="headerlink" title="Redis 核心技术与架构"></a>Redis 核心技术与架构</h1><blockquote>
+<p>适用范围：Redis 分布式缓存——数据结构底层、持久化 RDB&#x2F;AOF、主从复制与哨兵、缓存穿透&#x2F;击穿&#x2F;雪崩、过期与淘汰策略。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥10个且带回答，反问点和一句话答案各≥5个。</li>
+<li><strong>代码块必须标注语言</strong>：bash 用 <code>bash</code>，Redis 命令用 <code>redis</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Redis（Remote Dictionary Server）是开源的基于内存的键值存储系统，支持多种数据结构（String、Hash、List、Set、ZSet、Stream 等），常用于缓存、消息队列、分布式锁等场景。核心特性：单线程事件驱动、内存存储 + 持久化、高可用集群方案。</li>
+<li><strong>关键词</strong>：内存数据库、数据结构服务器、RDB&#x2F;AOF、主从复制、哨兵、Cluster、缓存穿透&#x2F;击穿&#x2F;雪崩、过期删除</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>缓存（降低数据库压力，热点数据加速）</li>
+<li>分布式锁（SETNX + Lua 原子操作）</li>
+<li>消息队列（List&#x2F;Stream&#x2F;Pub-Sub）</li>
+<li>排行榜、计数器（ZSet、String 自增）</li>
+<li>不适合：大量大数据存储（内存成本高）、复杂关系查询（用 SQL）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：单线程模型与高性能</strong></p>
+<p>Redis 采用单线程 Reactor 模型处理命令请求，通过 IO 多路复用（epoll）监听多个客户端连接。单线程避免了锁竞争和上下文切换，配合内存操作，实现极高吞吐量（10 万+ QPS）。Redis 6.0 引入多线程 I&#x2F;O（仅处理网络读写），核心命令执行仍是单线程。</p>
+<p><strong>第二层：九大数据结构</strong></p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>底层实现</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>String</strong></td>
+<td>SDS（简单动态字符串）&#x2F; int</td>
+<td>缓存 JSON、计数器、分布式锁</td>
+</tr>
+<tr>
+<td><strong>Hash</strong></td>
+<td>ziplist &#x2F; hashtable</td>
+<td>存储对象属性</td>
+</tr>
+<tr>
+<td><strong>List</strong></td>
+<td>quicklist（ziplist + linkedlist）</td>
+<td>消息队列、最新列表</td>
+</tr>
+<tr>
+<td><strong>Set</strong></td>
+<td>intset &#x2F; hashtable</td>
+<td>去重、共同好友</td>
+</tr>
+<tr>
+<td><strong>ZSet</strong></td>
+<td>ziplist &#x2F; skiplist + dict</td>
+<td>排行榜、延迟队列</td>
+</tr>
+<tr>
+<td><strong>Stream</strong></td>
+<td>rax 基数树</td>
+<td>消息队列（持久化+消费组）</td>
+</tr>
+</tbody></table>
+<p><strong>第三层：持久化机制</strong></p>
+<ul>
+<li><strong>RDB（快照）</strong>：定时将内存数据 dump 到磁盘。<code>save</code>&#x2F;<code>bgsave</code> 触发，恢复速度快，但可能丢失最后一次快照后的数据。</li>
+<li><strong>AOF（追加日志）</strong>：记录每条写命令。三种刷盘策略：<code>always</code>（每条同步，最安全）、<code>everysec</code>（每秒同步，推荐）、<code>no</code>（由 OS 决定）。AOF 文件可通过 <code>bgrewriteaof</code> 压缩。</li>
+<li><strong>混合持久化（Redis 4.0+）</strong>：RDB + AOF 结合，RDB 做全量快照，AOF 记录增量，兼顾恢复速度和数据安全。</li>
+</ul>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2654491">Redis 高可用配置及持久化 - 腾讯云</a></p>
+</blockquote>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-持久化配置"><a href="#3-1-持久化配置" class="headerlink" title="3.1 持久化配置"></a>3.1 持久化配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># RDB 配置（redis.conf）</span></span><br><span class="line">save 900 1     <span class="comment"># 900 秒内至少 1 次修改触发 bgsave</span></span><br><span class="line">save 300 10    <span class="comment"># 300 秒内至少 10 次修改</span></span><br><span class="line">save 60 10000  <span class="comment"># 60 秒内至少 10000 次修改</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># AOF 配置</span></span><br><span class="line">appendonly <span class="built_in">yes</span></span><br><span class="line">appendfsync everysec   <span class="comment"># 每秒刷盘（推荐）</span></span><br><span class="line">auto-aof-rewrite-percentage 100  <span class="comment"># AOF 文件增长 100% 时自动重写</span></span><br><span class="line">auto-aof-rewrite-min-size 64mb   <span class="comment"># AOF 文件最小 64MB 才触发重写</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-主从复制配置"><a href="#3-2-主从复制配置" class="headerlink" title="3.2 主从复制配置"></a>3.2 主从复制配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 从节点配置</span></span><br><span class="line">replicaof 192.168.1.100 6379   <span class="comment"># 指定主节点 IP 和端口</span></span><br><span class="line">replica-read-only <span class="built_in">yes</span>          <span class="comment"># 从节点只读</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 哨兵配置（sentinel.conf）</span></span><br><span class="line">sentinel monitor mymaster 192.168.1.100 6379 2  <span class="comment"># 2 个哨兵同意才判定下线</span></span><br><span class="line">sentinel down-after-milliseconds mymaster 30000   <span class="comment"># 30 秒无响应判定主观下线</span></span><br><span class="line">sentinel parallel-syncs mymaster 1                <span class="comment"># 故障转移时最多 1 个从节点同步</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-缓存穿透-击穿-雪崩解决方案"><a href="#3-3-缓存穿透-击穿-雪崩解决方案" class="headerlink" title="3.3 缓存穿透&#x2F;击穿&#x2F;雪崩解决方案"></a>3.3 缓存穿透&#x2F;击穿&#x2F;雪崩解决方案</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 缓存穿透（查不存在的数据）→ 布隆过滤器 + 缓存空值</span><br><span class="line">SETNX &quot;null:key:id&quot; &quot;&quot; EX 60</span><br><span class="line"></span><br><span class="line"># 缓存击穿（热点 key 过期）→ 互斥锁 + 逻辑过期</span><br><span class="line">SET lock:product:1 &quot;locked&quot; NX EX 10  # 获取锁</span><br><span class="line">if lock_acquired: query DB, SET cache, DEL lock</span><br><span class="line"></span><br><span class="line"># 缓存雪崩（大量 key 同时过期）→ TTL 加随机值</span><br><span class="line">SET product:1 data EX $((3600 + RANDOM % 300))</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-分布式锁"><a href="#3-4-分布式锁" class="headerlink" title="3.4 分布式锁"></a>3.4 分布式锁</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"># 加锁（SETNX + 过期时间，原子操作）</span><br><span class="line">SET lock:order:123 &quot;client-uuid&quot; NX EX 30</span><br><span class="line"></span><br><span class="line"># 解锁（Lua 脚本保证原子性：只释放自己加的锁）</span><br><span class="line">EVAL &quot;</span><br><span class="line">    if redis.call(&#x27;get&#x27;, KEYS[1]) == ARGV[1] then</span><br><span class="line">        return redis.call(&#x27;del&#x27;, KEYS[1])</span><br><span class="line">    else</span><br><span class="line">        return 0</span><br><span class="line">    end</span><br><span class="line">&quot; 1 lock:order:123 client-uuid</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2226772">Redis 高频面试题总结 - 腾讯云</a></p>
+</blockquote>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="主从复制原理"><a href="#主从复制原理" class="headerlink" title="主从复制原理"></a>主从复制原理</h3><ol>
+<li><p><strong>全量同步（RDB）</strong>：</p>
+<ul>
+<li>Slave 发起 <code>PSYNC ? -1</code></li>
+<li>Master 执行 <code>bgsave</code> 生成 RDB 快照发送给 Slave</li>
+<li>Slave 清空旧数据，加载 RDB</li>
+<li>Master 将期间新写入的命令通过 replication buffer 发送给 Slave</li>
+</ul>
+</li>
+<li><p><strong>增量同步（repl_backlog）</strong>：</p>
+<ul>
+<li>Master 维护环形 replication backlog buffer</li>
+<li>Slave 上报 offset，Master 从 backlog 中找到差异指令发送</li>
+<li>如果 Slave 的 offset 不在 backlog 中 → 退化为全量同步</li>
+</ul>
+</li>
+</ol>
+<h3 id="哨兵（Sentinel）机制"><a href="#哨兵（Sentinel）机制" class="headerlink" title="哨兵（Sentinel）机制"></a>哨兵（Sentinel）机制</h3><p>哨兵是 Redis 高可用的核心组件，负责：</p>
+<ul>
+<li><strong>监控</strong>：定期 PING 主从节点</li>
+<li><strong>通知</strong>：节点故障时通知管理员</li>
+<li><strong>自动故障转移</strong>：主节点下线后选举新主节点</li>
+<li><strong>配置提供者</strong>：客户端通过哨兵获取当前主节点地址</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Sentinel 集群（3-5 个节点） → 监控 → Redis 主从集群</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/2301_78262805/article/details/154238904">Redis 持久化与高可用 - CSDN</a></p>
+</blockquote>
+<h3 id="Redis-Cluster（分片集群）"><a href="#Redis-Cluster（分片集群）" class="headerlink" title="Redis Cluster（分片集群）"></a>Redis Cluster（分片集群）</h3><p>Redis Cluster 通过 hash slot（16384 个槽）分配数据：</p>
+<ul>
+<li>每个节点负责一部分 slot（<code>CRC16(key) % 16384</code>）</li>
+<li>支持自动故障转移（Gossip 协议）</li>
+<li>最少 3 主 3 从的高可用部署</li>
+</ul>
+<h3 id="过期删除与内存淘汰"><a href="#过期删除与内存淘汰" class="headerlink" title="过期删除与内存淘汰"></a>过期删除与内存淘汰</h3><p><strong>过期删除策略</strong>：</p>
+<ul>
+<li>惰性删除：访问 key 时检查是否过期</li>
+<li>定期删除：每秒 10 次随机抽取一批 key 检查</li>
+</ul>
+<p><strong>内存淘汰策略（8 种）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>noeviction</code></td>
+<td>不淘汰，写入报错（默认）</td>
+</tr>
+<tr>
+<td><code>allkeys-lru</code></td>
+<td>全部 key 中 LRU 淘汰</td>
+</tr>
+<tr>
+<td><code>volatile-lru</code></td>
+<td>过期 key 中 LRU 淘汰</td>
+</tr>
+<tr>
+<td><code>allkeys-lfu</code></td>
+<td>全部 key 中 LFU 淘汰</td>
+</tr>
+<tr>
+<td><code>allkeys-random</code></td>
+<td>全部 key 中随机淘汰</td>
+</tr>
+<tr>
+<td><code>volatile-random</code></td>
+<td>过期 key 中随机淘汰</td>
+</tr>
+<tr>
+<td><code>volatile-ttl</code></td>
+<td>过期 key 中 TTL 最小优先淘汰</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.xiaolincoding.com/redis/base/redis_interview.html">Redis 常见面试题 - 小林coding</a></p>
+</blockquote>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="Redis-单线程高性能的秘密"><a href="#Redis-单线程高性能的秘密" class="headerlink" title="Redis 单线程高性能的秘密"></a>Redis 单线程高性能的秘密</h3><p>Redis 单线程模型的核心是 Reactor 模式 + 非阻塞 I&#x2F;O：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">事件循环（aeMain）:</span><br><span class="line">    while (running) &#123;</span><br><span class="line">        aeProcessEvents() → epoll_wait 等待事件</span><br><span class="line">        → 读事件触发 → readQueryFromClient() 读取命令</span><br><span class="line">        → processCommand() 执行命令</span><br><span class="line">        → addReply() 将响应写入输出缓冲区</span><br><span class="line">        → 写事件触发 → sendReplyToClient() 发送给客户端</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么单线程这么快：</p>
+<ol>
+<li>内存操作（微秒级）</li>
+<li>高效数据结构（ziplist、skiplist、dict 等都是精心优化的）</li>
+<li>非阻塞 I&#x2F;O + epoll（避免线程切换）</li>
+<li>避免锁竞争（没有多线程同步开销）</li>
+</ol>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><strong>RDB 持久化的写时复制（COW）</strong></li>
+</ol>
+<p><code>bgsave</code> 时 fork 子进程，父子共享内存页。父进程修改数据时触发 COW（复制页再修改），子进程始终看到快照时刻的数据。如果写入频繁，COW 会导致内存瞬时翻倍，需预留足够内存。</p>
+<ol start="2">
+<li><strong>AOF 重写的潜在问题</strong></li>
+</ol>
+<p><code>bgrewriteaof</code> 也会 fork 子进程，同样涉及 COW。如果 AOF 文件过大，重写过程中新命令积累在 AOF 重写缓冲区中，子进程完成后父进程需要将缓冲区数据追加到新 AOF 文件，高写入场景可能导致短暂阻塞。</p>
+<ol start="3">
+<li><strong>哨兵选举的”脑裂”</strong></li>
+</ol>
+<p>哨兵集群通过 Raft 协议选举 leader 执行故障转移。如果网络分区导致两个哨兵组各自认为对方下线，可能同时进行故障转移。通过 <code>min-replicas-to-write</code> 和 <code>min-replicas-max-lag</code> 配置可一定程度规避。</p>
+<ol start="4">
+<li><strong>分布式锁的误删问题</strong></li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 错误做法：直接 DEL（可能删除别人的锁）</span><br><span class="line">SET lock:order &quot;client-A&quot; NX EX 30</span><br><span class="line">   # ... 业务超时 30s+，锁过期自动释放</span><br><span class="line">   # client-B 获取了相同的锁</span><br><span class="line">DEL lock:order   # ❌ 删除了 client-B 的锁！</span><br><span class="line"></span><br><span class="line"># 正确做法：Lua 原子判断 + 释放</span><br><span class="line"># 必须用 SET 的值（UUID）验证锁的归属</span><br></pre></td></tr></table></figure>
+
+<ol start="5">
+<li><strong>大 Key 风险</strong></li>
+</ol>
+<p>单个 Key 的 Value 过大（如 10MB+）导致：</p>
+<ul>
+<li>主从同步时网络阻塞</li>
+<li><code>DEL</code> 大 Key 阻塞主线程（Redis 4.0+ 可用 <code>UNLINK</code> 异步删除）</li>
+<li>集群 slot 迁移慢</li>
+</ul>
+<p>解决方案：拆分大 Key、用 Hash 分 field 存储、UNLINK 异步删除。</p>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>Redis 不适用于”需要强一致”的数据</strong>：RDB 和 AOF 都有数据丢失窗口。金融交易等强一致性场景应直接写数据库，Redis 仅做缓存加速。</li>
+<li><strong>缓存不是银弹</strong>：正确理解缓存穿透&#x2F;击穿&#x2F;雪崩三兄弟，用布隆过滤器防穿透、互斥锁防击穿、随机 TTL 防雪崩。</li>
+<li><strong>哨兵至少 3 个</strong>：哨兵奇数节点部署（3 或 5），避免脑裂时平票。</li>
+<li><strong>监控关键指标</strong>：命中率（应 &gt; 95%）、内存使用率、连接数、慢查询日志（<code>slowlog get</code>）。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：Redis 为什么这么快？</p>
+<p>A：1) 基于内存操作（微秒级）；2) 单线程避免锁竞争和上下文切换；3) I&#x2F;O 多路复用（epoll）处理高并发连接；4) 高效数据结构（SDS、skiplist、ziplist）；5) Reactor 事件驱动模型。</p>
+<p>Q2：Redis 支持哪些数据结构？各自适用什么场景？</p>
+<p>A：String（缓存、计数器）、Hash（对象存储）、List（消息队列、时间线）、Set（去重、交并差集）、ZSet（排行榜、延迟队列）、Stream（消息队列，持久化+消费组）、Bitmap（签到统计）、HyperLogLog（UV 统计）、GEO（地理位置）。</p>
+<p>Q3：RDB 和 AOF 的区别是什么？</p>
+<p>A：RDB 是定时快照，恢复速度快、文件小，但可能丢失最后一次快照后的数据。AOF 是追加写命令日志，数据更安全（最多丢 1 秒），但文件更大、恢复更慢。Redis 4.0+ 推荐混合持久化。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：Redis 的过期删除策略是怎样的？</p>
+<p>A：惰性删除 + 定期删除结合。惰性删除：访问 key 时检查是否过期，过期则删除。定期删除：每秒 10 次，随机抽取一批 key，删除其中过期的。二者互补：惰性删除保证 CPU 友好，定期删除保证内存友好。</p>
+<p>Q5：Redis 的主从复制流程是怎样的？</p>
+<p>A：1) Slave 发送 PSYNC 命令；2) 首次连接或 offset 不在 backlog 中 → Master bgsave 生成 RDB 全量同步；3) 同步期间 Master 新命令写入 replication buffer；4) Slave 加载 RDB 后执行 buffer 中的命令；5) 之后通过 replication backlog 增量同步。</p>
+<p>Q6：什么是哨兵（Sentinel）模式？它的工作原理是什么？</p>
+<p>A：哨兵是 Redis 高可用的监控和自动故障转移组件。哨兵集群通过 Raft 协议选举 leader，leader 负责：监控主从节点（定期 PING）→ 主节点下线判定（主观 + 客观）→ 从节点中选新主（优先级→复制偏移量→ID）→ 通知其他从节点和新主同步 → 通知客户端。</p>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：缓存穿透、击穿、雪崩分别是什么？如何解决？</p>
+<p>A：</p>
+<ul>
+<li>穿透：查不存在的数据，请求直达 DB。解决：布隆过滤器 + 缓存空值（短过期）。</li>
+<li>击穿：热点 key 过期瞬间大量请求打 DB。解决：互斥锁（SETNX）+ 逻辑过期（永不过期，异步更新）。</li>
+<li>雪崩：大量 key 同时过期或 Redis 宕机。解决：TTL 加随机值 + 多级缓存 + 限流降级。</li>
+</ul>
+<p>Q8：如何用 Redis 实现分布式锁？</p>
+<p>A：<code>SET lock:key uuid NX EX 30</code> 加锁；业务执行；Lua 脚本判断 uuid 后 DEL 解锁。核心：SETNX 保证互斥，EX 防止死锁，UUID 防止误删，Lua 保证判断+删除原子性。生产级可用 Redisson 的 WatchDog 自动续期。</p>
+<p>Q9：Redis 的内存淘汰策略有哪些？</p>
+<p>A：noeviction（不淘汰）、allkeys-lru（全局 LRU）、volatile-lru（过期 key LRU）、allkeys-lfu（全局 LFU）、volatile-lfu、allkeys-random、volatile-random、volatile-ttl。缓存场景推荐 allkeys-lru。</p>
+<p>Q10：Redis 集群方案有哪些？各自的优缺点？</p>
+<p>A：1) 主从 + 哨兵：简单，但单主写瓶颈（容量受单机限制）；2) Redis Cluster：分片集群，支持水平扩展，最少 3 主 3 从，但不支持多 key 跨 slot 操作；3) Codis&#x2F;Proxy 方案：客户端无感，但多一层代理延迟。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>常见的陷阱问题：</p>
+<ul>
+<li><p><strong>陷阱问题1</strong>：AOF everysec 一定不丢数据吗？ → 不一定。everysec 是每秒刷盘一次，最多丢 1 秒数据。且如果写入量很大，AOF 缓冲区可能未及时刷盘。追求零丢失用 always 但性能差，或结合主从复制使用。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：Redis 分布式锁在锁过期但业务未完成时怎么办？ → 这是分布式锁的经典问题。解决：1) 使用 Redisson 的 Watch Dog 自动续期（每 10s 检查并续期 30s）；2) 设置合理的过期时间（至少业务最大耗时 × 2）；3) 业务逻辑做幂等处理。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：Redis Cluster 支持事务吗？ → 仅支持同一 slot 内的事务。因为 Redis 事务需要所有 key 在同一个节点执行。跨 slot 操作不支持事务，也不支持 multi-key 操作（如 MGET 跨不同 slot 的 key）。</p>
+</li>
+<li><p><strong>陷阱问题4</strong>：为什么 Redis 过期 key 不立即删除？ → 1) 立即删除需要为每个 key 设置定时器，CPU 开销太大；2) Redis 采用惰性 + 定期删除的折中方案，用少量 CPU 换取内存不会无限增长；3) 配合内存淘汰策略兜底。</p>
+</li>
+<li><p><strong>陷阱问题5</strong>：Redis 单线程为什么还能这么高并发？ → 单线程指的是”命令处理”单线程，但网络 I&#x2F;O 在 Redis 6.0+ 已经多线程化。核心原因：1) 内存操作极快（纳秒级）；2) 单线程省去了锁、上下文切换开销；3) epoll 允许单个线程管理数万连接。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>Redis 快的原因是<strong>内存操作 + 单线程无锁 + epoll 多路复用 + 高效数据结构</strong>四合一</li>
+<li>持久化选型口诀：<strong>数据安全用 AOF，恢复快用 RDB，二者兼顾用混合持久化</strong></li>
+<li>缓存三兄弟解决方案：<strong>穿透加布隆，击穿加锁，雪崩随机 TTL</strong></li>
+<li>分布式锁三要素：<strong>SETNX 互斥、EX 防死锁、Lua 原子释放</strong></li>
+<li>过期删除双策略：<strong>惰性删除保 CPU，定期删除保内存</strong></li>
+</ul>
+<p>情景模拟答案：</p>
+<ul>
+<li><p>当被问到”你们的 Redis 部署架构”时，回答：”生产环境 3 主 3 从 Cluster 分片集群，或 1 主 2 从 + 3 哨兵高可用。缓存&gt;1000QPS 时加从节点分担读压力。开启 AOF everysec + 混合持久化。监控命中率（&gt;95%）、内存使用率、慢查询。”</p>
+</li>
+<li><p>当被问到”Redis 和 Memcached 的区别”时，回答：”Redis 支持丰富数据结构、持久化、集群方案和 Lua 脚本，功能更全。Memcached 只支持 String，但多线程模型在纯 KV 缓存场景可能有更高吞吐。现代项目优先选 Redis。”</p>
+</li>
+<li><p>当被问到”缓存和数据库一致性如何保证”时，回答：”先更新数据库，再删除缓存（Cache Aside 模式）。高一致性要求用延迟双删（删缓存→写DB→延迟 N 秒再删缓存）或订阅 binlog（Canal）+ 异步更新缓存。强一致性场景应直接读写数据库。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><p><strong>源码分析</strong>：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hardcore.feishu.cn/mindnotes/bmncn1pO2ZhEyFkBgbQ2ttXncsc">硬核课堂 Redis 解读</a></li>
+</ul>
+<p><strong>入门与教程</strong>：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/469102289">Redis 详细入门教程 - 知乎</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/567374196">Redis 进阶教程 - 知乎</a></li>
+</ul>
+<p><strong>知识总结</strong>：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/534892012">TX Redis 知识总结 - 知乎</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://chao-xi.github.io/jxredisbook/chap2/10redis_basic_sum/">Redis 核心技术基础总结篇</a></li>
+</ul>
+<p><strong>面试参考</strong>：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2226772">Redis 高频面试题总结 - 腾讯云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.xiaolincoding.com/redis/base/redis_interview.html">Redis 常见面试题 - 小林coding</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Redis%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84/">https://weimo1.github.io/posts/Redis%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/SSAO/" title="SSAO"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">SSAO</div></div><div class="info-2"><div class="info-item-1">SSAO 适用范围：屏幕空间环境光遮蔽（SSAO&#x2F;HBAO）——在屏幕空间模拟间接光照中的环境光遮挡效果，是实时渲染中”穷人版全局光照”的核心组件。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要点。 代码块必须标注语言。 图示统一放在 资源/图片/。  一、核心概念 定义：SSAO（Screen Space Ambient Occlusion...</div></div></div></a><a class="pagination-related" href="/posts/RingBuffer/" title="RingBuffer"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">RingBuffer</div></div><div class="info-2"><div class="info-item-1">RingBuffer 环形缓冲区概述RingBuffer（环形缓冲区）是一种固定大小的循环 FIFO 数据结构，通过头指针（head）和尾指针（tail）实现高效的读写操作。初始化时 head 和 tail 指向同一位置，表示缓冲区为空。每次写入数据后 head 前进，每次读取数据后 tail 前进。当指针到达缓冲区末尾时自动回绕到开头，形成环形结构。 核心机制判断缓冲区状态的常用方法：head 等于 tail 时为空；为保证区分空和满，通常预留一个元素位置，满的条件为 (head + 1) % size &#x3D;&#x3D; tail。另一种方案是引入计数器记录元素数量，但会增加额...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Redis-%E6%A0%B8%E5%BF%83%E6%8A%80%E6%9C%AF%E4%B8%8E%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">Redis 核心技术与架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%8C%81%E4%B9%85%E5%8C%96%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 持久化配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 主从复制配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E7%BC%93%E5%AD%98%E7%A9%BF%E9%80%8F-%E5%87%BB%E7%A9%BF-%E9%9B%AA%E5%B4%A9%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 缓存穿透&#x2F;击穿&#x2F;雪崩解决方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 分布式锁</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E5%8E%9F%E7%90%86"><span class="toc-number">1.5.1.</span> <span class="toc-text">主从复制原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%93%A8%E5%85%B5%EF%BC%88Sentinel%EF%BC%89%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.2.</span> <span class="toc-text">哨兵（Sentinel）机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Redis-Cluster%EF%BC%88%E5%88%86%E7%89%87%E9%9B%86%E7%BE%A4%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">Redis Cluster（分片集群）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%87%E6%9C%9F%E5%88%A0%E9%99%A4%E4%B8%8E%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0"><span class="toc-number">1.5.4.</span> <span class="toc-text">过期删除与内存淘汰</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Redis-%E5%8D%95%E7%BA%BF%E7%A8%8B%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%A7%98%E5%AF%86"><span class="toc-number">1.6.1.</span> <span class="toc-text">Redis 单线程高性能的秘密</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">参考链接</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>std__integral_constant | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="std::integral_constant 适用范围：C++11 std::integral_constant——实现编译时类型安全的整型常量包装。  一、核心概念 定义：std::integral_constant 是一个模板类，它把一个编译期的常量值”包装”成一个类型。通过把值变成类型的一部分，能在编译期传递和使用这个值。简单来说，它是所有 type traits 判断结果的基石。 关键词：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="std__integral_constant">
+<meta property="og:url" content="https://weimo1.github.io/posts/std__integral_constant/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="std::integral_constant 适用范围：C++11 std::integral_constant——实现编译时类型安全的整型常量包装。  一、核心概念 定义：std::integral_constant 是一个模板类，它把一个编译期的常量值”包装”成一个类型。通过把值变成类型的一部分，能在编译期传递和使用这个值。简单来说，它是所有 type traits 判断结果的基石。 关键词：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.561Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "std__integral_constant",
+  "url": "https://weimo1.github.io/posts/std__integral_constant/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.561Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/std__integral_constant/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'std__integral_constant',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">std__integral_constant</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">std__integral_constant</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.561Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E6%A8%A1%E6%9D%BF%E4%B8%8E%E6%B3%9B%E5%9E%8B/">模板与泛型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="std-integral-constant"><a href="#std-integral-constant" class="headerlink" title="std::integral_constant"></a>std::integral_constant</h1><blockquote>
+<p>适用范围：C++11 <code>std::integral_constant</code>——实现编译时类型安全的整型常量包装。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::integral_constant</code> 是一个模板类，它把一个编译期的常量值”包装”成一个类型。通过把值变成类型的一部分，能在编译期传递和使用这个值。简单来说，它是所有 type traits 判断结果的基石。</li>
+<li><strong>关键词</strong>：<code>std::integral_constant</code>、<code>true_type</code>、<code>false_type</code>、<code>bool_constant</code>、标签派发（Tag Dispatch）、编译期常量</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>编译期条件判断与类型派发（如 <code>enable_if</code>、SFINAE）</li>
+<li>模板元编程的递归终点</li>
+<li>type traits 的返回值类型（<code>is_same</code>、<code>is_integral</code> 等）</li>
+<li>标签派发（通过 <code>true_type{}</code>&#x2F;<code>false_type{}</code> 选择重载）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p>它接受两个模板参数：</p>
+<ul>
+<li>一个基础类型 <code>T</code>，比如 <code>int</code>、<code>bool</code> 等</li>
+<li>一个该类型的常量值 <code>v</code></li>
+</ul>
+<p>通过这种方式，<code>std::integral_constant</code> 把值变成了类型的一部分，能在编译期传递和使用这个值。</p>
+<p><strong>第二层：关键步骤详解</strong></p>
+<p><code>std::integral_constant</code> 包含以下成员：</p>
+<ul>
+<li><code>value</code>：一个静态常量，存储传递的值</li>
+<li><code>value_type</code>：类型别名，表示常量的类型</li>
+<li><code>type</code>：类型别名，表示 <code>integral_constant</code> 本身</li>
+<li>转换运算符和函数调用运算符，用于获取常量的值</li>
+</ul>
+<p>两个主要操作符：</p>
+<ol>
+<li><strong>隐式类型转换操作符</strong> <code>operator value_type()</code>：允许将 <code>integral_constant</code> 对象隐式转换为模板参数 <code>T</code> 类型的值</li>
+</ol>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">std::integral_constant&lt;<span class="type">int</span>, <span class="number">42</span>&gt; ic; </span><br><span class="line"><span class="type">int</span> value = ic;  <span class="comment">// 隐式调用 operator int(), value 为 42</span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><strong>函数调用操作符</strong> <code>operator()()</code>：返回存储的常量值，使对象可像函数一样调用</li>
+</ol>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> result = <span class="built_in">ic</span>();  <span class="comment">// 调用 operator()(), result 为 42</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>第三层：底层机制——类型化常量的派发</strong></p>
+<p>设计精髓：把一个编译器常量”类型化”——值成为模板参数，从而可以在编译期通过类型匹配进行条件分发。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// integral_constant 标准实现</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> _Tp, _Tp __v&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">integral_constant</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> _Tp                  value = __v;</span><br><span class="line">    <span class="keyword">typedef</span> _Tp                           value_type;</span><br><span class="line">    <span class="keyword">typedef</span> integral_constant&lt;_Tp, __v&gt;   type;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="keyword">operator</span> <span class="title">value_type</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> value; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> value_type <span class="title">operator</span><span class="params">()</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> value; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> _Tp, _Tp __v&gt;</span><br><span class="line"><span class="keyword">constexpr</span> _Tp integral_constant&lt;_Tp, __v&gt;::value;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// The type used as a compile-time boolean with true value.</span></span><br><span class="line"><span class="keyword">typedef</span> integral_constant&lt;<span class="type">bool</span>, <span class="literal">true</span>&gt;     true_type;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// The type used as a compile-time boolean with false value.</span></span><br><span class="line"><span class="keyword">typedef</span> integral_constant&lt;<span class="type">bool</span>, <span class="literal">false</span>&gt;    false_type;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="type">bool</span> __v&gt;</span><br><span class="line"><span class="keyword">using</span> __bool_constant = integral_constant&lt;<span class="type">bool</span>, __v&gt;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="type">bool</span> __v&gt;</span><br><span class="line"><span class="keyword">using</span> bool_constant = integral_constant&lt;<span class="type">bool</span>, __v&gt;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键数据结构</strong>：<code>true_type</code>、<code>false_type</code>（所有 type traits 的基类）</li>
+<li><strong>关键公式</strong>：编译期判断 &#x3D; <code>std::is_xxx&lt;T&gt;::value</code> → 返回 <code>bool_constant&lt;result&gt;</code> → 参与重载决议</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-基本使用"><a href="#3-1-基本使用" class="headerlink" title="3.1 基本使用"></a>3.1 基本使用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">std::integral_constant&lt;<span class="type">int</span>, <span class="number">42</span>&gt; ic;</span><br><span class="line"><span class="type">int</span> value = ic;        <span class="comment">// 隐式调用 operator int(), value 为 42</span></span><br><span class="line"><span class="keyword">auto</span> result = <span class="built_in">ic</span>();    <span class="comment">// 调用 operator()(), result 为 42</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-获得-vector-的阶数（递归深度）"><a href="#3-2-获得-vector-的阶数（递归深度）" class="headerlink" title="3.2 获得 vector 的阶数（递归深度）"></a>3.2 获得 vector 的阶数（递归深度）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">class</span> <span class="title class_">T</span>&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">infer_rank</span> : std::integral_constant&lt;<span class="type">size_t</span>, <span class="number">0</span>&gt; &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">class</span> <span class="title class_">T</span>, <span class="keyword">class</span> <span class="title class_">A</span>&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">infer_rank</span>&lt;std::vector&lt;T, A&gt;&gt; :</span><br><span class="line">    std::integral_constant&lt;<span class="type">size_t</span>, <span class="number">1</span> + infer_rank&lt;T&gt;::value&gt; &#123;</span><br><span class="line">&#125;; </span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">class</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> <span class="type">size_t</span> <span class="title">rank</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> infer_rank&lt;T&gt;::value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// rank&lt;vector&lt;vector&lt;int&gt;&gt;&gt;() == 2</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt; </span><br><span class="line"><span class="keyword">constexpr</span> <span class="type">int</span> rank = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt; </span><br><span class="line"><span class="keyword">constexpr</span> <span class="type">int</span> rank&lt;std::vector&lt;T&gt;&gt; = <span class="number">1</span> + rank&lt;T&gt;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="type">int</span> N&gt; </span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">get_vec_by_rank</span>;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt; </span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">get_vec_by_rank</span>&lt;T, <span class="number">0</span>&gt; &#123;</span><br><span class="line">    <span class="keyword">using</span> Type = T;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="type">int</span> N&gt; </span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">get_vec_by_rank</span> &#123;</span><br><span class="line">    <span class="keyword">using</span> Type = std::vector&lt;<span class="keyword">typename</span> get_vec_by_rank&lt;T, N - <span class="number">1</span>&gt;::Type&gt;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="标签派发机制"><a href="#标签派发机制" class="headerlink" title="标签派发机制"></a>标签派发机制</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 经典场景：根据条件选择不同实现</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process_impl</span><span class="params">(T&amp; obj, std::true_type)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 平凡类型：直接用 memcpy 优化</span></span><br><span class="line">    std::<span class="built_in">memcpy</span>(dest, &amp;obj, <span class="built_in">sizeof</span>(T));</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process_impl</span><span class="params">(T&amp; obj, std::false_type)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 非平凡类型：走构造/析构流程</span></span><br><span class="line">    <span class="keyword">new</span> (dest) <span class="built_in">T</span>(obj);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(T&amp; obj)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">process_impl</span>(obj, std::is_trivially_copyable&lt;T&gt;&#123;&#125;);</span><br><span class="line">    <span class="comment">// is_trivially_copyable&lt;T&gt; 继承自 true_type 或 false_type</span></span><br><span class="line">    <span class="comment">// 编译期派发到对应重载，零运行时开销</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="与-constexpr-if-的关系"><a href="#与-constexpr-if-的关系" class="headerlink" title="与 constexpr if 的关系"></a>与 constexpr if 的关系</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// C++17 之前：只能靠 integral_constant 派发</span></span><br><span class="line"><span class="comment">// C++17 之后：constexpr if 简化了大部分场景</span></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_trivially_copyable_v&lt;T&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">memcpy</span>(...);   <span class="comment">// 编译期分支，不满足条件的代码不实例化</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="built_in">new</span> (...) <span class="built_in">T</span>(obj);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// integral_constant 仍用于：SFINAE、enable_if、标签派发</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>type traits 体系</strong>：<code>is_same</code>、<code>is_integral</code>、<code>is_copy_constructible</code> 等全部继承自 <code>true_type</code>&#x2F;<code>false_type</code></li>
+<li><strong>模板元编程</strong>：编译期运算依赖 <code>integral_constant</code> 存储中间结果</li>
+<li><strong>SFINAE</strong>：通过 <code>std::enable_if&lt;condition::value&gt;</code> 实现条件编译</li>
+<li><strong>C++17 constexpr if</strong>：简化了函数体内条件分支，但不能替代类型层面的派发</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>标签派发零开销</strong>：<code>std::true_type{}</code>&#x2F;<code>std::false_type{}</code> 作为函数参数完全在编译期消解</li>
+<li><strong>复合 trait</strong>：<code>std::conjunction</code>、<code>std::disjunction</code>、<code>std::negation</code> 是 <code>integral_constant</code> 的逻辑组合</li>
+<li><strong>递归终止</strong>：<code>integral_constant&lt;size_t, 0&gt;</code> 常用作模板递归的 base case</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="1-integral-constant-的标准实现"><a href="#1-integral-constant-的标准实现" class="headerlink" title="1. integral_constant 的标准实现"></a>1. integral_constant 的标准实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> _Tp, _Tp __v&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">integral_constant</span> &#123;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> _Tp value = __v;          <span class="comment">// 常量值，编译期可用</span></span><br><span class="line">    <span class="keyword">using</span> value_type = _Tp;                     <span class="comment">// 值的类型</span></span><br><span class="line">    <span class="keyword">using</span> type = integral_constant&lt;_Tp, __v&gt;;  <span class="comment">// 自引用类型别名</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="keyword">operator</span> <span class="title">value_type</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> value; &#125;  <span class="comment">// 隐式转换</span></span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> value_type <span class="title">operator</span><span class="params">()</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> value; &#125; <span class="comment">// 函数调用</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// bool 特化：所有编译期判断的基石</span></span><br><span class="line"><span class="keyword">typedef</span> integral_constant&lt;<span class="type">bool</span>, <span class="literal">true</span>&gt;  true_type;</span><br><span class="line"><span class="keyword">typedef</span> integral_constant&lt;<span class="type">bool</span>, <span class="literal">false</span>&gt; false_type;</span><br><span class="line"></span><br><span class="line"><span class="comment">// C++17 简化版本</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="type">bool</span> __v&gt;</span><br><span class="line"><span class="keyword">using</span> bool_constant = integral_constant&lt;<span class="type">bool</span>, __v&gt;;</span><br></pre></td></tr></table></figure>
+
+<p>设计精髓：把一个编译器常量”类型化”——值成为模板参数，从而可以在编译期通过类型匹配进行条件分发。</p>
+<h3 id="2-integral-constant-的类型派发机制"><a href="#2-integral-constant-的类型派发机制" class="headerlink" title="2. integral_constant 的类型派发机制"></a>2. integral_constant 的类型派发机制</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 经典场景：根据条件选择不同实现</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process_impl</span><span class="params">(T&amp; obj, std::true_type)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 平凡类型：直接用 memcpy 优化</span></span><br><span class="line">    std::<span class="built_in">memcpy</span>(dest, &amp;obj, <span class="built_in">sizeof</span>(T));</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process_impl</span><span class="params">(T&amp; obj, std::false_type)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 非平凡类型：走构造/析构流程</span></span><br><span class="line">    <span class="keyword">new</span> (dest) <span class="built_in">T</span>(obj);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(T&amp; obj)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">process_impl</span>(obj, std::is_trivially_copyable&lt;T&gt;&#123;&#125;);</span><br><span class="line">    <span class="comment">// is_trivially_copyable&lt;T&gt; 继承自 true_type 或 false_type</span></span><br><span class="line">    <span class="comment">// 编译期派发到对应重载，零运行时开销</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-与-constexpr-if-的关系"><a href="#3-与-constexpr-if-的关系" class="headerlink" title="3. 与 constexpr if 的关系"></a>3. 与 constexpr if 的关系</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// C++17 之前：只能靠 integral_constant 派发</span></span><br><span class="line"><span class="comment">// C++17 之后：constexpr if 简化了大部分场景</span></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_trivially_copyable_v&lt;T&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">memcpy</span>(...);   <span class="comment">// 编译期分支，不满足条件的代码不实例化</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="built_in">new</span> (...) <span class="built_in">T</span>(obj);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// integral_constant 仍用于：SFINAE、enable_if、标签派发</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>类型特征基石</strong>：<code>is_same</code>、<code>is_integral</code>、<code>is_copy_constructible</code> 等全部继承自 true_type&#x2F;false_type</li>
+<li><strong>标签派发</strong>：通过 <code>std::true_type{}</code> &#x2F; <code>std::false_type{}</code> 作为函数参数选择重载，零开销</li>
+<li><strong>编译期运算</strong>：<code>std::integral_constant&lt;int, 5&gt;::value + std::integral_constant&lt;int, 3&gt;::value</code> 编译期得出 8</li>
+<li><strong>模板递归终点</strong>：<code>integral_constant&lt;size_t, 0&gt;</code> 常用作递归的 base case</li>
+<li><strong>与 constexpr if 的选择</strong>：C++17 后简单的条件分支优先 constexpr if，需要 SFINAE 的场景仍需 integral_constant</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（8题）"><a href="#Q-A（8题）" class="headerlink" title="Q&amp;A（8题）"></a>Q&amp;A（8题）</h3><p><strong>Q1: integral_constant 是什么？</strong><br>A: 把编译期常量包装成类型的模板类，有两个模板参数（类型 T + 值 v），提供 value、隐式转换和 operator()</p>
+<p><strong>Q2: true_type 和 false_type 的本质？</strong><br>A: <code>using true_type = integral_constant&lt;bool, true&gt;</code>，所有 type traits 的判断结果都继承自它们</p>
+<p><strong>Q3: 为什么要把值包装成类型？</strong><br>A: 类型可以在编译期参与重载决议、模板特化、SFINAE，而纯值不行。类型化后才能做标签派发</p>
+<p><strong>Q4: integral_constant 和 constexpr if 什么时候用哪个？</strong><br>A: constexpr if 用于函数体内条件分支；integral_constant 用于重载决议、模板偏特化、enable_if 等类型层面</p>
+<p><strong>Q5: operator()() 和 operator value_type() 的区别？</strong><br>A: <code>operator value_type()</code> 用于隐式转换为 T 类型值；<code>operator()()</code> 使对象可像函数一样调用</p>
+<p><strong>Q6: 如何用 integral_constant 做编译期运算？</strong><br>A: 模板递归 + 偏特化，如 factorial&lt;5&gt;::value 编译期计算 5!，integral_constant 存储结果</p>
+<p><strong>Q7: bool_constant 相比 integral_constant 的优势？</strong><br>A: <code>bool_constant&lt;true&gt;</code> 比 <code>integral_constant&lt;bool, true&gt;</code> 简洁，C++17 引入</p>
+<p><strong>Q8: is_same&lt;T, U&gt; 如何利用 integral_constant？</strong><br>A: <code>is_same&lt;T, U&gt; : false_type</code> + 偏特化 <code>is_same&lt;T, T&gt; : true_type</code>，结果继承自 integral_constant</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：直接比较两个 integral_constant 对象 — 应该比较 <code>::value</code>，不同特化是不同的类型</li>
+<li><strong>反问</strong>：可以用 enum 替代吗？→ 可以但类型不安全，<code>enum { value = 5 }</code> 无法做类型派发</li>
+<li><strong>陷阱</strong>：<code>integral_constant&lt;bool, true&gt;</code> 和 <code>integral_constant&lt;bool, false&gt;</code> 是不同类型，不能互转</li>
+<li><strong>反问</strong>：C++20 有 consteval 后 integral_constant 还有必要吗？→ 仍有必要，类型层面的派发不可替代</li>
+<li><strong>陷阱</strong>：在运行时分支中判断 <code>is_same_v&lt;T, int&gt;</code> — 应改用 if constexpr 或标签派发</li>
+</ol>
+<h3 id="一句话答案（5个）"><a href="#一句话答案（5个）" class="headerlink" title="一句话答案（5个）"></a>一句话答案（5个）</h3><ol>
+<li><strong>本质</strong>：编译期常量的类型化包装</li>
+<li><strong>核心价值</strong>：让值在类型层面参与派发和特化</li>
+<li><strong>true&#x2F;false_type</strong>：所有 type_traits 判断的基类</li>
+<li><strong>vs constexpr if</strong>：类型派发用 integral_constant，条件分支用 constexpr if</li>
+<li><strong>零开销</strong>：所有判断编译期完成，不产生运行时代码</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/std__integral_constant/">https://weimo1.github.io/posts/std__integral_constant/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/std__expected/" title="std__expected"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">std__expected</div></div><div class="info-2"><div class="info-item-1">std::expected 适用范围：C++23 std::expected——类型安全的错误处理替代异常机制。  一、核心概念 定义：std::expected 是 C++23 标准库中的一个模板类，定义于头文件 &lt;expected&gt; 中。它提供了一种方式来表示两个值之一：类型 T 的期望值，或类型 E 的非期望值。std::expected 永远不会是无值的。 关键词：std::expected、std::unexpected、and_then、or_else、transform、错误处理、monadic 操作 适用场景&#x2F;边界： 替代异常进行可恢复错误处理 函数...</div></div></div></a><a class="pagination-related" href="/posts/std__declval/" title="std__declval"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">std__declval</div></div><div class="info-2"><div class="info-item-1">std::declval 适用范围：C++11 std::declval——编译期伪实例，用于在不构造对象的情况下获取类型信息。  一、核心概念 定义：std::declval 是一个工具类型操作函数，定义在 &lt;utility&gt; 头文件中。它与 std::move 和 std::forward 等函数属于同一类别。其作用非常简单：为其类型模板参数添加右值引用。说白了，就是给定任何类型，返回其右值引用（会运用引用折叠规则），比如： 输入 int 得到 int &amp;&amp; 输入 int &amp; 得到 int &amp; 输入 int &amp;&amp; 得到 in...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#std-integral-constant"><span class="toc-number">1.</span> <span class="toc-text">std::integral_constant</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 基本使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%8E%B7%E5%BE%97-vector-%E7%9A%84%E9%98%B6%E6%95%B0%EF%BC%88%E9%80%92%E5%BD%92%E6%B7%B1%E5%BA%A6%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 获得 vector 的阶数（递归深度）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E7%AD%BE%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.1.</span> <span class="toc-text">标签派发机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E-constexpr-if-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">1.4.2.</span> <span class="toc-text">与 constexpr if 的关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.4.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-integral-constant-%E7%9A%84%E6%A0%87%E5%87%86%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. integral_constant 的标准实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-integral-constant-%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. integral_constant 的类型派发机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E4%B8%8E-constexpr-if-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">1.5.3.</span> <span class="toc-text">3. 与 constexpr if 的关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%888%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（8题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（5个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

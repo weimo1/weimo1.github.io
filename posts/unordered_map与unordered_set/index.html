@@ -1,0 +1,373 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>unordered_map与unordered_set | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="unordered_map与unordered_set【C++】unordered_set和unordered_map的实现-腾讯云开发者社区-腾讯云 C++ 手写实现 unordered_map 和 unordered_set：深入解析与源码实战-腾讯云开发者社区-腾讯云工程里使用unordered_map去充当local_cache、黑白名单、路由表等功能时，所存储的key都是用户id、时间、">
+<meta property="og:type" content="article">
+<meta property="og:title" content="unordered_map与unordered_set">
+<meta property="og:url" content="https://weimo1.github.io/posts/unordered_map%E4%B8%8Eunordered_set/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="unordered_map与unordered_set【C++】unordered_set和unordered_map的实现-腾讯云开发者社区-腾讯云 C++ 手写实现 unordered_map 和 unordered_set：深入解析与源码实战-腾讯云开发者社区-腾讯云工程里使用unordered_map去充当local_cache、黑白名单、路由表等功能时，所存储的key都是用户id、时间、">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.562Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "unordered_map与unordered_set",
+  "url": "https://weimo1.github.io/posts/unordered_map%E4%B8%8Eunordered_set/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.562Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/unordered_map%E4%B8%8Eunordered_set/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'unordered_map与unordered_set',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">unordered_map与unordered_set</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">unordered_map与unordered_set</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.562Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/">系统底层408</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>12分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="unordered-map与unordered-set"><a href="#unordered-map与unordered-set" class="headerlink" title="unordered_map与unordered_set"></a>unordered_map与unordered_set</h1><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2539447">【C++】unordered_set和unordered_map的实现-腾讯云开发者社区-腾讯云</a></p>
+<h5 id="C-手写实现-unordered-map-和-unordered-set：深入解析与源码实战-腾讯云开发者社区-腾讯云"><a href="#C-手写实现-unordered-map-和-unordered-set：深入解析与源码实战-腾讯云开发者社区-腾讯云" class="headerlink" title="C++ 手写实现 unordered_map 和 unordered_set：深入解析与源码实战-腾讯云开发者社区-腾讯云"></a><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2530380">C++ 手写实现 unordered_map 和 unordered_set：深入解析与源码实战-腾讯云开发者社区-腾讯云</a></h5><p>工程里使用unordered_map去充当local_cache、黑白名单、路由表等功能时，所存储的key都是用户id、时间、版本号、设备号等拼接得到，大流量下各个桶整体负载均衡，并且因为都是内部请求，所以一般是不考虑大家说的hack的情况的；即使真的发生了，熔断、限流、容灾等基础设施也能快速发现和限制问题，所以和大家做coding题的场景考虑的点不一样</p>
+<ol>
+<li><strong>默认选择 unordered_map</strong></li>
+</ol>
+<ul>
+<li>在90%的业务场景中提供最佳性能</li>
+<li>适合基于键的快速查找场景</li>
+</ul>
+<ol start="2">
+<li><strong>为有序需求选择 map</strong></li>
+</ol>
+<ul>
+<li>需要范围查询、顺序遍历、有序键聚合</li>
+<li>数据规模较小时内存开销更优</li>
+</ul>
+<h5 id="哈希表的基本概念"><a href="#哈希表的基本概念" class="headerlink" title="哈希表的基本概念"></a>哈希表的基本概念</h5><p>哈希表是现代计算机科学中最重要的数据结构之一。它通过一个神奇的”哈希函数”，将键映射到特定的存储位置，实现了近乎O(1)的查找、插入和删除操作。</p>
+<h6 id="哈希表的数学模型"><a href="#哈希表的数学模型" class="headerlink" title="哈希表的数学模型"></a>哈希表的数学模型</h6><p>设计一个完美的哈希表需要考虑以下数学原理：</p>
+<ul>
+<li>哈希函数的均匀分布性 装载率</li>
+<li>冲突解决策略</li>
+<li>负载因子的平衡 扩容</li>
+</ul>
+<h4 id="从零构建哈希表框架"><a href="#从零构建哈希表框架" class="headerlink" title="从零构建哈希表框架"></a>从零构建哈希表框架</h4><h5 id="4-1-哈希节点结构"><a href="#4-1-哈希节点结构" class="headerlink" title="4.1 哈希节点结构"></a>4.1 哈希节点结构</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">template&lt;class T&gt;</span><br><span class="line">struct HashNode &#123;</span><br><span class="line">T _data;</span><br><span class="line">HashNode&lt;T&gt;* _next;</span><br><span class="line">HashNode(const T&amp; data) : _data(data), _next(nullptr) &#123;&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h5 id="4-2-哈希函数定义"><a href="#4-2-哈希函数定义" class="headerlink" title="4.2 哈希函数定义"></a>4.2 哈希函数定义</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">template&lt;class K&gt;</span><br><span class="line">struct HashFunc &#123;</span><br><span class="line">size_t operator()(const K&amp; key) const &#123;</span><br><span class="line">    return static_cast&lt;size_t&gt;(key);</span><br><span class="line">&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">// 特化版本支持 string</span><br><span class="line">template&lt;&gt;</span><br><span class="line">struct HashFunc&lt;std::string&gt; &#123;</span><br><span class="line">size_t operator()(const std::string&amp; key) const &#123;</span><br><span class="line">    size_t hash = 0;</span><br><span class="line">    for (char ch : key) hash = hash * 131 + ch;</span><br><span class="line">    return hash;</span><br><span class="line">&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h5 id="4-3-哈希表接口结构"><a href="#4-3-哈希表接口结构" class="headerlink" title="4.3 哈希表接口结构"></a>4.3 哈希表接口结构</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">template&lt;class K, class T, class KeyOfT, class Hash&gt;</span><br><span class="line">class HashTable &#123;</span><br><span class="line">vector&lt;HashNode&lt;T&gt;*&gt; _tables;</span><br><span class="line">size_t _n;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line">bool Insert(const T&amp; data);</span><br><span class="line">Iterator Begin();</span><br><span class="line">Iterator End();</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="扩容机制与性能调优建议"><a href="#扩容机制与性能调优建议" class="headerlink" title="扩容机制与性能调优建议"></a>扩容机制与性能调优建议</h4><h5 id="9-1-扩容策略：质数数组"><a href="#9-1-扩容策略：质数数组" class="headerlink" title="9.1 扩容策略：质数数组"></a>9.1 扩容策略：质数数组</h5><p>采用质数作为哈希桶数量有助于减少哈希冲突。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">static const size_t prime_list[] = &#123;</span><br><span class="line">53, 97, 193, 389, 769, 1543, 3079,</span><br><span class="line">6151, 12289, 24593, 49157, 98317, 196613</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h5 id="9-2-负载因子-load-factor"><a href="#9-2-负载因子-load-factor" class="headerlink" title="9.2 负载因子 (load factor)"></a>9.2 负载因子 (load factor)</h5><p>常设阈值为 1.0，当元素个数达到桶总数时扩容，可动态调整：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">if (_n &gt;= _tables.size()) Expand();</span><br></pre></td></tr></table></figure>
+
+<h5 id="9-3-哈希冲突优化"><a href="#9-3-哈希冲突优化" class="headerlink" title="9.3 哈希冲突优化"></a>9.3 哈希冲突优化</h5><ul>
+<li>自定义哈希函数（如 BKDRHash）</li>
+<li>增加桶数量，减少冲突链长度</li>
+<li>使用链表以外的冲突解决（如开放定址）</li>
+</ul>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_85f220b833c9.png"></p>
+<h5 id="1-2-哈希函数的设计艺术"><a href="#1-2-哈希函数的设计艺术" class="headerlink" title="1.2 哈希函数的设计艺术"></a>1.2 哈希函数的设计艺术</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 简单哈希函数示例</span><br><span class="line">size_t simpleHash(const std::string&amp; key) &#123;</span><br><span class="line">    size_t hash = 0;</span><br><span class="line">    for (char c : key) &#123;</span><br><span class="line">        hash = hash * 31 + c;</span><br><span class="line">    &#125;</span><br><span class="line">    return hash;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 现代哈希函数（模板版本）</span><br><span class="line">template &lt;typename T&gt;</span><br><span class="line">struct HashFunction &#123;</span><br><span class="line">size_t operator()(const T&amp; key) const &#123;</span><br><span class="line">    return std::hash&lt;T&gt;&#123;&#125;(key);</span><br><span class="line">&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h5 id="unordered-map的内部实现原理"><a href="#unordered-map的内部实现原理" class="headerlink" title="unordered_map的内部实现原理"></a>unordered_map的内部实现原理</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">template &lt;typename Key, typename Value, typename Hash = std::hash&lt;Key&gt;&gt;</span><br><span class="line">class MyUnorderedMap &#123;</span><br><span class="line">private:</span><br><span class="line">    // 内部桶数组</span><br><span class="line">    std::vector&lt;std::list&lt;std::pair&lt;Key, Value&gt;&gt;&gt; buckets;</span><br><span class="line">    </span><br><span class="line">    // 哈希函数</span><br><span class="line">    Hash hashFunc;</span><br><span class="line">    </span><br><span class="line">    // 计算桶的索引</span><br><span class="line">    size_t getBucketIndex(const Key&amp; key) &#123;</span><br><span class="line">        return hashFunc(key) % buckets.size();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">public:</span><br><span class="line">    // 插入操作</span><br><span class="line">    void insert(const std::pair&lt;Key, Value&gt;&amp; kvPair) &#123;</span><br><span class="line">        size_t index = getBucketIndex(kvPair.first);</span><br><span class="line">        auto&amp; bucket = buckets[index];</span><br><span class="line">        </span><br><span class="line">        // 检查是否已存在</span><br><span class="line">        for (auto&amp; item : bucket) &#123;</span><br><span class="line">            if (item.first == kvPair.first) &#123;</span><br><span class="line">                item.second = kvPair.second;</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        bucket.push_back(kvPair);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="unordered-set的实现原理"><a href="#unordered-set的实现原理" class="headerlink" title="unordered_set的实现原理"></a>unordered_set的实现原理</h4><hr>
+<h1 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h1><h2 id="1-GCC-std-unordered-map-的桶结构——单向链表-迭代器"><a href="#1-GCC-std-unordered-map-的桶结构——单向链表-迭代器" class="headerlink" title="1. GCC std::unordered_map 的桶结构——单向链表+迭代器"></a>1. GCC std::unordered_map 的桶结构——单向链表+迭代器</h2><p>GCC libstdc++ 的 unordered_map 采用开链法：桶数组存指向单向链表头的指针，所有节点通过 <code>_M_nxt</code> 串联。迭代器遍历整个哈希表时跳过空桶。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// GCC libstdc++ unordered_map 内部结构（简化）</span></span><br><span class="line"><span class="comment">// hashtable.h</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Key, <span class="keyword">typename</span> Value, <span class="keyword">typename</span> Hash, <span class="keyword">typename</span> Alloc&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">_Hashtable</span> &#123;</span><br><span class="line">    <span class="comment">// 桶数组：存指向各桶链表头节点的指针</span></span><br><span class="line">    __bucket_type*    _M_buckets;          <span class="comment">// HashNode** 数组</span></span><br><span class="line">    size_type         _M_bucket_count;     <span class="comment">// 桶数量（质数）</span></span><br><span class="line">    __node_base       _M_before_begin;     <span class="comment">// 哨兵头节点</span></span><br><span class="line">    size_type         _M_element_count;    <span class="comment">// 元素总数</span></span><br><span class="line">    <span class="type">float</span>             _M_max_load_factor;  <span class="comment">// 默认 1.0</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 核心查找：计算 hash → 定位桶 → 遍历该桶链表</span></span><br><span class="line">    <span class="function">iterator <span class="title">find</span><span class="params">(<span class="type">const</span> key_type&amp; __k)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> __code = <span class="keyword">this</span>-&gt;_M_hash_code(__k);  <span class="comment">// 计算哈希值</span></span><br><span class="line">        size_type __bkt = _M_bucket_index(__code); <span class="comment">// hash % bucket_count</span></span><br><span class="line">        <span class="keyword">auto</span> __node = _M_find_node(__bkt, __k, __code);</span><br><span class="line">        <span class="keyword">return</span> __node ? <span class="built_in">iterator</span>(__node) : <span class="built_in">end</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 当 _M_element_count &gt; bucket_count * max_load_factor 时触发 rehash</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">rehash</span><span class="params">(size_type __n)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 1. 找到 &gt;= n 的下一个质数</span></span><br><span class="line">        <span class="keyword">auto</span> __nbuckets = __next_prime(__n);</span><br><span class="line">        <span class="comment">// 2. 分配新桶数组</span></span><br><span class="line">        <span class="keyword">auto</span> __new_buckets = <span class="built_in">allocate_buckets</span>(__nbuckets);</span><br><span class="line">        <span class="comment">// 3. 逐个节点重新计算桶索引，插入新桶（头插法）</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span> __node = _M_begin(); __node; ) &#123;</span><br><span class="line">            <span class="keyword">auto</span> __next = __node-&gt;_M_next();</span><br><span class="line">            size_type __bkt = _M_bucket_index(__node, __nbuckets);</span><br><span class="line">            __node-&gt;_M_nxt = __new_buckets[__bkt];</span><br><span class="line">            __new_buckets[__bkt] = __node;</span><br><span class="line">            __node = __next;</span><br><span class="line">        &#125;</span><br><span class="line">        _M_buckets = __new_buckets;</span><br><span class="line">        _M_bucket_count = __nbuckets;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-字符串哈希——BKDR-Hash-与-std-hash-特化"><a href="#2-字符串哈希——BKDR-Hash-与-std-hash-特化" class="headerlink" title="2. 字符串哈希——BKDR Hash 与 std::hash 特化"></a>2. 字符串哈希——BKDR Hash 与 std::hash 特化</h2><p>BKDR 是生产中最常用的字符串哈希（种子 131&#x2F;1313&#x2F;13131），分布均匀、冲突少。std::hash 的字符串特化在不同编译器实现各异。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// BKDR Hash（被广泛使用，包括 Redis、Java String.hashCode）</span></span><br><span class="line"><span class="function"><span class="type">size_t</span> <span class="title">BKDRHash</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* str)</span> </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> hash = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> seed = <span class="number">131</span>;  <span class="comment">// 31, 131, 1313, 13131 均可</span></span><br><span class="line">    <span class="keyword">while</span> (*str) &#123;</span><br><span class="line">        hash = hash * seed + (*str++);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> hash;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 原理：多项式哈希 h = s[0]*seed^(n-1) + s[1]*seed^(n-2) + ... + s[n-1]</span></span><br><span class="line"><span class="comment">// 种子为质数减少 hash 碰撞，131 是经典选择</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// std::hash&lt;std::string&gt; 特化（libstdc++ 使用 MurmurHash / CityHash）</span></span><br><span class="line"><span class="keyword">template</span>&lt;&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">hash</span>&lt;std::string&gt; &#123;</span><br><span class="line">    <span class="function"><span class="type">size_t</span> <span class="title">operator</span><span class="params">()</span><span class="params">(<span class="type">const</span> std::string&amp; s)</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> std::_Hash_impl::<span class="built_in">hash</span>(s.<span class="built_in">data</span>(), s.<span class="built_in">size</span>());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 编译期选择：64 位下可能用 MurmurHash2_64，追求速度和分布均匀</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-开链法-vs-开放寻址法——两种冲突解决策略"><a href="#3-开链法-vs-开放寻址法——两种冲突解决策略" class="headerlink" title="3. 开链法 vs 开放寻址法——两种冲突解决策略"></a>3. 开链法 vs 开放寻址法——两种冲突解决策略</h2><p>std::unordered_map 用开链法（链表），但近年来开放寻址法（如 Google SwissTable、absl::flat_hash_map）因缓存友好而崛起。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 开放寻址法——线性探测（简化版）</span></span><br><span class="line"><span class="comment">// 优势：所有数据在同一连续数组中，缓存友好，无指针开销</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> K, <span class="keyword">typename</span> V&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">OpenAddressingHashMap</span> &#123;</span><br><span class="line">    <span class="keyword">enum</span> <span class="title class_">State</span> &#123; EMPTY, OCCUPIED, DELETED &#125;;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">Slot</span> &#123; State state = EMPTY; K key; V value; &#125;;</span><br><span class="line">    std::vector&lt;Slot&gt; table_;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">insert</span><span class="params">(<span class="type">const</span> K&amp; key, <span class="type">const</span> V&amp; val)</span> </span>&#123;</span><br><span class="line">        <span class="type">size_t</span> idx = <span class="built_in">hash</span>(key) % table_.<span class="built_in">size</span>();</span><br><span class="line">        <span class="comment">// 线性探测找空位或已删除位</span></span><br><span class="line">        <span class="keyword">while</span> (table_[idx].state == OCCUPIED) &#123;</span><br><span class="line">            <span class="keyword">if</span> (table_[idx].key == key) &#123;</span><br><span class="line">                table_[idx].value = val;  <span class="comment">// 更新已有 key</span></span><br><span class="line">                <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            idx = (idx + <span class="number">1</span>) % table_.<span class="built_in">size</span>();  <span class="comment">// 线性探测</span></span><br><span class="line">        &#125;</span><br><span class="line">        table_[idx] = &#123;OCCUPIED, key, val&#125;;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 注意：开放寻址法负载因子需严格控制在 0.7 以下</span></span><br><span class="line"><span class="comment">// SwissTable 用 SIMD 并行探测 16 个槽，是 absl::flat_hash_map 的底层</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h2><ol>
+<li><strong>默认用 unordered_map，需要有序才用 map</strong>：90% 的业务场景不需要有序遍历。unordered_map 的 O(1) 查找 vs map 的 O(logN) 在百万级数据下差距明显（约 5-10 倍）。只有需要范围查询或顺序输出时才选 map。</li>
+<li><strong>rehash 是 unordered_map 最大的性能陷阱</strong>：rehash 时所有元素重新哈希+重新插入，O(n) 代价。<code>reserve()</code> 提前分配足够桶数可避免多次 rehash，已知元素数量时务必 reserve。</li>
+<li><strong>负载因子默认 1.0 是性能和空间的折中</strong>：负载因子高→桶利用率高→内存省但链表变长→查找变慢。降低 <code>max_load_factor</code> 到 0.5 可加速查找但多占一倍内存。生产环境根据读写比调整。</li>
+<li><strong>自定义类型做 key 必须实现两个东西</strong>：<code>std::hash&lt;MyType&gt;</code> 特化（提供哈希函数）和 <code>operator==</code>（解决哈希冲突后的等值判断）。漏一个就编译失败。</li>
+<li><strong>工程中不考虑哈希碰撞攻击</strong>：理论上攻击者可构造大量碰撞 key 使 unordered_map 退化到 O(n)。但内部请求场景（用户 ID、版本号做 key）负载均衡，结合熔断限流等基础设施，实际风险可控。</li>
+<li><strong>absl::flat_hash_map 在多数场景优于 std::unordered_map</strong>：Google 的 SwissTable 实现用开放寻址+SIMD，缓存友好度碾压 std 的开链法。但接口不完全兼容标准（如 bucket API 缺失），迁移需评估。</li>
+</ol>
+<hr>
+<h1 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h1><h2 id="面试问答"><a href="#面试问答" class="headerlink" title="面试问答"></a>面试问答</h2><p><strong>Q1: unordered_map 的底层实现原理？</strong><br>A: 开链法哈希表：(1) 桶数组（<code>vector&lt;node*&gt;</code>），桶数通常为质数减少冲突；(2) 插入时 hash(key) % bucket_count 定位桶，头插法加入链表；(3) 查找时先定位桶再遍历链表；(4) 当 <code>size &gt; bucket_count * max_load_factor</code> 时触发 rehash——找下个质数，所有元素重新哈希插入。平均 O(1)，最坏 O(n)（全碰撞）。</p>
+<p><strong>Q2: map vs unordered_map 怎么选？</strong><br>A: map 是红黑树，O(logN) 且有序遍历；unordered_map 是哈希表，O(1) 但无序。选 unordered_map 除非需要：(1) 有序遍历&#x2F;范围查询；(2) 按 key 排序输出；(3) 数据量很小（&lt;100，此时红黑树内存开销更低）；(4) key 类型无良好哈希函数。</p>
+<p><strong>Q3: 为什么桶数取质数？</strong><br>A: 减少哈希冲突。如果桶数是合数（如 2^n），hash % 2^n 只取低 n 位，高位信息丢失，分布不均。质数取模使得所有 bit 参与运算，分布更均匀。GCC 的桶数取质数序列：53, 97, 193, 389, 769…</p>
+<p><strong>Q4: rehash 的过程是怎样的？</strong><br>A: (1) 当前元素数超过 <code>bucket_count * max_load_factor</code>；(2) 找到 ≥ 当前桶数 2 倍的下一个质数作为新桶数；(3) 分配新桶数组（全为空）；(4) 遍历旧表每个节点，重新 hash 计算新桶索引，头插法插入新桶；(5) 释放旧桶数组。整个过程 O(n)，期间所有迭代器失效。</p>
+<p><strong>Q5: 如何为自定义类型实现 unordered_map 的 key？</strong><br>A: 必须提供：(1) <code>std::hash&lt;MyType&gt;</code> 特化——实现 <code>size_t operator()(const MyType&amp;)</code>；(2) <code>operator==</code>——两个对象相等时哈希值也必须相等（hash(key1)&#x3D;&#x3D;hash(key2) ⇒ key1&#x3D;&#x3D;key2）。缺一不可：hash 函数确定桶，operator&#x3D;&#x3D; 在桶内链表精确匹配。</p>
+<p><strong>Q6: 开链法和开放寻址法的区别？各自优劣？</strong><br>A: (1) 开链法（std::unordered_map）：每个桶存链表头指针，冲突时链尾追加。优势：负载因子可 &gt;1，删除简单；劣势：指针开销+缓存不友好。(2) 开放寻址法（absl::flat_hash_map）：所有数据在一个数组，冲突时线性&#x2F;二次探测。优势：缓存友好+无指针开销+省内存；劣势：负载因子必须 &lt;0.7，删除需惰性标记。现代推荐开放寻址（SwissTable 用 SIMD 加速）。</p>
+<p><strong>Q7: 哈希碰撞攻击是什么？怎么防御？</strong><br>A: 攻击者构造大量碰撞 key 使哈希表退化为 O(n) 链表，DoS 攻击。防御：(1) 使用随机种子哈希（GCC 已默认启用 per-process random seed）；(2) 用加密哈希（SHA256&#x2F;SipHash）替代简单哈希，攻击者无法预测碰撞；(3) 桶内链表过长时转红黑树（Java HashMap 做法，C++ 未采用）。</p>
+<p><strong>Q8: <code>std::hash</code> 对整数类型的实现是什么？</strong><br>A: 对整数类型，<code>std::hash&lt;int&gt;</code> 直接返回原值（identity hash）：<code>return static_cast&lt;size_t&gt;(__val)</code>。对指针类型，返回 <code>reinterpret_cast&lt;size_t&gt;(ptr)</code>。这种设计下，连续 int 的 hash 值也连续，若桶数为 2^n 则严重不均匀——这解释了为什么桶数必须取质数。</p>
+<h2 id="陷阱与反问"><a href="#陷阱与反问" class="headerlink" title="陷阱与反问"></a>陷阱与反问</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>错误认知</th>
+<th>正确理解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>unordered_map 的遍历顺序会保持</td>
+<td>遍历顺序取决于桶分布+插入顺序，与 key 大小无关</td>
+<td>rehash 后遍历顺序可能完全改变，不要依赖遍历顺序</td>
+</tr>
+<tr>
+<td><code>reserve</code> 和 <code>rehash</code> 一样</td>
+<td>reserve 保证能存 n 个元素不 rehash（考虑负载因子），rehash 强制设桶数</td>
+<td>reserve(n) ≈ rehash(ceil(n&#x2F;max_load_factor))</td>
+</tr>
+<tr>
+<td>map 一定比 unordered_map 内存省</td>
+<td>小数据量时红黑树节点少，但大数据量时哈希表的桶数组+节点指针开销可能更大</td>
+<td>实际对比取决于 key&#x2F;value 大小和数据量</td>
+</tr>
+<tr>
+<td>所有平台 std::hash<string> 都一样</td>
+<td>libstdc++ 用 MurmurHash&#x2F;CityHash，libc++ 用 MurmurHash2，MSVC 用 FNV-1a</td>
+<td>跨平台 hash 值不同，不要持久化 std::hash 的结果</td>
+</tr>
+<tr>
+<td>删除元素后桶的链表自动收缩</td>
+<td>unordered_map 从不自动缩容（rehash 只增不减）</td>
+<td>需要手动 <code>rehash</code> 或 swap 技巧收缩</td>
+</tr>
+</tbody></table>
+<h2 id="一句话答案速记表"><a href="#一句话答案速记表" class="headerlink" title="一句话答案速记表"></a>一句话答案速记表</h2><table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>unordered_map</td>
+<td>开链法哈希表，O(1) 平均查找，桶数取质数，负载因子超阈值 rehash</td>
+</tr>
+<tr>
+<td>map vs unordered_map</td>
+<td>红黑树 O(logN) 有序 vs 哈希表 O(1) 无序，默认选 unordered</td>
+</tr>
+<tr>
+<td>rehash</td>
+<td>元素数 &gt; 桶数 × 负载因子 → 找下个质数 → 全元素重新哈希插入</td>
+</tr>
+<tr>
+<td>质数桶</td>
+<td>hash % prime 让所有 bit 参与运算，分布均匀减少冲突</td>
+</tr>
+<tr>
+<td>自定义 key</td>
+<td>必须实现 hash<MyType> + operator&#x3D;&#x3D;，两者缺一不可</td>
+</tr>
+<tr>
+<td>BKDR Hash</td>
+<td>hash &#x3D; hash * 131 + c，分布均匀，Redis&#x2F;Java 默认字符串哈希</td>
+</tr>
+<tr>
+<td>开链 vs 开放寻址</td>
+<td>开链可 &gt;1 负载但缓存差，开放寻址缓存好但必须 &lt;0.7</td>
+</tr>
+<tr>
+<td>SwissTable</td>
+<td>Google 的开放寻址+SIMD 并行探测，absl::flat_hash_map 的底层</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/unordered_map%E4%B8%8Eunordered_set/">https://weimo1.github.io/posts/unordered_map%E4%B8%8Eunordered_set/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/websocket/" title="websocket"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">websocket</div></div><div class="info-2"><div class="info-item-1">WebSocket 协议概述WebSocket 是一种在单个 TCP 连接上实现全双工通信的应用层协议，由 RFC 6455 正式定义。它解决了传统 HTTP 协议无法实现服务端主动推送的问题。在 WebSocket 出现之前，开发者只能通过轮询（Polling）或长轮询（Long Polling）模拟实时通信，效率和实时性都受到限制。 握手过程WebSocket 通过 HTTP Upgrade 机制完成协议升级：客户端发送 GET 请求，包含 Upgrade: websocket、Connection: Upgrade 头部，以及 Sec-WebSocket-Key（随机 Base64...</div></div></div></a><a class="pagination-related" href="/posts/tuple-optional-Variant-any/" title="tuple  optional   Variant   any"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">tuple  optional   Variant   any</div></div><div class="info-2"><div class="info-item-1">tuple  optional   Variant   any 适用范围：C++11&#x2F;17 std::tuple多元组、std::optional可选值、std::variant类型安全联合体、std::any任意类型容器  一、核心概念 定义：std::tuple 将多个不同类型值打包为一个对象；std::optional 表示”可能有值&#x2F;可能为空”的值类型；std::variant 是类型安全的 union（同一时间只存一种类型）；std::any 可持有任意类型的单个值 关键词：CTAD、结构化绑定、std::get、std::visit、std::make_o...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#unordered-map%E4%B8%8Eunordered-set"><span class="toc-number">1.</span> <span class="toc-text">unordered_map与unordered_set</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#C-%E6%89%8B%E5%86%99%E5%AE%9E%E7%8E%B0-unordered-map-%E5%92%8C-unordered-set%EF%BC%9A%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90%E4%B8%8E%E6%BA%90%E7%A0%81%E5%AE%9E%E6%88%98-%E8%85%BE%E8%AE%AF%E4%BA%91%E5%BC%80%E5%8F%91%E8%80%85%E7%A4%BE%E5%8C%BA-%E8%85%BE%E8%AE%AF%E4%BA%91"><span class="toc-number">1.1.</span> <span class="toc-text">C++ 手写实现 unordered_map 和 unordered_set：深入解析与源码实战-腾讯云开发者社区-腾讯云</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%93%88%E5%B8%8C%E8%A1%A8%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">哈希表的基本概念</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%93%88%E5%B8%8C%E8%A1%A8%E7%9A%84%E6%95%B0%E5%AD%A6%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">哈希表的数学模型</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%8E%E9%9B%B6%E6%9E%84%E5%BB%BA%E5%93%88%E5%B8%8C%E8%A1%A8%E6%A1%86%E6%9E%B6"><span class="toc-number">1.3.</span> <span class="toc-text">从零构建哈希表框架</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#4-1-%E5%93%88%E5%B8%8C%E8%8A%82%E7%82%B9%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">4.1 哈希节点结构</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-2-%E5%93%88%E5%B8%8C%E5%87%BD%E6%95%B0%E5%AE%9A%E4%B9%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">4.2 哈希函数定义</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-3-%E5%93%88%E5%B8%8C%E8%A1%A8%E6%8E%A5%E5%8F%A3%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.3.</span> <span class="toc-text">4.3 哈希表接口结构</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%89%A9%E5%AE%B9%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.4.</span> <span class="toc-text">扩容机制与性能调优建议</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#9-1-%E6%89%A9%E5%AE%B9%E7%AD%96%E7%95%A5%EF%BC%9A%E8%B4%A8%E6%95%B0%E6%95%B0%E7%BB%84"><span class="toc-number">1.4.1.</span> <span class="toc-text">9.1 扩容策略：质数数组</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#9-2-%E8%B4%9F%E8%BD%BD%E5%9B%A0%E5%AD%90-load-factor"><span class="toc-number">1.4.2.</span> <span class="toc-text">9.2 负载因子 (load factor)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#9-3-%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81%E4%BC%98%E5%8C%96"><span class="toc-number">1.4.3.</span> <span class="toc-text">9.3 哈希冲突优化</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#1-2-%E5%93%88%E5%B8%8C%E5%87%BD%E6%95%B0%E7%9A%84%E8%AE%BE%E8%AE%A1%E8%89%BA%E6%9C%AF"><span class="toc-number">1.4.4.</span> <span class="toc-text">1.2 哈希函数的设计艺术</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#unordered-map%E7%9A%84%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.5.</span> <span class="toc-text">unordered_map的内部实现原理</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#unordered-set%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.5.</span> <span class="toc-text">unordered_set的实现原理</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-GCC-std-unordered-map-%E7%9A%84%E6%A1%B6%E7%BB%93%E6%9E%84%E2%80%94%E2%80%94%E5%8D%95%E5%90%91%E9%93%BE%E8%A1%A8-%E8%BF%AD%E4%BB%A3%E5%99%A8"><span class="toc-number">2.1.</span> <span class="toc-text">1. GCC std::unordered_map 的桶结构——单向链表+迭代器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%93%88%E5%B8%8C%E2%80%94%E2%80%94BKDR-Hash-%E4%B8%8E-std-hash-%E7%89%B9%E5%8C%96"><span class="toc-number">2.2.</span> <span class="toc-text">2. 字符串哈希——BKDR Hash 与 std::hash 特化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E5%BC%80%E9%93%BE%E6%B3%95-vs-%E5%BC%80%E6%94%BE%E5%AF%BB%E5%9D%80%E6%B3%95%E2%80%94%E2%80%94%E4%B8%A4%E7%A7%8D%E5%86%B2%E7%AA%81%E8%A7%A3%E5%86%B3%E7%AD%96%E7%95%A5"><span class="toc-number">2.3.</span> <span class="toc-text">3. 开链法 vs 开放寻址法——两种冲突解决策略</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">3.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9D%A2%E8%AF%95%E9%97%AE%E7%AD%94"><span class="toc-number">3.1.</span> <span class="toc-text">面试问答</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">3.2.</span> <span class="toc-text">陷阱与反问</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0%E8%A1%A8"><span class="toc-number">3.3.</span> <span class="toc-text">一句话答案速记表</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

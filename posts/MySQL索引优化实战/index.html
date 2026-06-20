@@ -1,0 +1,460 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>MySQL索引优化实战 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="MySQL 索引优化实战 适用范围：MySQL 索引优化——B+Tree 原理、最左前缀、覆盖索引、索引下推、EXPLAIN 分析、排序与分页优化。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL索引优化实战">
+<meta property="og:url" content="https://weimo1.github.io/posts/MySQL%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="MySQL 索引优化实战 适用范围：MySQL 索引优化——B+Tree 原理、最左前缀、覆盖索引、索引下推、EXPLAIN 分析、排序与分页优化。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.548Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "MySQL索引优化实战",
+  "url": "https://weimo1.github.io/posts/MySQL%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.548Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/MySQL%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'MySQL索引优化实战',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">MySQL索引优化实战</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">MySQL索引优化实战</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.548Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>16分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="MySQL-索引优化实战"><a href="#MySQL-索引优化实战" class="headerlink" title="MySQL 索引优化实战"></a>MySQL 索引优化实战</h1><blockquote>
+<p>适用范围：MySQL 索引优化——B+Tree 原理、最左前缀、覆盖索引、索引下推、EXPLAIN 分析、排序与分页优化。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。</li>
+<li><strong>代码块必须标注语言</strong>：SQL 用 <code>sql</code>，bash 用 <code>bash</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：索引是数据库表中一列或多列排序存储的数据结构，用于加速查询。MySQL InnoDB 默认使用 B+Tree 索引（聚簇索引主键、二级索引引用主键）。</li>
+<li><strong>关键词</strong>：B+Tree、最左前缀、覆盖索引、索引下推（ICP）、回表、EXPLAIN、慢查询优化</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>WHERE 条件列的快速查找</li>
+<li>ORDER BY &#x2F; GROUP BY 排序分组优化</li>
+<li>JOIN 关联查询的驱动表&#x2F;被驱动表</li>
+<li>不适合：频繁增删改的小表、区分度低的列（如性别）、超大字段</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19068922">MySQL 索引优化实战 - 博客园</a></p>
+</blockquote>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：B+Tree 索引结构</strong></p>
+<p>InnoDB 的 B+Tree：非叶子节点只存键值（不存数据），叶子节点存全部数据 + 双向链表指针。高度通常 2-4 层，每层通过二分查找定位。B+Tree 天然支持范围查询（叶子节点链表）。</p>
+<p>聚簇索引：主键索引叶子节点存完整行数据。二级索引：叶子节点存主键值，查找非索引列需回表。</p>
+<p><strong>第二层：最左前缀原则</strong></p>
+<p>联合索引 <code>(name, age, position)</code> 的结构如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">B+Tree 排序：</span><br><span class="line">name → age → position（按此顺序排序存储）</span><br><span class="line"></span><br><span class="line">能走索引的查询模式：</span><br><span class="line">✅ name = &#x27;a&#x27; AND age = 10 AND position = &#x27;dev&#x27;  （全部字段）</span><br><span class="line">✅ name = &#x27;a&#x27; AND age = 10                        （前两个字段）</span><br><span class="line">✅ name = &#x27;a&#x27;                                     （第一个字段）</span><br><span class="line">❌ age = 10 AND position = &#x27;dev&#x27;                  （缺少 name）</span><br><span class="line">❌ name &gt; &#x27;a&#x27; AND age = 10                        （name 范围后 age 无序）</span><br></pre></td></tr></table></figure>
+
+<p>联合索引第一个字段用范围查找，后续字段无法利用索引。MySQL 可能认为结果集大、回表效率低，选择全表扫描。</p>
+<p><strong>第三层：索引下推（ICP, Index Condition Pushdown）</strong></p>
+<p>MySQL 5.6 引入的优化：在索引遍历过程中，对索引包含的字段先做判断，过滤掉不符合条件的记录后再回表。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 例：name LIKE &#x27;LiLei%&#x27; 匹配到索引后，</span></span><br><span class="line"><span class="comment">-- ICP 会同时在索引中过滤 age 和 position，</span></span><br><span class="line"><span class="comment">-- 只对符合条件的记录回表查全行</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="keyword">LIKE</span> <span class="string">&#x27;LiLei%&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position <span class="operator">=</span> <span class="string">&#x27;manager&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>ICP 只能用于二级索引，不能用于聚簇索引（聚簇索引叶子节点存全行数据）。</p>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2595478">MySQL 索引深度优化：B+Tree 原理与最左前缀 - 腾讯云</a></p>
+</blockquote>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-测试表创建"><a href="#3-1-测试表创建" class="headerlink" title="3.1 测试表创建"></a>3.1 测试表创建</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE TABLE</span> `employees` (</span><br><span class="line">    `id` <span class="type">int</span>(<span class="number">11</span>) <span class="keyword">NOT NULL</span> AUTO_INCREMENT,</span><br><span class="line">    `name` <span class="type">varchar</span>(<span class="number">24</span>) <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="string">&#x27;&#x27;</span> COMMENT <span class="string">&#x27;姓名&#x27;</span>,</span><br><span class="line">    `age` <span class="type">int</span>(<span class="number">11</span>) <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="string">&#x27;0&#x27;</span> COMMENT <span class="string">&#x27;年龄&#x27;</span>,</span><br><span class="line">    `position` <span class="type">varchar</span>(<span class="number">20</span>) <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="string">&#x27;&#x27;</span> COMMENT <span class="string">&#x27;职位&#x27;</span>,</span><br><span class="line">    `hire_time` <span class="type">timestamp</span> <span class="keyword">NOT NULL</span> <span class="keyword">DEFAULT</span> <span class="built_in">CURRENT_TIMESTAMP</span> COMMENT <span class="string">&#x27;入职时间&#x27;</span>,</span><br><span class="line">    <span class="keyword">PRIMARY KEY</span> (`id`),</span><br><span class="line">    KEY `idx_name_age_position` (`name`,`age`,`position`) <span class="keyword">USING</span> BTREE</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB AUTO_INCREMENT<span class="operator">=</span><span class="number">1</span> <span class="keyword">DEFAULT</span> CHARSET<span class="operator">=</span>utf8 COMMENT<span class="operator">=</span><span class="string">&#x27;员工记录表&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT INTO</span> employees(name,age,position,hire_time) <span class="keyword">VALUES</span>(<span class="string">&#x27;LiLei&#x27;</span>,<span class="number">22</span>,<span class="string">&#x27;manager&#x27;</span>,NOW());</span><br><span class="line"><span class="keyword">INSERT INTO</span> employees(name,age,position,hire_time) <span class="keyword">VALUES</span>(<span class="string">&#x27;HanMeimei&#x27;</span>, <span class="number">23</span>,<span class="string">&#x27;dev&#x27;</span>,NOW());</span><br><span class="line"><span class="keyword">INSERT INTO</span> employees(name,age,position,hire_time) <span class="keyword">VALUES</span>(<span class="string">&#x27;Lucy&#x27;</span>,<span class="number">23</span>,<span class="string">&#x27;dev&#x27;</span>,NOW());</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 插入 10 万条示例数据</span></span><br><span class="line"><span class="keyword">drop</span> <span class="keyword">procedure</span> if <span class="keyword">exists</span> insert_emp;</span><br><span class="line">delimiter ;;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">procedure</span> insert_emp()</span><br><span class="line"><span class="keyword">begin</span></span><br><span class="line">    <span class="keyword">declare</span> i <span class="type">int</span>;</span><br><span class="line">    <span class="keyword">set</span> i<span class="operator">=</span><span class="number">1</span>;</span><br><span class="line">    while(i<span class="operator">&lt;=</span><span class="number">100000</span>)do</span><br><span class="line">        <span class="keyword">insert into</span> employees(name,age,position) <span class="keyword">values</span>(CONCAT(<span class="string">&#x27;zhuge&#x27;</span>,i),i,<span class="string">&#x27;dev&#x27;</span>);</span><br><span class="line">        <span class="keyword">set</span> i<span class="operator">=</span>i<span class="operator">+</span><span class="number">1</span>;</span><br><span class="line">    <span class="keyword">end</span> while;</span><br><span class="line"><span class="keyword">end</span>;;</span><br><span class="line">delimiter ;</span><br><span class="line"><span class="keyword">call</span> insert_emp();</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-范围查找与强制索引"><a href="#3-2-范围查找与强制索引" class="headerlink" title="3.2 范围查找与强制索引"></a>3.2 范围查找与强制索引</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 联合索引第一个字段用范围 → 可能不走索引（全表扫描）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position <span class="operator">=</span><span class="string">&#x27;manager&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 强制走索引（但回表效率未必高）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees FORCE INDEX(idx_name_age_position)</span><br><span class="line"><span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position <span class="operator">=</span><span class="string">&#x27;manager&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 覆盖索引优化：SELECT 只查索引包含的列，无需回表</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> name,age,position <span class="keyword">FROM</span> employees</span><br><span class="line"><span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position <span class="operator">=</span><span class="string">&#x27;manager&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-IN-OR-LIKE-的索引行为"><a href="#3-3-IN-OR-LIKE-的索引行为" class="headerlink" title="3.3 IN &#x2F; OR &#x2F; LIKE 的索引行为"></a>3.3 IN &#x2F; OR &#x2F; LIKE 的索引行为</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- IN 和 OR 在数据量大时走索引，数据少时全表扫描</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees</span><br><span class="line"><span class="keyword">WHERE</span> name <span class="keyword">IN</span> (<span class="string">&#x27;LiLei&#x27;</span>,<span class="string">&#x27;HanMeimei&#x27;</span>,<span class="string">&#x27;Lucy&#x27;</span>) <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position<span class="operator">=</span><span class="string">&#x27;manager&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- LIKE &#x27;KK%&#x27; 一般走索引（索引下推优化）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees</span><br><span class="line"><span class="keyword">WHERE</span> name <span class="keyword">LIKE</span> <span class="string">&#x27;LiLei%&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">22</span> <span class="keyword">AND</span> position <span class="operator">=</span><span class="string">&#x27;manager&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- LIKE &#x27;%KK&#x27; 不走索引（前缀模糊）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-trace-工具分析索引选择"><a href="#3-4-trace-工具分析索引选择" class="headerlink" title="3.4 trace 工具分析索引选择"></a>3.4 trace 工具分析索引选择</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 开启 trace（仅临时分析用，影响性能）</span></span><br><span class="line"><span class="keyword">SET</span> SESSION optimizer_trace<span class="operator">=</span>&quot;enabled=on&quot;,end_markers_in_json<span class="operator">=</span><span class="keyword">on</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;a&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> position;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.OPTIMIZER_TRACE;</span><br><span class="line"><span class="comment">-- name &gt; &#x27;a&#x27;：全表扫描成本 &lt; 索引扫描 → MySQL 选全表扫描</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;zzz&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> position;</span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> information_schema.OPTIMIZER_TRACE;</span><br><span class="line"><span class="comment">-- name &gt; &#x27;zzz&#x27;：索引扫描成本更低 → MySQL 选索引扫描</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 关闭 trace</span></span><br><span class="line"><span class="keyword">SET</span> SESSION optimizer_trace<span class="operator">=</span>&quot;enabled=off&quot;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-ORDER-BY-优化案例"><a href="#3-5-ORDER-BY-优化案例" class="headerlink" title="3.5 ORDER BY 优化案例"></a>3.5 ORDER BY 优化案例</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- Case 1: 利用最左前缀，age 用于排序 → 无 filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">AND</span> position <span class="operator">=</span><span class="string">&#x27;manager&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> age;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 2: 跳过了 age 直接按 position 排序 → filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> position;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 3: 排序字段顺序与索引一致 → 无 filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> age, position;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 4: 排序顺序颠倒 → filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> position, age;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 5: age 为常量被优化 → 无 filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">AND</span> age <span class="operator">=</span> <span class="number">18</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> position, age;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 6: 混合升降序 → filesort（MySQL 8+ 支持降序索引）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> age <span class="keyword">ASC</span>, position <span class="keyword">DESC</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 7: IN 多个值 → filesort（多个等值条件也是范围）</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="keyword">IN</span> (<span class="string">&#x27;LiLei&#x27;</span>,<span class="string">&#x27;Lucy&#x27;</span>) <span class="keyword">ORDER</span> <span class="keyword">BY</span> age, position;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Case 8: 范围查找 + 覆盖索引优化</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;a&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> name;          <span class="comment">-- filesort</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> name,age,position <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;a&#x27;</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> name;  <span class="comment">-- index</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>where 条件与 order by 排序字段的排列组合要遵循最左前缀原则</p>
+</blockquote>
+<h3 id="3-6-分页优化"><a href="#3-6-分页优化" class="headerlink" title="3.6 分页优化"></a>3.6 分页优化</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 传统深分页：先读 10010 条，丢弃前 10000 条</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees LIMIT <span class="number">10000</span>, <span class="number">10</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- 优化方案1：连续自增主键 + 条件过滤</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> id <span class="operator">&gt;</span> <span class="number">90000</span> LIMIT <span class="number">5</span>;</span><br><span class="line"><span class="comment">-- 条件：主键自增且连续，结果按主键排序</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 优化方案2：非主键排序 → 索引排序 → ID 反查（延迟关联）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees e</span><br><span class="line"><span class="keyword">INNER</span> <span class="keyword">JOIN</span> (<span class="keyword">SELECT</span> id <span class="keyword">FROM</span> employees <span class="keyword">ORDER</span> <span class="keyword">BY</span> name LIMIT <span class="number">90000</span>, <span class="number">5</span>) ed</span><br><span class="line"><span class="keyword">ON</span> e.id <span class="operator">=</span> ed.id;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="覆盖索引（Covering-Index）"><a href="#覆盖索引（Covering-Index）" class="headerlink" title="覆盖索引（Covering Index）"></a>覆盖索引（Covering Index）</h3><p>查询的所有列都在索引中，直接从索引获取数据，无需回表。这是性能最优的查询方式。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- ❌ 需要回表（SELECT *）</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- ✅ 覆盖索引（仅查索引列）</span></span><br><span class="line"><span class="keyword">SELECT</span> name, age, position <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">=</span> <span class="string">&#x27;LiLei&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>EXPLAIN 输出 <code>Extra: Using index</code> 即表示覆盖索引。</p>
+<h3 id="索引失效场景总结"><a href="#索引失效场景总结" class="headerlink" title="索引失效场景总结"></a>索引失效场景总结</h3><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>原因</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>索引列使用函数</td>
+<td>破坏索引有序性</td>
+<td><code>WHERE YEAR(hire_time) = 2025</code></td>
+</tr>
+<tr>
+<td>隐式类型转换</td>
+<td>字符串列用数字查</td>
+<td><code>WHERE phone = 13800138000</code>（phone 是 varchar）</td>
+</tr>
+<tr>
+<td>LIKE ‘%xx’</td>
+<td>前缀模糊</td>
+<td><code>WHERE name LIKE &#39;%Li&#39;</code></td>
+</tr>
+<tr>
+<td>OR 条件含非索引列</td>
+<td>需要全表判断</td>
+<td><code>WHERE name = &#39;a&#39; OR age = 20</code>（age 非索引）</td>
+</tr>
+<tr>
+<td>不等于&#x2F; NOT IN</td>
+<td>结果集大，优化器放弃</td>
+<td><code>WHERE status != 0</code></td>
+</tr>
+<tr>
+<td>联合索引不满足最左前缀</td>
+<td>无法利用索引排序</td>
+<td><code>WHERE age = 20 AND position = &#39;dev&#39;</code></td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://javaguide.cn/database/mysql/mysql-index-invalidation.html">MySQL 索引失效场景总结 - JavaGuide</a></p>
+</blockquote>
+<h3 id="EXPLAIN-关键字段解读"><a href="#EXPLAIN-关键字段解读" class="headerlink" title="EXPLAIN 关键字段解读"></a>EXPLAIN 关键字段解读</h3><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>理想值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>type</strong></td>
+<td>访问类型</td>
+<td><code>const</code> &gt; <code>eq_ref</code> &gt; <code>ref</code> &gt; <code>range</code> &gt; <code>index</code> &gt; <code>ALL</code></td>
+</tr>
+<tr>
+<td><strong>key</strong></td>
+<td>实际使用的索引</td>
+<td>期望非 NULL</td>
+</tr>
+<tr>
+<td><strong>key_len</strong></td>
+<td>索引使用的字节数</td>
+<td>越大越好（越精准）</td>
+</tr>
+<tr>
+<td><strong>rows</strong></td>
+<td>预估扫描行数</td>
+<td>越小越好</td>
+</tr>
+<tr>
+<td><strong>Extra</strong></td>
+<td>额外信息</td>
+<td><code>Using index</code>（覆盖索引最优）；<code>Using filesort</code>（需优化）；<code>Using temporary</code>（需优化）</td>
+</tr>
+</tbody></table>
+<h3 id="JOIN-关联优化"><a href="#JOIN-关联优化" class="headerlink" title="JOIN 关联优化"></a>JOIN 关联优化</h3><ul>
+<li>小表驱动大表：MySQL 优化器自动选择，但索引设计应配合</li>
+<li>关联字段建索引：被驱动表的 JOIN 列必须建索引</li>
+<li>避免 SELECT *：只取需要的列，必要时用覆盖索引</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="索引下推（ICP）的实现原理"><a href="#索引下推（ICP）的实现原理" class="headerlink" title="索引下推（ICP）的实现原理"></a>索引下推（ICP）的实现原理</h3><p>ICP 是 MySQL 5.6 在 Server 层与 Storage 引擎层协作实现的优化。传统流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">传统（无 ICP）：</span><br><span class="line">Server → 引擎：按 name LIKE &#x27;LiLei%&#x27; 取索引行</span><br><span class="line">引擎 → Server：返回所有匹配的索引行（含 age, position 但不判断）</span><br><span class="line">Server 判断 age=22 AND position=&#x27;manager&#x27;</span><br><span class="line">满足条件 → 回表取完整行</span><br><span class="line"></span><br><span class="line">ICP 优化后：</span><br><span class="line">Server → 引擎：按 name LIKE &#x27;LiLei%&#x27; 取索引行，且在引擎层判断 age=22 AND position=&#x27;manager&#x27;</span><br><span class="line">引擎 → Server：只返回满足全部条件的索引行</span><br><span class="line">Server 回表取完整行（回表次数大幅减少）</span><br></pre></td></tr></table></figure>
+
+<h3 id="MySQL-索引选择决策（Optimizer-Trace）"><a href="#MySQL-索引选择决策（Optimizer-Trace）" class="headerlink" title="MySQL 索引选择决策（Optimizer Trace）"></a>MySQL 索引选择决策（Optimizer Trace）</h3><p>MySQL 通过成本模型决定是否使用索引。核心公式：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">索引扫描成本 = 索引 IO 成本 + 回表 IO 成本</span><br><span class="line">全表扫描成本 = 全表 IO 成本</span><br><span class="line"></span><br><span class="line">如果 索引扫描成本 &gt; 全表扫描成本 → 全表扫描</span><br></pre></td></tr></table></figure>
+
+<p>通过 <code>optimizer_trace</code> 可以看到详细的成本计算过程，理解优化器的决策逻辑。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><strong>回表代价的误判</strong></li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 误区：以为走了索引就快</span></span><br><span class="line">EXPLAIN <span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> employees <span class="keyword">WHERE</span> name <span class="operator">&gt;</span> <span class="string">&#x27;LiLei&#x27;</span>;</span><br><span class="line"><span class="comment">-- type=range 看似不错，但回表行数多时不如全表扫描</span></span><br></pre></td></tr></table></figure>
+
+<p>优化器认为回表成本高会选全表扫描，这是正确的决策。</p>
+<ol start="2">
+<li><strong>最左前缀的”断点”</strong></li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 索引 (a, b, c)</span></span><br><span class="line"><span class="keyword">WHERE</span> a <span class="operator">=</span> <span class="number">1</span> <span class="keyword">AND</span> c <span class="operator">=</span> <span class="number">3</span>  <span class="comment">-- b 断了，只有 a 能用到索引</span></span><br><span class="line"><span class="keyword">WHERE</span> a <span class="operator">=</span> <span class="number">1</span> <span class="keyword">AND</span> b <span class="operator">&gt;</span> <span class="number">2</span> <span class="keyword">AND</span> c <span class="operator">=</span> <span class="number">3</span>  <span class="comment">-- b 是范围，c 无法用到索引</span></span><br><span class="line"><span class="keyword">WHERE</span> a <span class="operator">&gt;</span> <span class="number">1</span> <span class="keyword">AND</span> b <span class="operator">=</span> <span class="number">2</span>  <span class="comment">-- a 是范围，b 无法用到索引</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>filesort 的性能陷阱</strong></li>
+</ol>
+<p><code>Using filesort</code> 不一定真的”用文件排序”。数据量小时在内存中排序（sort_buffer），数据量大时才使用磁盘临时文件。但无论如何，filesort 比索引排序慢得多。</p>
+<ol start="4">
+<li><strong>索引不是越多越好</strong></li>
+</ol>
+<p>每个索引都需要维护（INSERT&#x2F;UPDATE&#x2F;DELETE 时更新索引树），过多索引导致写入性能下降。一般单表索引数 ≤ 5 个。</p>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>先用 EXPLAIN 分析再优化</strong>：不要凭感觉加索引。定位慢查询（slow_query_log + mysqldumpslow），用 EXPLAIN 分析访问计划。</li>
+<li><strong>联合索引比多个单列索引更优</strong>：联合索引利用最左前缀可覆盖更多查询场景，且多列合并为单个索引树，空间更优。</li>
+<li><strong>覆盖索引是性能之王</strong>：能覆盖就覆盖，代价是索引可能变宽。核心查询值得为覆盖索引额外包含一些列。</li>
+<li><strong>深分页终极方案</strong>：连续自增主键场景用 <code>WHERE id &gt; last_id LIMIT n</code>；非主键排序用延迟关联（子查询取 ID，外层 JOIN 回表）。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：MySQL 为什么使用 B+Tree 而不是 B-Tree 或 Hash？</p>
+<p>A：B+Tree 非叶子节点不存数据（只存键），单节点能存更多键，树更矮。叶子节点有双向链表，天然支持范围查询和排序。B-Tree 非叶子存数据，节点容量小。Hash 不支持范围查询和排序。</p>
+<p>Q2：什么是聚簇索引和二级索引？它们的区别？</p>
+<p>A：聚簇索引叶子节点存完整行数据（InnoDB 按主键组织数据）。二级索引叶子节点存主键值，找非索引列需要回表（再到聚簇索引查一次）。一张表只有一个聚簇索引，可以有多个二级索引。</p>
+<p>Q3：最左前缀原则是什么？举例说明。</p>
+<p>A：联合索引 <code>(a,b,c)</code> 按 a→b→c 排序存储。查询必须从 a 开始才能利用索引。能用索引的场景：<code>a=1</code>、<code>a=1 AND b=2</code>、<code>a=1 AND b=2 AND c=3</code>。不能用：<code>b=2</code>（缺少 a）、<code>a=1 AND c=3</code>（b 断了 c 无法用）。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：什么是回表？如何避免？</p>
+<p>A：回表是指二级索引找到主键后，再到聚簇索引查找完整行数据的过程。避免方式：使用覆盖索引（SELECT 的列都在索引中），EXPLAIN 见到 <code>Using index</code> 即覆盖。</p>
+<p>Q5：什么是索引下推（ICP）？</p>
+<p>A：MySQL 5.6 引入的优化。在索引遍历过程中，对索引包含的所有字段先做判断，过滤掉不满足条件的记录后再回表。减少回表次数，提升性能。只能用于二级索引。</p>
+<p>Q6：EXPLAIN 的 type 字段有哪些值？从优到劣排序。</p>
+<p>A：<code>system</code> &gt; <code>const</code>（主键&#x2F;唯一索引等值查） &gt; <code>eq_ref</code>（JOIN 唯一匹配） &gt; <code>ref</code>（非唯一索引等值） &gt; <code>range</code>（范围） &gt; <code>index</code>（全索引扫描） &gt; <code>ALL</code>（全表扫描）。目标至少优化到 <code>range</code>。</p>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：如何定位和优化慢查询？</p>
+<p>A：1) 开启 slow_query_log + long_query_time；2) mysqldumpslow 汇总；3) EXPLAIN 分析执行计划；4) 检查索引（type、key、Extra）；5) 添加&#x2F;修改索引；6) 考虑 SQL 改写（覆盖索引、延迟关联、分页优化）。</p>
+<p>Q8：什么情况下索引会失效？</p>
+<p>A：1) 索引列使用函数或运算；2) 隐式类型转换；3) LIKE 以 % 开头；4) OR 条件包含非索引列；5) 不等于&#x2F; NOT IN；6) 联合索引不满足最左前缀；7) MySQL 优化器认为全表扫描更快（小表、回表代价高）。</p>
+<p>Q9：深分页如何优化？</p>
+<p>A：1) 连续自增主键：<code>WHERE id &gt; last_id LIMIT n</code>；2) 非主键排序：延迟关联（子查询取 ID → JOIN 回表）；3) 覆盖索引排序后取主键再回表。本质是避免扫描大量无用行。</p>
+<p>Q10：一个表建了多少索引合适？索引越多越好吗？</p>
+<p>A：一般 ≤ 5 个。索引需要维护（每次 INSERT&#x2F;UPDATE&#x2F;DELETE 都要更新索引树），过多索引严重降低写入性能。应根据查询频率和模式选择关键列建索引，优先考虑联合索引覆盖多种查询。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>常见的陷阱问题：</p>
+<ul>
+<li><p><strong>陷阱问题1</strong>：<code>WHERE a = 1 AND c = 3</code>（索引是 (a,b,c)），a 和 c 都能用上索引吗？→ 只有 a 能用上。b 断了，c 无法利用索引的排序特性。但 MySQL 5.6+ 会用索引下推在索引中过滤 c 的条件再回表，比完全不用索引好。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：<code>SELECT * FROM t WHERE a &gt; 1000 LIMIT 10</code> 为什么可能全表扫描？→ 优化器可能认为 a &gt; 1000 需要回表大量行，回表成本高，不如全表扫描。解决方案：改为覆盖索引 <code>SELECT a,b,c FROM t WHERE a &gt; 1000</code>，或 <code>FORCE INDEX</code>（慎用）。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：索引列使用 <code>IS NULL</code> 会走索引吗？→ 会。<code>IS NULL</code> 可以走索引，因为它等同于等值查询（在 B+Tree 中 NULL 值排在最前面）。<code>IS NOT NULL</code> 等同于范围查询（在某些版本可能不走索引）。</p>
+</li>
+<li><p><strong>陷阱问题4</strong>：前缀索引（<code>KEY(name(10))</code>）能用到排序吗？→ 不能。前缀索引只取前 N 个字符，无法保证完整字符串的排序正确性，因此不能用于 <code>ORDER BY</code> 和 <code>GROUP BY</code>，只能用于 <code>WHERE</code> 过滤。</p>
+</li>
+<li><p><strong>陷阱问题5</strong>：<code>COUNT(*)</code> 和 <code>COUNT(column)</code> 哪个快？→ <code>COUNT(*)</code> 在 MyISAM 中有单独计数器（O(1)），InnoDB 需要扫描。<code>COUNT(column)</code> 不统计 NULL 值。如果 column 有 NOT NULL 约束，两者等价。InnoDB 中 <code>COUNT(*)</code> 会走最小的二级索引来统计。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>判断索引是否生效的核心是<strong>最左前缀原则 + EXPLAIN 分析</strong></li>
+<li>性能最优的查询形态是<strong>覆盖索引（Using index）</strong></li>
+<li>避免索引失效的关键是<strong>不在索引列上做函数&#x2F;运算&#x2F;隐式转换</strong></li>
+<li>深分页优化的本质是<strong>减少被丢弃的扫描行数</strong></li>
+<li>索引下推的核心价值是<strong>在引擎层过滤，减少回表次数</strong></li>
+</ul>
+<p>情景模拟答案：</p>
+<ul>
+<li><p>当被问到”如何排查慢 SQL”时，回答：”1) slow_query_log 定位慢 SQL；2) EXPLAIN 看执行计划（关注 type、key、rows、Extra）；3) 检查索引是否生效（是否用上了索引、是否有 filesort&#x2F;Using temporary）；4) 加上覆盖索引或调整 SQL 写法。”</p>
+</li>
+<li><p>当被问到”你们的数据库最常用的索引优化技巧”时，回答：”核心三条：1) 联合索引遵循最左前缀覆盖高频查询；2) 尽量用覆盖索引避免回表；3) 深分页用延迟关联或游标方式。日常监控慢查询日志，用 EXPLAIN 验证优化效果。”</p>
+</li>
+<li><p>当被问到”MySQL 8.0 索引有什么新特性”时，回答：”支持降序索引（ORDER BY a ASC, b DESC 不再需要 filesort）；支持不可见索引（测试删除索引的影响）；支持函数索引（在表达式上建索引）；支持跳跃扫描（Skip Scan Range Access，一定程度上突破了最左前缀限制）。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/randolf/p/19068922">MySQL 索引优化实战 - 博客园</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2595478">MySQL 索引深度优化：B+Tree 原理与最左前缀 - 腾讯云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://javaguide.cn/database/mysql/mysql-index-invalidation.html">MySQL 索引失效场景总结 - JavaGuide</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://developer.aliyun.com/article/1733820">MySQL 索引与慢 SQL 优化面试问答清单 - 阿里云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://time.geekbang.org/column/article/69636">深入浅出索引（下）——MySQL 实战 45 讲 - 极客时间</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/MySQL%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/">https://weimo1.github.io/posts/MySQL%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/NAT/" title="NAT"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">NAT</div></div><div class="info-2"><div class="info-item-1">NAT 网络地址转换概述NAT（Network Address Translation，网络地址转换）通过修改 IP 数据包头部中的地址信息，实现私有网络与公网之间的通信。由 RFC 1631 定义，是缓解 IPv4 地址耗尽问题的关键技术。 NAT 类型静态 NAT：私有 IP 地址一对一固定映射到公网 IP，常用于对外提供服务的服务器，如 Web 服务器、邮件服务器等。配置简单，但公网 IP 利用率低。 动态 NAT：从地址池中动态分配公网 IP，连接结束后释放回地址池。多个内部主机共享地址池中的公网 IP，但同一时刻一个公网 IP 只能被一个内部主机使用。 PAT（端口地址转换）：...</div></div></div></a><a class="pagination-related" href="/posts/MySQL%E7%B4%A2%E5%BC%95/" title="MySQL索引"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL索引</div></div><div class="info-2"><div class="info-item-1">MySQL 索引 适用范围：InnoDB 索引架构、B+树结构、聚簇索引与二级索引、回表查询、覆盖索引  一、项目&#x2F;模块概述 模块定位：MySQL InnoDB 索引是数据库查询性能的核心，决定了数据检索效率。 技术栈与依赖：InnoDB 存储引擎、B+树数据结构、页（16KB）、行格式（Compact&#x2F;Dynamic）。 模块边界：输入为 SQL 查询，输出为数据行定位。上游是查询优化器，下游是磁盘 I&#x2F;O。  二、架构设计设计拆解第一层：索引类型体系 12聚簇索引（1个）：叶子节点 = 完整数据行二级索引（多个）：叶子节点 = 索引列值 + 主键值  第...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#MySQL-%E7%B4%A2%E5%BC%95%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98"><span class="toc-number">1.</span> <span class="toc-text">MySQL 索引优化实战</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%B5%8B%E8%AF%95%E8%A1%A8%E5%88%9B%E5%BB%BA"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 测试表创建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%8C%83%E5%9B%B4%E6%9F%A5%E6%89%BE%E4%B8%8E%E5%BC%BA%E5%88%B6%E7%B4%A2%E5%BC%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 范围查找与强制索引</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-IN-OR-LIKE-%E7%9A%84%E7%B4%A2%E5%BC%95%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 IN &#x2F; OR &#x2F; LIKE 的索引行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-trace-%E5%B7%A5%E5%85%B7%E5%88%86%E6%9E%90%E7%B4%A2%E5%BC%95%E9%80%89%E6%8B%A9"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 trace 工具分析索引选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-ORDER-BY-%E4%BC%98%E5%8C%96%E6%A1%88%E4%BE%8B"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 ORDER BY 优化案例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E5%88%86%E9%A1%B5%E4%BC%98%E5%8C%96"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 分页优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95%EF%BC%88Covering-Index%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">覆盖索引（Covering Index）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B4%A2%E5%BC%95%E5%A4%B1%E6%95%88%E5%9C%BA%E6%99%AF%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.2.</span> <span class="toc-text">索引失效场景总结</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#EXPLAIN-%E5%85%B3%E9%94%AE%E5%AD%97%E6%AE%B5%E8%A7%A3%E8%AF%BB"><span class="toc-number">1.5.3.</span> <span class="toc-text">EXPLAIN 关键字段解读</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#JOIN-%E5%85%B3%E8%81%94%E4%BC%98%E5%8C%96"><span class="toc-number">1.5.4.</span> <span class="toc-text">JOIN 关联优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B4%A2%E5%BC%95%E4%B8%8B%E6%8E%A8%EF%BC%88ICP%EF%BC%89%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.6.1.</span> <span class="toc-text">索引下推（ICP）的实现原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MySQL-%E7%B4%A2%E5%BC%95%E9%80%89%E6%8B%A9%E5%86%B3%E7%AD%96%EF%BC%88Optimizer-Trace%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">MySQL 索引选择决策（Optimizer Trace）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.3.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.4.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">参考链接</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

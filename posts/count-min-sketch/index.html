@@ -1,0 +1,367 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>count min sketch | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Count-Min Sketch 适用范围：概率计数数据结构，大数据流频率估计，服务于缓存淘汰策略（TinyLFU），保持可复用、可检索。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最">
+<meta property="og:type" content="article">
+<meta property="og:title" content="count min sketch">
+<meta property="og:url" content="https://weimo1.github.io/posts/count-min-sketch/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Count-Min Sketch 适用范围：概率计数数据结构，大数据流频率估计，服务于缓存淘汰策略（TinyLFU），保持可复用、可检索。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.556Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "count min sketch",
+  "url": "https://weimo1.github.io/posts/count-min-sketch/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.556Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/count-min-sketch/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'count min sketch',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">count min sketch</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">count min sketch</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.556Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%9F%BA%E7%A1%80%E5%BA%93%E4%B8%8E%E5%B7%A5%E5%85%B7/">基础库与工具</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>15分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Count-Min-Sketch"><a href="#Count-Min-Sketch" class="headerlink" title="Count-Min Sketch"></a>Count-Min Sketch</h1><blockquote>
+<p>适用范围：概率计数数据结构，大数据流频率估计，服务于缓存淘汰策略（TinyLFU），保持可复用、可检索。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备；源码要贴原始代码，有需要可贴汇编。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。</li>
+<li>先结论后细节，避免长段堆砌。</li>
+<li>每节至少 3 条要点。</li>
+<li>代码必须可运行或可推导，配清楚输入&#x2F;输出或预期。</li>
+<li><strong>代码块必须标注语言</strong>：所有代码块必须根据实际语言标注，C++ 代码用 <code>c++</code>（不可用 <code>cpp</code> 或 <code>c</code>），Python 用 <code>python</code>，汇编用 <code>asm</code>&#x2F;<code>x86asm</code>，shell 用 <code>bash</code> 等。禁止无语言标注的裸代码块。</li>
+<li>图示统一放在 <code>资源/图片/</code>，文内使用相对路径引用。</li>
+<li>有流程的用流程图或其他类型的图。</li>
+</ul>
+<h2 id="一、模块概述"><a href="#一、模块概述" class="headerlink" title="一、模块概述"></a>一、模块概述</h2><ul>
+<li>模块定位：概率型数据结构，用亚线性空间（sub-linear space）估计数据流中每个元素的出现频率。核心服务于 TinyLFU 缓存淘汰策略，解决 LFU 方案中”每个 key 维护精确计数器导致内存爆炸”的问题。</li>
+<li>技术栈：Go 语言实现，纯算法，无外部依赖。核心依赖多个独立 Hash 函数 + 二维计数器数组。</li>
+<li>模块边界：输入→元素的 Hash 值（uint64），输出→该元素的估计频次（保证 <code>真实值 ≤ 估计值 ≤ 真实值 + ε*N</code>，误差单边偏大）。与 Bloom Filter 类似，都是”用空间换精度”的概率数据结构。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><ul>
+<li><p><strong>设计拆解（三层递进）</strong>：</p>
+<ul>
+<li>第一层：整体架构——CMS 由 <code>depth</code> 行 × <code>width</code> 列的二维计数器矩阵构成，每行对应一个独立 Hash 函数。元素到达时，分别用 <code>depth</code> 个 Hash 计算列位置，对应计数器 +1。查询时取所有行对应位置的最小值作为估计频次。</li>
+<li>第二层：关键流程——Increment(hashed)→对每行 <code>i</code>，用 <code>(hashed ^ seed[i]) &amp; mask</code> 计算列位置，调用 <code>cmRow.increment()</code>。Estimate(hashed)→同样计算列位置，对每行调用 <code>cmRow.get()</code> 取计数值，返回所有行的最小值。Reset→所有计数器减半（保鲜机制），让老数据随时间衰减。</li>
+<li>第三层：关键设计决策与权衡——为什么取 min 而非 avg？因为 Hash 冲突只会使计数偏大（假阳性），取 min 可以最小化高估误差。<code>depth=4</code>（原文设置）意味着用 4 个独立 Hash 函数，误差概率 ≈ <code>(1/2)^4</code> 级别。<code>width</code> 越大误差越小但内存越大，典型场景根据期望误差率 <code>ε</code> 和置信度 <code>δ</code> 计算：<code>width = ⌈e/ε⌉</code>，<code>depth = ⌈ln(1/δ)⌉</code>。</li>
+</ul>
+</li>
+<li><p>关键数据结构：<code>cmRow</code>（每个 uint8 压缩存储2个4-bit计数器，节省空间），<code>cmSketch</code>（depth 行 × width&#x2F;2 列 uint8 + depth 个随机种子）。</p>
+</li>
+<li><p>生命周期管理：<code>newCmSketch(numCounters)</code> → 正常运行（Increment&#x2F;Estimate）→ Reset（计数器减半）或 Clear（清空）。Reset 不是一次性清空，而是减半，实现”时间衰减”效果。</p>
+</li>
+</ul>
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-计数器行（cmRow）"><a href="#3-1-计数器行（cmRow）" class="headerlink" title="3.1 计数器行（cmRow）"></a>3.1 计数器行（cmRow）</h3><p>每个 byte 存两个 4-bit 计数器（最大计数值 15），用位操作定位和更新。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> cmRow []<span class="type">byte</span> <span class="comment">// byte = uint8 = 0000,0000 = COUNTER 4BIT = 2 counter</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 64 counter</span></span><br><span class="line"><span class="comment">// 1 uint8 = 2 counter</span></span><br><span class="line"><span class="comment">// 32 uint8 = 64 counter</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">newCmRow</span><span class="params">(numCounters <span class="type">int64</span>)</span></span> cmRow &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">make</span>(cmRow, numCounters/<span class="number">2</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r cmRow)</span></span> get(n <span class="type">uint64</span>) <span class="type">byte</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="type">byte</span>(r[n/<span class="number">2</span>]&gt;&gt;((n&amp;<span class="number">1</span>)*<span class="number">4</span>)) &amp; <span class="number">0x0f</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r cmRow)</span></span> increment(n <span class="type">uint64</span>) &#123;</span><br><span class="line">    <span class="comment">// 定位到第i个Counter</span></span><br><span class="line">    i := n / <span class="number">2</span> <span class="comment">// r[i]</span></span><br><span class="line">    <span class="comment">// 右移距离，偶数为0，奇数为4</span></span><br><span class="line">    s := (n &amp; <span class="number">1</span>) * <span class="number">4</span></span><br><span class="line">    <span class="comment">// 取前4Bit还是后4Bit</span></span><br><span class="line">    v := (r[i] &gt;&gt; s) &amp; <span class="number">0x0f</span> <span class="comment">// 0000, 1111</span></span><br><span class="line">    <span class="comment">// 没有超出最大计数时，计数+1</span></span><br><span class="line">    <span class="keyword">if</span> v &lt; <span class="number">15</span> &#123;</span><br><span class="line">        r[i] += <span class="number">1</span> &lt;&lt; s</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 保鲜：所有计数器减半</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r cmRow)</span></span> reset() &#123;</span><br><span class="line">    <span class="keyword">for</span> i := <span class="keyword">range</span> r &#123;</span><br><span class="line">        r[i] = (r[i] &gt;&gt; <span class="number">1</span>) &amp; <span class="number">0x77</span> <span class="comment">// 0111,0111</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r cmRow)</span></span> clear() &#123;</span><br><span class="line">    <span class="keyword">for</span> i := <span class="keyword">range</span> r &#123;</span><br><span class="line">        r[i] = <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>解读：<code>get(n)</code> 用 <code>n/2</code> 定位 byte，<code>(n&amp;1)*4</code> 决定取高4位还是低4位。<code>increment(n)</code> 同理定位后检查是否 &lt;15（防溢出），再用 <code>1 &lt;&lt; s</code> 对目标半位 +1。<code>reset()</code> 中 <code>0x77 = 01110111</code> 掩码保证每个半字节独立右移后高位归零。</p>
+</blockquote>
+<h3 id="3-2-向上取2的幂（next2Power）"><a href="#3-2-向上取2的幂（next2Power）" class="headerlink" title="3.2 向上取2的幂（next2Power）"></a>3.2 向上取2的幂（next2Power）</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 快速计算最接近x的二次幂的算法</span></span><br><span class="line"><span class="comment">// 比如x=5，返回8</span></span><br><span class="line"><span class="comment">// x = 110，返回128</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">next2Power</span><span class="params">(x <span class="type">int64</span>)</span></span> <span class="type">int64</span> &#123;</span><br><span class="line">    x--</span><br><span class="line">    x |= x &gt;&gt; <span class="number">1</span></span><br><span class="line">    x |= x &gt;&gt; <span class="number">2</span></span><br><span class="line">    x |= x &gt;&gt; <span class="number">4</span></span><br><span class="line">    x |= x &gt;&gt; <span class="number">8</span></span><br><span class="line">    x |= x &gt;&gt; <span class="number">16</span></span><br><span class="line">    x |= x &gt;&gt; <span class="number">32</span></span><br><span class="line">    x++</span><br><span class="line">    <span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>经典位运算技巧：将最高位1后面的所有位都置1，然后+1。如 <code>x=5 (101)→x--=4 (100)→111→1000=8</code>。这里用 CMS 的 width 必须是2的幂，方便用 <code>&amp; mask</code> 替代 <code>% width</code>。</p>
+</blockquote>
+<h3 id="3-3-CMS-主体"><a href="#3-3-CMS-主体" class="headerlink" title="3.3 CMS 主体"></a>3.3 CMS 主体</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> cmDepth = <span class="number">4</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">type</span> cmSketch <span class="keyword">struct</span> &#123;</span><br><span class="line">    rows [cmDepth]cmRow</span><br><span class="line">    seed [cmDepth]<span class="type">uint64</span></span><br><span class="line">    mask <span class="type">uint64</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">newCmSketch</span><span class="params">(numCounters <span class="type">int64</span>)</span></span> *cmSketch &#123;</span><br><span class="line">    <span class="keyword">if</span> numCounters == <span class="number">0</span> &#123;</span><br><span class="line">        <span class="built_in">panic</span>(<span class="string">&quot;cmSketch: bad numCounters&quot;</span>)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    numCounters = next2Power(numCounters)</span><br><span class="line">    sketch := &amp;cmSketch&#123;mask: <span class="type">uint64</span>(numCounters - <span class="number">1</span>)&#125;</span><br><span class="line">    source := rand.New(rand.NewSource(time.Now().UnixNano()))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; cmDepth; i++ &#123;</span><br><span class="line">        sketch.seed[i] = source.Uint64()</span><br><span class="line">        sketch.rows[i] = newCmRow(numCounters)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> sketch</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *cmSketch)</span></span> Increment(hashed <span class="type">uint64</span>) &#123;</span><br><span class="line">    <span class="keyword">for</span> i := <span class="keyword">range</span> s.rows &#123;</span><br><span class="line">        s.rows[i].increment((hashed ^ s.seed[i]) &amp; s.mask)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 找到最小的计数值</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *cmSketch)</span></span> Estimate(hashed <span class="type">uint64</span>) <span class="type">int64</span> &#123;</span><br><span class="line">    min := <span class="type">byte</span>(<span class="number">255</span>)</span><br><span class="line">    <span class="keyword">for</span> i := <span class="keyword">range</span> s.rows &#123;</span><br><span class="line">        val := s.rows[i].get((hashed ^ s.seed[i]) &amp; s.mask)</span><br><span class="line">        <span class="keyword">if</span> val &lt; min &#123;</span><br><span class="line">            min = val</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="type">int64</span>(min)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 保鲜机制：所有计数器减半</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *cmSketch)</span></span> Reset() &#123;</span><br><span class="line">    <span class="keyword">for</span> _, r := <span class="keyword">range</span> s.rows &#123;</span><br><span class="line">        r.reset()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *cmSketch)</span></span> Clear() &#123;</span><br><span class="line">    <span class="keyword">for</span> _, r := <span class="keyword">range</span> s.rows &#123;</span><br><span class="line">        r.clear()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>解读：<code>mask = numCounters - 1</code>，因为 <code>numCounters</code> 是2的幂，<code>&amp; mask</code> 等价于 <code>% numCounters</code> 但更快。每行用独立 <code>seed[i]</code> 与 hashed 异或后取模，保证多行之间的 Hash 位置不相关（避免所有行同时冲突）。<code>Estimate</code> 取所有行的最小值——这是 CMS 的核心 trick。</p>
+</blockquote>
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li>与项目中其他模块的集成方式：CMS 在缓存系统中作为 TinyLFU 的频率统计组件。TinyLFU 用 CMS 记录每个 key 的访问频率，配合 LRU 做主缓存，形成 W-TinyLFU（Window-TinyLFU）策略——这是 Caffeine（Java高性能缓存库）的核心算法。</li>
+<li>生产环境考量：<ul>
+<li>错误处理与容错策略：4-bit 计数器上限15，<code>increment</code> 中 <code>if v &lt; 15</code> 防溢出。对于极热 key 不会无限增长——这恰好符合”保鲜”需求，因为真正需要淘汰策略介入的场景是区分相对热度。</li>
+<li>资源管理：<code>numCounters</code> 决定内存占用。如 <code>numCounters=1024</code>，4行×512 bytes&#x3D;2KB，可统计任意数量 key 的频率。与存 Map[key]count 对比：后者随 key 数量增长无上限，CMS 恒定占用。</li>
+<li>监控与日志：可暴露 CMS 的 fill rate（所有计数器平均值 &#x2F; 15），如果长期接近饱和说明需要调大 width 或缩短 Reset 周期。</li>
+</ul>
+</li>
+<li>常见优化策略：<ul>
+<li>计数器位宽选择：4-bit 最大15——为什么不是8-bit？因为 CMS 靠 Reset（减半）来衰减，高频 key 很快触及15后不再增长，低频 key 经过几次 Reset 归零自动淘汰。15 在缓存场景够用。如果需要更大计数，可扩展到8-bit（牺牲一半容量）。</li>
+<li>Hash 函数优化：原实现每次 <code>hashed ^ seed[i]</code> 只用一个源 Hash + 不同 seed 异或，而非真正独立 Hash 函数。这在统计上近似独立，足够工程使用。如果要求理论保证，应使用独立 Hash 族（如 <code>h_i(x) = (a_i * x + b_i) mod p</code>）。</li>
+<li>保鲜 Reset：减半而非清空——这实现了指数衰减。经过 k 次 Reset，原计数 ≈ <code>count / 2^k</code>。这使得最近访问的数据权重更高。</li>
+</ul>
+</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><ul>
+<li><p>关键实现路径：核心路径极短——<code>Increment</code> 就是 d 次 <code>cmRow.increment</code>，<code>Estimate</code> 就是 d 次 <code>cmRow.get</code> 取 min。复杂度 O(d)，d&#x3D;4 时几乎常数时间。真正精巧的是 <code>cmRow</code> 的位操作：一个 byte 存两个4-bit counter，用 <code>n/2</code> 和 <code>(n&amp;1)*4</code> 定位，比用 <code>[]uint8</code> 每个 counter 占一个 byte 省一半内存。</p>
+</li>
+<li><p>难点与易错点：</p>
+<ol>
+<li><strong>位操作优先级</strong>：<code>r[i] &gt;&gt; ((n&amp;1)*4) &amp; 0x0f</code> 中 <code>&gt;&gt;</code> 优先级高于 <code>&amp;</code>，如果不加括号写成 <code>r[i] &gt;&gt; (n&amp;1)*4 &amp; 0x0f</code> 会在 <code>(n&amp;1)*4</code> 之后先做 <code>&amp; 0x0f</code>。这里原代码的括号是正确的。</li>
+<li><strong><code>&amp; 0x77</code> reset 掩码</strong>：<code>0x77 = 0111 0111</code>。减半操作 <code>r[i] &gt;&gt; 1</code> 会把每个半字节高位清零（因为原来最高位是0），但需要再 <code>&amp; 0x77</code> 确保相邻半字节不受影响。如果写成 <code>&amp; 0x0F</code> 会错误清零高半字节。</li>
+<li><strong>mask &#x3D; numCounters - 1</strong>：依赖 numCounters 是2的幂。如果传入的 <code>numCounters</code> 没经过 <code>next2Power</code>，<code>&amp; mask</code> 不等于取模，会导致越界。构造函数中 <code>numCounters = next2Power(numCounters)</code> 保证了这一点。</li>
+<li><strong>种子随机化</strong>：<code>source.Uint64()</code> 用 <code>time.Now().UnixNano()</code> 作为种子。单实例没问题，但多实例快速连续创建可能种子相同（纳秒级相同）。生产环境可用 <code>crypto/rand</code> 或全局递增计数器。</li>
+<li><strong>Estimate 的 min 初始值</strong>：<code>min := byte(255)</code>，而 <code>byte</code> 最大255，计数器最大15。初始化为255保证第一次比较一定更新。如果改为8-bit计数器（最大255），这里需要改为更大的初始值或 bool 标记。</li>
+</ol>
+</li>
+<li><p>经验总结（补充）：</p>
+<ul>
+<li><strong>CMS vs 精确计数</strong>：CMS 的内存占用是固定的 O(d×w)，与 key 数量无关。100万个 key 和 10个 key 占用相同内存。代价是查询结果偏大（但不会偏小）。适用场景：只需要”哪些 key 足够热”而非精确计数。</li>
+<li><strong>与 Bloom Filter 的关系</strong>：两者都用多个 Hash + 共享数组，但 BF 存”是否存在”（1 bit），CMS 存”出现几次”（4 bits&#x2F;counter）。CMS 可以看作 Bloom Filter 的计数扩展版。</li>
+<li><strong>TinyLFU 的局限</strong>：CMS 应对突发稀疏流量表现不佳——这些流量的访问频次不足以在 CMS 中积累足够计数，很快被 Reset 衰减淘汰。Caffeine 的 W-TinyLFU 通过增加一个小的 Window-LRU 在前端吸收突发流量来解决。</li>
+</ul>
+</li>
+</ul>
+<p>TinyLFU解决了LFU统计的内存消耗问题，和缓存保鲜的问题，但是TinyLFU是否还有缺点呢？</p>
+<p>有，论文中是这么描述的，根据实测TinyLFU应对突发的稀疏流量时表现不佳。大概思考一下也可以得知，这些稀疏流量的访问频次不足以让他们在LFU缓存中占据位置，很快就又被淘汰了。</p>
+<p>我们回顾之前讲过的，LRU对于稀疏流量效果很好，那可以不可以把LRU和LFU结合一下呢？就出现了下面这种缓存策略。</p>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：Count-Min Sketch 是什么，解决什么问题？</p>
+<p>A：概率型数据结构，用固定大小的二维计数器矩阵估计数据流中元素的频率。解决”海量 key 无法为每个维护精确计数器”的问题，空间复杂度 O(d×w)，与 key 数量无关。</p>
+<p>Q2：为什么查询时取 min 而不是 avg？</p>
+<p>A：Hash 冲突只会让计数偏大（多个 key 映射到同一位置），取 min 可以最小化高估误差。这是 CMS 的核心设计——保证”真实值 ≤ 估计值”，误差单边向上。</p>
+<p>Q3：depth&#x3D;4 和 width 如何选择？</p>
+<p>A：depth 控制置信度（误差概率），width 控制误差大小。公式：<code>width = ⌈e/ε⌉</code>, <code>depth = ⌈ln(1/δ)⌉</code>。depth&#x3D;4 时误差概率 ≈ (1&#x2F;2)^4 &#x3D; 6.25%。width 根据期望误差率 ε 和总计数 N 估算。</p>
+<p>Q4：4-bit 计数器最大15，遇到极热 key 怎么办？</p>
+<p>A：达到15后不再递增——这恰好配合 Reset 机制。经过几次 Reset 后计数衰减，热 key 会维持在较高的相对值。如果真的需要更大范围，可扩展到 8-bit（内存翻倍）。</p>
+<p>Q5：Reset（减半）和 Clear（清零）有什么区别，为什么用减半？</p>
+<p>A：Clear 是一次性清零，丢失所有历史信息。Reset 减半实现指数衰减，最近访问的数据保留更高权重，历史数据自然衰减。这是”保鲜”机制的核心。</p>
+<p>Q6：CMS 和 Bloom Filter 有什么关系？</p>
+<p>A：都是概率数据结构，都用多 Hash + 共享数组。BF 存 0&#x2F;1（是否存在），CMS 存计数（出现几次）。CMS 可视为 BF 的计数扩展版（Counting Bloom Filter 是另一种扩展，差别在于 BF 支持删除）。</p>
+<p>Q7：为什么 numCounters 必须是 2 的幂？</p>
+<p>A：<code>&amp; mask</code>（mask &#x3D; numCounters - 1）等价于 <code>% numCounters</code>，但位运算更快。2的幂保证 mask 是连续的全1二进制，<code>&amp; mask</code> 才等于取模。</p>
+<p>Q8：<code>hashed ^ seed[i]</code> 为什么能实现”独立 Hash”？</p>
+<p>A：严格说不独立，但工程上足够：用一个真实 Hash 值异或不同的随机 seed，得到的值在统计上分布均匀且不相关。如果需要理论保证，应使用独立 Hash 族（如 <code>h_i(x) = (a_i*x + b_i) mod p</code>）。</p>
+<p>Q9：CMS 在 TinyLFU&#x2F;缓存淘汰中扮演什么角色？</p>
+<p>A：CMS 是 TinyLFU 的频率统计引擎。当缓存满需要淘汰时，TinyLFU 查询 CMS 比较候选 victim 和新 item 的频率，保留频率更高的。CMS 的 Reset 则保证频率有时效性。</p>
+<p>Q10：CMS 的误差有多大？</p>
+<p>A：以概率 1-δ 保证：估计值 ≤ 真实值 + ε*N（N 为所有元素计数之和）。如 depth&#x3D;10, width&#x3D;2000，ε&#x3D;0.1%, 置信度 99.9%。误差单边向上，不会低估。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li>在你们系统中，CMS 的 width 和 depth 是怎么调的？有没有根据 traffic pattern 动态调整？</li>
+<li>TinyLFU 之外还评估过其他频率估计算法吗（如 Count Sketch, Lossy Counting）？</li>
+<li>CMS 的计数器位宽在你们的场景下够用吗？有没有因为计数器饱和导致的精度问题？</li>
+</ul>
+<p>陷阱问题：</p>
+<ul>
+<li>陷阱1：<code>&amp; mask</code> 取模的前提是什么？答：numCounters 是2的幂。</li>
+<li>陷阱2：reset 中 <code>&amp; 0x77</code> 如果写成 <code>&amp; 0x0F</code> 会怎样？答：高半字节被清零，丢失一半计数器的数据。</li>
+<li>陷阱3：Estimate 的 min 初始值为什么是 255？答：byte 最大值255 确保第一次比较必定更新。计数器实际最大15，远小于255。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>CMS 的核心是：d 行 × w 列计数器 + d 个 Hash，存 min 值。空间固定 O(dw)，误差单边向上。</li>
+<li><code>&amp; mask</code> 等于取模的前提是 numCounters 是2的幂。</li>
+<li>Reset 减半而非清空，实现计数指数衰减，保留最近数据的权重。</li>
+<li>CMS 和 Bloom Filter 同源：多 Hash + 共享数组，CMS 存计数，BF 存存在性。</li>
+<li>TinyLFU 用 CMS 估计频率 + LRU 兜底突发流量 &#x3D; W-TinyLFU。</li>
+<li>一个 uint8 存两个4-bit counter，比 naive <code>[]uint8</code> 省一半内存。</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中不直接适配六大段结构、但仍有价值的内容，原样保留于此。</p>
+</blockquote>
+<p>Count-min Sketch算法是一个可以用来计数的算法，在数据大小非常大时，一种高效的计数算法，通过牺牲准确性提高的效率。</p>
+<ul>
+<li>是一个概率数据机构</li>
+<li>算法效率高</li>
+<li>提供计数上线</li>
+</ul>
+<p>我们给要计数的值计算一个Hash，然后在位图中给这个Hash值对应的位置累加1就可以了，但是BloomFilter中的一个典型问题是假阳性，可以说只要是用Hash计算就有存在冲突的可能，那么cmSketch计数法如果出现冲突会怎么样呢？会给同一个位置多计算访问次数。这里cmSketch选择了以最小的统计数据值作为结果。这是一个不那么精确地统计方法，但是可以大致的反应访问分布的规律。</p>
+<p>因为这个算法也就有了一个名字，叫做Count-Min Sketch</p>
+<p>下面我们来手撕这个算法。</p>
+<p>如果我们要给n个数据计数，那么每4Bit当做一个计数器Counter，我们一共需要几个uint8来计数呢？答案是n&#x2F;2</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/count-min-sketch/">https://weimo1.github.io/posts/count-min-sketch/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/epoll/" title="epoll"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">epoll</div></div><div class="info-2"><div class="info-item-1">epoll 适用范围：Linux I&#x2F;O多路复用、epoll 事件驱动机制、epoll_create&#x2F;epoll_ctl&#x2F;epoll_wait 系统调用、LT与ET触发模式、eventpoll&#x2F;epitem 内核源码实现  一、核心概念 定义：epoll 是 Linux 内核提供的可扩展 I&#x2F;O 多路复用机制，用于高效监视大量文件描述符上的 I&#x2F;O 事件。与 select&#x2F;poll 的轮询遍历不同，epoll 采用事件驱动+回调机制，通过红黑树管理监视集、就绪链表交付激活事件，实现 O(1) 就绪获取 关键词：even...</div></div></div></a><a class="pagination-related" href="/posts/emplace_back_push_back/" title="emplace_back_push_back"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">emplace_back_push_back</div></div><div class="info-2"><div class="info-item-1">emplace_back vs push_back 适用范围：C++ 容器操作——emplace_back 与 push_back 的区别、vector 扩容机制。  参考：https://www.zhihu.com/question/387522517、STL之vector扩容机制 一、核心概念 定义：push_back 接受已构造的对象（拷贝&#x2F;移动）添加到容器末尾；emplace_back 接受构造对象所需的参数列表，直接在容器内存中原地构造对象，避免临时对象的创建。 关键词：emplace_back、push_back、原地构造、完美转发、vector 扩容、reallo...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Count-Min-Sketch"><span class="toc-number">1.</span> <span class="toc-text">Count-Min Sketch</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%AE%A1%E6%95%B0%E5%99%A8%E8%A1%8C%EF%BC%88cmRow%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 计数器行（cmRow）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%90%91%E4%B8%8A%E5%8F%962%E7%9A%84%E5%B9%82%EF%BC%88next2Power%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 向上取2的幂（next2Power）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-CMS-%E4%B8%BB%E4%BD%93"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 CMS 主体</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

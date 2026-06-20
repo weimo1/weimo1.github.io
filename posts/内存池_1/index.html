@@ -1,0 +1,403 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>内存池 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="内存池 内存池（Memory Pool）是一种预分配内存管理策略，通过在程序启动时批量申请内存并自行管理分配&#x2F;回收，消除频繁 malloc&#x2F;free 的开销和内存碎片问题。  一、核心概念 定义：内存池是预先分配一大块内存并在内部自行管理分配和回收的内存管理机制，由内存块（Memory Block）和内存块链表（Memory Block List）两部分组成。 关键词：预分配内">
+<meta property="og:type" content="article">
+<meta property="og:title" content="内存池">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%86%85%E5%AD%98%E6%B1%A0_1/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="内存池 内存池（Memory Pool）是一种预分配内存管理策略，通过在程序启动时批量申请内存并自行管理分配&#x2F;回收，消除频繁 malloc&#x2F;free 的开销和内存碎片问题。  一、核心概念 定义：内存池是预先分配一大块内存并在内部自行管理分配和回收的内存管理机制，由内存块（Memory Block）和内存块链表（Memory Block List）两部分组成。 关键词：预分配内">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.564Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "内存池",
+  "url": "https://weimo1.github.io/posts/%E5%86%85%E5%AD%98%E6%B1%A0_1/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.564Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%86%85%E5%AD%98%E6%B1%A0_1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '内存池',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">内存池</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">内存池</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.564Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E4%B8%8E%E6%9E%B6%E6%9E%84/">性能优化与架构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>13分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="内存池"><a href="#内存池" class="headerlink" title="内存池"></a>内存池</h1><blockquote>
+<p>内存池（Memory Pool）是一种预分配内存管理策略，通过在程序启动时批量申请内存并自行管理分配&#x2F;回收，消除频繁 malloc&#x2F;free 的开销和内存碎片问题。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：内存池是预先分配一大块内存并在内部自行管理分配和回收的内存管理机制，由内存块（Memory Block）和内存块链表（Memory Block List）两部分组成。</li>
+<li>关键词：预分配内存、空闲链表（Free List）、对象池、固定大小分配、内存碎片、tcmalloc、jemalloc</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>频繁分配&#x2F;释放固定大小对象的场景（网络包的收发缓冲区）</li>
+<li>对分配延迟有确定性要求的实时系统</li>
+<li>需要避免全局堆锁竞争的多线程环境</li>
+<li>不适合分配大小极度不规则的场景</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p>内存池的基本结构主要包括两个部分：内存块（Memory Block）和内存块链表（Memory Block List）。</p>
+<p>实现步骤：</p>
+<ol>
+<li>预分配内存：调用一次 <code>malloc</code> 或 <code>mmap</code> 申请大块内存</li>
+<li>初始化内存块链表：将大块内存切分为固定大小的块，串入空闲链表</li>
+<li>实现内存分配函数：从空闲链表取出一块返回</li>
+<li>实现内存释放函数：将用毕的块归还到空闲链表</li>
+<li>实现内存整理函数：合并相邻空闲块，减少碎片</li>
+</ol>
+<p><strong>第二层：核心优势</strong></p>
+<p>内存池的主要优势：</p>
+<ol>
+<li>提高分配效率：直接从池中获取，避免频繁调用 malloc&#x2F;free</li>
+<li>减少内存碎片：以固定大小块为单位分配回收，有效减少碎片</li>
+<li>提高内存利用率：根据需求动态调整块大小和数量</li>
+<li>简化内存管理：程序员不需要关心分配和回收细节</li>
+<li>提高程序稳定性：有效防止内存泄漏和溢出</li>
+</ol>
+<p><strong>第三层：与系统分配器的关系</strong></p>
+<p>内存池不是 ptmalloc&#x2F;tcmalloc&#x2F;jemalloc 的替代品，而是上层封装：</p>
+<ul>
+<li>系统分配器（底层）：负责从内核获取内存，管理全局堆</li>
+<li>内存池（上层）：在特定上下文中批量管理内存，减少系统分配器调用</li>
+</ul>
+<h3 id="关键数据结构-接口"><a href="#关键数据结构-接口" class="headerlink" title="关键数据结构&#x2F;接口"></a>关键数据结构&#x2F;接口</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 基本内存池结构</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">ObjectPool</span> &#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">Node</span> &#123;</span><br><span class="line">        T data;</span><br><span class="line">        Node* next;  <span class="comment">// 空闲链表指针</span></span><br><span class="line">    &#125;;</span><br><span class="line">    </span><br><span class="line">    Node* free_list = <span class="literal">nullptr</span>;   <span class="comment">// 空闲链表头</span></span><br><span class="line">    std::vector&lt;<span class="type">void</span>*&gt; blocks;    <span class="comment">// 申请的大块内存</span></span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">T* <span class="title">allocate</span><span class="params">()</span></span>;    <span class="comment">// 从池中分配</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">deallocate</span><span class="params">(T* p)</span></span>;  <span class="comment">// 归还到池中</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="关键公式-复杂度"><a href="#关键公式-复杂度" class="headerlink" title="关键公式&#x2F;复杂度"></a>关键公式&#x2F;复杂度</h3><p>分配&#x2F;释放操作：O(1)——直接从空闲链表头部取&#x2F;放<br>内存利用率：接近 100%（对比 malloc 的 chunk header 开销）</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 简单固定大小内存池</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">FixedMemPool</span> &#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">Block</span> &#123;</span><br><span class="line">        Block* next;</span><br><span class="line">    &#125;;</span><br><span class="line">    </span><br><span class="line">    Block* free_list = <span class="literal">nullptr</span>;</span><br><span class="line">    std::vector&lt;<span class="type">char</span>*&gt; big_blocks;  <span class="comment">// 持有大块内存</span></span><br><span class="line">    </span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">size_t</span> BLOCK_SIZE = <span class="number">64</span>;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">size_t</span> BLOCKS_PER_CHUNK = <span class="number">256</span>;</span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    ~<span class="built_in">FixedMemPool</span>() &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>* p : big_blocks) ::<span class="function"><span class="keyword">operator</span> <span class="title">delete</span><span class="params">(p)</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span>* <span class="title">alloc</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (!free_list) &#123;</span><br><span class="line">            <span class="comment">// 无空闲块，申请一大块</span></span><br><span class="line">            <span class="type">char</span>* chunk = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(</span><br><span class="line">                ::<span class="keyword">operator</span> <span class="built_in">new</span>(BLOCK_SIZE * BLOCKS_PER_CHUNK));</span><br><span class="line">            big_blocks.<span class="built_in">push_back</span>(chunk);</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// 切分成小块并串入空闲链表</span></span><br><span class="line">            <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; BLOCKS_PER_CHUNK; ++i) &#123;</span><br><span class="line">                <span class="keyword">auto</span>* block = <span class="built_in">reinterpret_cast</span>&lt;Block*&gt;(</span><br><span class="line">                    chunk + i * BLOCK_SIZE);</span><br><span class="line">                block-&gt;next = free_list;</span><br><span class="line">                free_list = block;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        Block* result = free_list;</span><br><span class="line">        free_list = free_list-&gt;next;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">free</span><span class="params">(<span class="type">void</span>* ptr)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span>* block = <span class="built_in">static_cast</span>&lt;Block*&gt;(ptr);</span><br><span class="line">        block-&gt;next = free_list;</span><br><span class="line">        free_list = block;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    FixedMemPool pool;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 分配和释放</span></span><br><span class="line">    <span class="type">void</span>* p1 = pool.<span class="built_in">alloc</span>();</span><br><span class="line">    <span class="type">void</span>* p2 = pool.<span class="built_in">alloc</span>();</span><br><span class="line">    pool.<span class="built_in">free</span>(p1);</span><br><span class="line">    <span class="type">void</span>* p3 = pool.<span class="built_in">alloc</span>();  <span class="comment">// 复用 p1 的空间</span></span><br><span class="line">    pool.<span class="built_in">free</span>(p2);</span><br><span class="line">    pool.<span class="built_in">free</span>(p3);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>ptmalloc&#x2F;tcmalloc&#x2F;jemalloc</strong>：系统级分配器。内存池是它们的上层封装，用于进一步减少分配开销</li>
+<li><strong>对象池（Object Pool）</strong>：内存池的特化形式，不仅管理内存还管理对象生命周期（构造&#x2F;析构）</li>
+<li><strong>Slab 分配器</strong>：Linux 内核使用的内存池机制，按对象大小预分配 slab</li>
+<li><strong>pmr（C++17 多态分配器）</strong>：标准库层面的内存池抽象，<code>std::pmr::unsynchronized_pool_resource</code> 等</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>Nginx</strong>：连接池、请求池——每个连接预分配固定大小内存池</li>
+<li><strong>LevelDB</strong>：Arena 类实现简单内存池，skiplist 节点统一分配</li>
+<li><strong>游戏服务器</strong>：消息对象池，避免每帧创建销毁消息对象</li>
+<li><strong>数据库连接池</strong>：预分配固定数量的连接对象</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><p><strong>固定大小 vs 可变大小池：</strong></p>
+<ul>
+<li>固定大小：分配释放 O(1)，无碎片，但浪费空间（内部碎片）</li>
+<li>可变大小：更好的空间利用率，但实现复杂，可能有外部碎片</li>
+</ul>
+<p><strong>线程安全策略：</strong></p>
+<ul>
+<li>无锁池：每线程一个池（Thread Local Pool），类似 tcmalloc</li>
+<li>加锁池：全局池加自旋锁，适合低竞争场景</li>
+</ul>
+<p><strong>相关的研究方向：</strong></p>
+<ul>
+<li>研究 TCmalloc jemalloc 源码</li>
+<li>C++ 高性能内存池实现</li>
+<li>从零实现一个高并发内存池</li>
+<li>高性能对象池实现</li>
+</ul>
+<p><strong>推荐阅读：</strong></p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2325061">手把手带你用C&#x2F;C++实现一个内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2500326">C++ 高性能内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2453720?policyId=1004">从零实现一个高并发内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1800443">高性能对象池实现</a></li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="tcmalloc-的三层缓存架构"><a href="#tcmalloc-的三层缓存架构" class="headerlink" title="tcmalloc 的三层缓存架构"></a>tcmalloc 的三层缓存架构</h3><p>tcmalloc 的设计对内存池实现有重要的参考价值：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Thread Cache (per-thread, lock-free)</span><br><span class="line">    ↓ 不足时从 Central Cache 获取</span><br><span class="line">Central Cache (per-size-class, spinlock)</span><br><span class="line">    ↓ 不足时从 Page Heap 获取</span><br><span class="line">Page Heap (global, mmap/sbrk)</span><br></pre></td></tr></table></figure>
+
+<p><strong>Thread Cache</strong>：每个线程有自己的自由链表。小对象（≤256KB）分配直接从这里取，完全无锁。</p>
+<p><strong>Central Cache</strong>：当 Thread Cache 不够时，从 Central Cache 批量获取（batch transfer），减少锁竞争次数。</p>
+<p><strong>Page Heap</strong>：管理大块内存页（Span），通过 mmap&#x2F;sbrk 向内核申请。</p>
+<h3 id="jemalloc-的-size-class-设计"><a href="#jemalloc-的-size-class-设计" class="headerlink" title="jemalloc 的 size class 设计"></a>jemalloc 的 size class 设计</h3><p>jemalloc 将分配大小分为多个 size class（如 8, 16, 32, 48, 64…），每个 size class 有自己的 arena 和 bin：</p>
+<ul>
+<li><strong>Small</strong>（≤ 14KB）：每个 size class 有专用 slab</li>
+<li><strong>Large</strong>（≤ 4MB）：以 page 为单位分配</li>
+<li><strong>Huge</strong>（&gt; 4MB）：直接 mmap</li>
+</ul>
+<p>这种设计既保持了小对象分配的 O(1) 效率，又避免了固定大小池的内部碎片问题。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><p><strong>难点 1：内部碎片 vs 外部碎片</strong></p>
+<p>固定大小内存池的内部碎片：分配 45 字节但块大小为 64，浪费 19 字节。需要通过 profiling 确定最优块大小。</p>
+<p><strong>难点 2：空闲链表管理的 ABA 问题</strong></p>
+<p>在多线程环境下使用 CAS 操作空闲链表时，典型的 ABA 问题：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 线程 A 读取 free_list → A</span></span><br><span class="line"><span class="comment">// 线程 B 弹出 A，压入新节点 C，再弹出 C，压回 A</span></span><br><span class="line"><span class="comment">// 线程 A 的 CAS 看到 free_list 仍是 A，成功执行</span></span><br><span class="line"><span class="comment">// 但此时 A-&gt;next 已被 B 改变！数据损坏！</span></span><br></pre></td></tr></table></figure>
+
+<p>解决方案：使用双宽 CAS（如 tagged pointer）或 hazard pointer。</p>
+<p><strong>难点 3：内存池的生命周期管理</strong></p>
+<p>池中分配的对象可能在池销毁后仍被引用，导致悬垂指针。需要配合引用计数或明确的所有权模型。</p>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ol>
+<li>固定大小的对象池是最安全、最高效的内存池形式——实现简单，消除碎片，天然适配多线程</li>
+<li>不要过早实现通用可变大小内存池——复杂度是固定大小池的 10 倍，大多数场景固定大小池足够</li>
+<li>现代 CPU 的缓存效应使连续内存布局（数组）优先于链表——空闲链表虽然 O(1)，但空间局部性差</li>
+<li>在 C++17+ 项目，优先考虑 <code>std::pmr</code> 而非自定义内存池——标准化意味着更好的工具链支持和可维护性</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解：</strong></p>
+<p>Q1：什么是内存池？为什么需要它？</p>
+<p>A：内存池是一种预分配内存块并自行管理的机制。它的核心价值是：1) 消除 malloc&#x2F;free 的系统调用和锁竞争开销 2) 减少内存碎片 3) 提供确定性的分配延迟。适用于频繁分配固定大小对象的场景。</p>
+<p>Q2：内存池和对象池有什么区别？</p>
+<p>A：内存池管理裸内存，不关心对象的构造析构；对象池是内存池的封装，额外管理对象的构造和析构。对象池更安全，但灵活性更低。</p>
+<p>Q3：固定大小池和可变大小池各有什么优缺点？</p>
+<p>A：固定大小池：O(1) 分配释放，零碎片，但内部碎片浪费空间。可变大小池：空间利用率高，但需要合并&#x2F;分割逻辑，复杂度高，可能产生外部碎片。</p>
+<p><strong>原理深入：</strong></p>
+<p>Q4：tcmalloc 的 per-thread cache 是什么原理？</p>
+<p>A：每个线程维护自己的自由链表（Thread Cache）。小内存（≤256KB）分配直接取，完全无锁。不足时批量从 Central Cache（带自旋锁）获取。这种分层缓存显著减少锁竞争。</p>
+<p>Q5：jemalloc 的 size class 如何划分？</p>
+<p>A：jemalloc 将分配按大小分入不同的 size class（8, 16, 32, 48, 64…每个按约 1.25× 递增）。每个 class 有独立的 arena 和 bin，小对象用 slab，大对象用 page&#x2F;huge。兼顾了效率与空间利用率。</p>
+<p>Q6：内存池的空闲链表如何处理多线程并发？</p>
+<p>A：1) 每线程独立池（无锁，如 tcmalloc）2) CAS 无锁链表（需处理 ABA 问题）3) 自旋锁保护（低竞争场景）。优先选择方案 1。</p>
+<p><strong>实践应用：</strong></p>
+<p>Q7：如何在项目中实现一个简单的内存池？</p>
+<p>A：1) 预分配大块内存（malloc&#x2F;mmap）2) 切分为固定大小块 3) 用单链表连接空闲块 4) alloc 从链表头取，free 归还到链表头 5) 析构时释放所有大块。</p>
+<p>Q8：内存池会导致哪些问题？</p>
+<p>A：1) 内部碎片浪费内存 2) 悬垂指针（池销毁后对象仍被引用）3) 多线程 ABA 问题 4) 池大小固定时可能不够用 5) 调试困难（普通内存检测工具不感知池内分配）。</p>
+<p>Q9：C++17 的 pmr 是什么？怎么用？</p>
+<p>A：pmr（Polymorphic Memory Resource）是标准库的分配器抽象层。<code>std::pmr::unsynchronized_pool_resource</code> 提供内置内存池。只需将容器模板参数改为 <code>std::pmr::vector&lt;T&gt;</code> 即可使用自定义分配器。</p>
+<p>Q10：在高并发服务器中，内存池如何设计？</p>
+<p>A：参考 tcmalloc 三层架构：per-thread 本地池（无锁）→ per-size-class 中间池（自旋锁）→ 全局页管理器（mmap）。加上支持热释放（hot free）和延迟回收（deferred reclamation）。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p><strong>针对面试官的深度问题：</strong></p>
+<ul>
+<li>贵公司项目中是否使用了自定义内存池？在什么业务场景下系统默认分配器不够用？</li>
+<li>当内存池大小需要动态调整时，团队如何权衡内存浪费和扩展复杂性？</li>
+</ul>
+<p><strong>常见陷阱问题：</strong></p>
+<ul>
+<li>陷阱 1：”内存池能完全替代 malloc 吗？” — 不能。内存池适合特定场景（固定大小、频繁分配），通用场景下系统分配器经过数十年的优化，盲目替换可能适得其反。</li>
+<li>陷阱 2：”内存池能防止内存泄漏吗？” — 不能自动防止。池中分配的内存如果忘记归还，仍然泄漏。只是池销毁时能批量释放，掩盖了部分泄漏。</li>
+<li>陷阱 3：”使用内存池后内存占用会减少吗？” — 通常会增加（预分配 + 内部碎片），但减少了系统调用和分配器元数据开销。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>内存池的核心是：预分配大块内存，切分为固定大小块，通过空闲链表实现 O(1) 分配释放。</li>
+<li>使用内存池的关键是：选择合适的块大小——通过 profiling 确定最常见的分配大小，对齐到 2 的幂。</li>
+<li>避免内存池的常见错误是：忘记处理池已满的情况（可动态扩展）或池销毁后的悬垂指针。</li>
+<li>内存池优于 malloc 的地方在于：确定性延迟和无锁可能，特别适合实时系统和网络服务器。</li>
+<li>调试内存池问题的方法是：自定义 operator new&#x2F;delete 添加追踪，或使用 AddressSanitizer 检测越界。</li>
+<li>当被问到”如何选择分配器”时回答：”通用场景用系统默认；固定大小频繁分配用对象池；高并发多线程用 tcmalloc&#x2F;jemalloc；需要和标准库容器集成用 C++17 pmr。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>原笔记参考资料：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2325061">手把手带你用C&#x2F;C++实现一个内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2500326">C++ 高性能内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2453720?policyId=1004">从零实现一个高并发内存池</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1800443">高性能对象池实现</a></li>
+</ul>
+<p>研究建议：TCmalloc jemalloc 源码</p>
+</blockquote>
+<hr>
+<h2 id="源代码附录：基于-std-stack-的-MemoryPool-实现"><a href="#源代码附录：基于-std-stack-的-MemoryPool-实现" class="headerlink" title="源代码附录：基于 std::stack 的 MemoryPool 实现"></a>源代码附录：基于 std::stack 的 MemoryPool 实现</h2><blockquote>
+<p>以下为原笔记「深度学习&#x2F;内存池.md」中的完整源代码实现，使用 <code>std::stack</code> 作为空闲链表管理固定大小内存块，配合 placement new 构造对象。内存池的线程安全是看上层做不做处理。</p>
+</blockquote>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstdlib&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stack&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">MemoryPool</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">MemoryPool</span>(<span class="type">size_t</span> objectSize, <span class="type">size_t</span> poolSize)</span><br><span class="line">        : <span class="built_in">objSize</span>(objectSize), <span class="built_in">totalSize</span>(poolSize), <span class="built_in">pool</span>((<span class="type">char</span>*)<span class="built_in">malloc</span>(objectSize * poolSize)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (pool == <span class="literal">nullptr</span>) &#123;</span><br><span class="line">            <span class="keyword">throw</span> std::<span class="built_in">bad_alloc</span>();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 初始化 free list</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; poolSize; ++i) &#123;</span><br><span class="line">            freeList.<span class="built_in">push</span>(pool + i * objectSize);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~<span class="built_in">MemoryPool</span>() &#123;</span><br><span class="line">        <span class="built_in">free</span>(pool);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span>* <span class="title">allocate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (freeList.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">            <span class="keyword">throw</span> std::<span class="built_in">bad_alloc</span>();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">void</span>* ptr = freeList.<span class="built_in">top</span>();</span><br><span class="line">        freeList.<span class="built_in">pop</span>();</span><br><span class="line">        <span class="keyword">return</span> ptr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">deallocate</span><span class="params">(<span class="type">void</span>* ptr)</span> </span>&#123;</span><br><span class="line">        freeList.<span class="built_in">push</span>((<span class="type">char</span>*)ptr);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">size_t</span> objSize;</span><br><span class="line">    <span class="type">size_t</span> totalSize;</span><br><span class="line">    <span class="type">char</span>* pool;</span><br><span class="line">    std::stack&lt;<span class="type">void</span>*&gt; freeList;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">MyClass</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">MyClass</span>(<span class="type">int</span> val) : <span class="built_in">value</span>(val) &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;MyClass constructor: &quot;</span> &lt;&lt; value &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">MyClass</span>() &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;MyClass destructor: &quot;</span> &lt;&lt; value &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> value;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 创建一个能容纳 3 个 MyClass 对象的内存池</span></span><br><span class="line">        <span class="function">MemoryPool <span class="title">pool</span><span class="params">(<span class="keyword">sizeof</span>(MyClass), <span class="number">3</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 分配对象内存</span></span><br><span class="line">        <span class="type">void</span>* mem1 = pool.<span class="built_in">allocate</span>();</span><br><span class="line">        <span class="type">void</span>* mem2 = pool.<span class="built_in">allocate</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 使用&quot;定位 new&quot;构造对象</span></span><br><span class="line">        MyClass* obj1 = <span class="built_in">new</span>(mem1) <span class="built_in">MyClass</span>(<span class="number">100</span>);</span><br><span class="line">        MyClass* obj2 = <span class="built_in">new</span>(mem2) <span class="built_in">MyClass</span>(<span class="number">200</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 使用对象</span></span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;obj1 value: &quot;</span> &lt;&lt; obj1-&gt;value &lt;&lt; std::endl;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;obj2 value: &quot;</span> &lt;&lt; obj2-&gt;value &lt;&lt; std::endl;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 显式调用析构函数</span></span><br><span class="line">        obj1-&gt;~<span class="built_in">MyClass</span>();</span><br><span class="line">        obj2-&gt;~<span class="built_in">MyClass</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 释放内存</span></span><br><span class="line">        pool.<span class="built_in">deallocate</span>(mem1);</span><br><span class="line">        pool.<span class="built_in">deallocate</span>(mem2);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">catch</span> (<span class="type">const</span> std::bad_alloc&amp; e) &#123;</span><br><span class="line">        std::cerr &lt;&lt; <span class="string">&quot;Memory pool allocation error: &quot;</span> &lt;&lt; e.<span class="built_in">what</span>() &lt;&lt; std::endl;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">MyClass constructor: 100</span><br><span class="line">MyClass constructor: 200</span><br><span class="line">obj1 value: 100</span><br><span class="line">obj2 value: 200</span><br><span class="line">MyClass destructor: 100</span><br><span class="line">MyClass destructor: 200</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明</strong>：</p>
+<ul>
+<li><strong>MemoryPool</strong> 管理固定大小的内存块，避免频繁调用 <code>malloc</code> 和 <code>free</code>。</li>
+<li>使用”<strong>定位 new</strong>“在预分配的内存上构造对象。</li>
+<li>需要手动调用析构函数和将内存返回给内存池。</li>
+<li><strong>注意</strong>：这种方法适用于大量小对象的高效管理，但需要确保正确使用构造和析构函数。</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%86%85%E5%AD%98%E6%B1%A0_1/">https://weimo1.github.io/posts/%E5%86%85%E5%AD%98%E6%B1%A0_1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" title="内存管理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">内存管理</div></div><div class="info-2"><div class="info-item-1">内存管理 C++ 内存管理涵盖程序的虚拟地址空间布局、堆栈分配机制、malloc&#x2F;new 底层实现、内存碎片处理以及现代 C++ 的 RAII 资源管理范式。本文从内核视角到应用层，系统梳理内存管理的核心原理与工程实践。  一、核心概念 定义：C++ 内存管理是程序对计算机内存资源的分配、使用和释放的全过程控制。不同于 Java&#x2F;Go 的自动 GC，C++ 赋予开发者对内存生命周期的完全掌控，这也是其高性能的根源。 关键词：虚拟地址空间、堆（Heap）、栈（Stack）、BSS、Data Segment、ptmalloc2、brk&#x2F;mmap、内存碎片、RAI...</div></div></div></a><a class="pagination-related" href="/posts/%E5%86%85%E5%AD%98%E6%B1%A0/" title="内存池"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">内存池</div></div><div class="info-2"><div class="info-item-1">内存池 适用范围：C++ 内存池的设计与实现——固定大小对象的高效分配释放、Free List 管理、Placement New 与显式析构、Bump Pointer Allocator  一、核心概念 定义：内存池是预分配一块连续大内存，然后从中切分固定大小的小块供用户使用的内存管理策略。核心思想是以空间换时间——用预分配+复用替代频繁的系统调用。 关键词：内存池、Free List、Placement New、Bump Pointer、侵入式链表、Slab Allocator、固定大小分配 适用场景&#x2F;边界：适用高频分配释放固定大小对象的场景（网络包、数据库连接、游戏实体）；...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0"><span class="toc-number">1.</span> <span class="toc-text">内存池</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84-%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键数据结构&#x2F;接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%85%AC%E5%BC%8F-%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">1.2.3.</span> <span class="toc-text">关键公式&#x2F;复杂度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#tcmalloc-%E7%9A%84%E4%B8%89%E5%B1%82%E7%BC%93%E5%AD%98%E6%9E%B6%E6%9E%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">tcmalloc 的三层缓存架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#jemalloc-%E7%9A%84-size-class-%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.5.2.</span> <span class="toc-text">jemalloc 的 size class 设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.3.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.5.4.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BA%90%E4%BB%A3%E7%A0%81%E9%99%84%E5%BD%95%EF%BC%9A%E5%9F%BA%E4%BA%8E-std-stack-%E7%9A%84-MemoryPool-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.8.</span> <span class="toc-text">源代码附录：基于 std::stack 的 MemoryPool 实现</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

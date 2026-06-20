@@ -1,0 +1,334 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>定时器 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="定时器 适用范围：高性能定时器系统设计、优先队列&#x2F;时间轮&#x2F;红黑树三种方案对比、muduo TimerQueue 源码分析、shared_ptr 延迟取消技巧  一、项目&#x2F;模块概述 模块定位：定时器是网络服务器的核心组件之一，负责管理超时连接关闭、心跳检测、周期任务调度等功能。高性能定时器需要支持海量定时任务的 O(1) 增删以及精确到毫秒级的触发精度。 技术栈与依赖：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="定时器">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="定时器 适用范围：高性能定时器系统设计、优先队列&#x2F;时间轮&#x2F;红黑树三种方案对比、muduo TimerQueue 源码分析、shared_ptr 延迟取消技巧  一、项目&#x2F;模块概述 模块定位：定时器是网络服务器的核心组件之一，负责管理超时连接关闭、心跳检测、周期任务调度等功能。高性能定时器需要支持海量定时任务的 O(1) 增删以及精确到毫秒级的触发精度。 技术栈与依赖：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.569Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "定时器",
+  "url": "https://weimo1.github.io/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.569Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '定时器',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">定时器</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">定时器</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.569Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%B7%B1%E5%BA%A6%E7%A0%94%E7%A9%B6/">深度研究</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="定时器"><a href="#定时器" class="headerlink" title="定时器"></a>定时器</h1><blockquote>
+<p>适用范围：高性能定时器系统设计、优先队列&#x2F;时间轮&#x2F;红黑树三种方案对比、muduo TimerQueue 源码分析、shared_ptr 延迟取消技巧</p>
+</blockquote>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：定时器是网络服务器的核心组件之一，负责管理超时连接关闭、心跳检测、周期任务调度等功能。高性能定时器需要支持海量定时任务的 O(1) 增删以及精确到毫秒级的触发精度。</li>
+<li><strong>技术栈与依赖</strong>：C++17、<code>std::priority_queue</code> &#x2F; <code>std::set</code>、<code>std::chrono</code>、智能指针（shared_ptr&#x2F;weak_ptr）、Linux timerfd。</li>
+<li><strong>模块边界</strong>：定时器不关心任务类型（连接销毁&#x2F;心跳&#x2F;周期业务），只负责”在指定时刻执行指定回调”。上层（如连接管理）负责决定何时添加&#x2F;刷新&#x2F;取消定时器。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><h3 id="三种定时器方案对比"><a href="#三种定时器方案对比" class="headerlink" title="三种定时器方案对比"></a>三种定时器方案对比</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>数据结构</th>
+<th>添加</th>
+<th>删除</th>
+<th>执行</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>优先队列</td>
+<td><code>std::priority_queue</code></td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>&lt; 10万定时器，实现简单</td>
+</tr>
+<tr>
+<td>红黑树</td>
+<td><code>std::set</code></td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>muduo 方案，支持随时取消任意任务</td>
+</tr>
+<tr>
+<td>分层时间轮</td>
+<td>多层数组</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>&gt; 10万定时器，精度可配置</td>
+</tr>
+</tbody></table>
+<h3 id="时间轮核心原理"><a href="#时间轮核心原理" class="headerlink" title="时间轮核心原理"></a>时间轮核心原理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">┌───────────────────────────────────────────────┐</span><br><span class="line">│  时间轮（单层 8 槽示例）                        │</span><br><span class="line">│                                               │</span><br><span class="line">│   tick →  [0]  [1]  [2]  [3]  [4]  [5]  [6]  [7]</span><br><span class="line">│            │    │         │                   │</span><br><span class="line">│            ▼    ▼         ▼                   ▼</span><br><span class="line">│         任务A 任务B     任务C               任务D</span><br><span class="line">│                                               │</span><br><span class="line">│  tick 每秒向前走一步，走到哪个槽就执行该槽任务    │</span><br><span class="line">│  添加 3s 后的任务 → 放入 (tick+3) % 8 槽      │</span><br><span class="line">└───────────────────────────────────────────────┘</span><br><span class="line"></span><br><span class="line">分层时间轮（如 4 层 × 256 槽）：</span><br><span class="line">  第0层：1 tick = 10ms，支持到 2.56s</span><br><span class="line">  第1层：1 tick = 2.56s，支持到 655s</span><br><span class="line">  第2层：1 tick = 655s，支持到 46h</span><br><span class="line">  第3层：1 tick = 46h，支持到 ~490 天</span><br><span class="line">  层级间逐级降级（cascade）</span><br></pre></td></tr></table></figure>
+
+<h3 id="muduo-方案：timerfd-红黑树"><a href="#muduo-方案：timerfd-红黑树" class="headerlink" title="muduo 方案：timerfd + 红黑树"></a>muduo 方案：timerfd + 红黑树</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">EventLoop::poll()  ←─ timerfd 可读事件</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">TimerQueue::handleRead()</span><br><span class="line">        │</span><br><span class="line">        ├─ getExpired(now)      // 红黑树 lower_bound 查找到期任务</span><br><span class="line">        ├─ for each: timer-&gt;run() // 执行回调</span><br><span class="line">        └─ reset(expired, now)    // 重复任务重新插入，一次性任务删除</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-优先队列定时器（TimerScheduler）"><a href="#3-1-优先队列定时器（TimerScheduler）" class="headerlink" title="3.1 优先队列定时器（TimerScheduler）"></a>3.1 优先队列定时器（TimerScheduler）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TimerScheduler</span> &#123;</span><br><span class="line">    std::priority_queue&lt;shared_ptr&lt;TimerTask&gt;,</span><br><span class="line">                        vector&lt;shared_ptr&lt;TimerTask&gt;&gt;,</span><br><span class="line">                        TimerTaskComparator&gt; taskQueue_;</span><br><span class="line">    unordered_map&lt;TimerId, shared_ptr&lt;TimerTask&gt;&gt; activeTimers_;</span><br><span class="line">    unordered_set&lt;TimerId&gt; cancelledTimers_;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 核心逻辑：工作线程 wait_until 最早到期时间</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">workerLoop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">while</span> (running_) &#123;</span><br><span class="line">            <span class="function">unique_lock&lt;mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">            <span class="keyword">auto</span> now = steady_clock::<span class="built_in">now</span>();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 执行所有到期任务</span></span><br><span class="line">            <span class="keyword">while</span> (!taskQueue_.<span class="built_in">empty</span>() &amp;&amp; taskQueue_.<span class="built_in">top</span>()-&gt;<span class="built_in">getExpiry</span>() &lt;= now) &#123;</span><br><span class="line">                <span class="keyword">auto</span> task = taskQueue_.<span class="built_in">top</span>(); taskQueue_.<span class="built_in">pop</span>();</span><br><span class="line">                <span class="keyword">if</span> (cancelledTimers_.<span class="built_in">count</span>(task-&gt;<span class="built_in">getId</span>())) <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">                lock.<span class="built_in">unlock</span>(); <span class="comment">// 执行回调时释放锁，防止死锁</span></span><br><span class="line">                task-&gt;<span class="built_in">execute</span>();</span><br><span class="line">                lock.<span class="built_in">lock</span>();</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (task-&gt;<span class="built_in">isRepeating</span>()) &#123;</span><br><span class="line">                    task-&gt;<span class="built_in">updateExpiry</span>();</span><br><span class="line">                    taskQueue_.<span class="built_in">push</span>(task);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 精确等待到下一个任务到期时间</span></span><br><span class="line">            <span class="keyword">if</span> (taskQueue_.<span class="built_in">empty</span>())</span><br><span class="line">                cv_.<span class="built_in">wait</span>(lock);</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">                cv_.<span class="built_in">wait_until</span>(lock, taskQueue_.<span class="built_in">top</span>()-&gt;<span class="built_in">getExpiry</span>());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-分层时间轮（TimeWheelScheduler）"><a href="#3-2-分层时间轮（TimeWheelScheduler）" class="headerlink" title="3.2 分层时间轮（TimeWheelScheduler）"></a>3.2 分层时间轮（TimeWheelScheduler）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TimeWheelScheduler</span> &#123;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">size_t</span> WHEEL_SIZE = <span class="number">256</span>;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">size_t</span> WHEEL_COUNT = <span class="number">4</span>;</span><br><span class="line">    vector&lt;vector&lt;shared_ptr&lt;TimerTask&gt;&gt;&gt; wheels_[WHEEL_COUNT];</span><br><span class="line">    Duration tickDuration_&#123;<span class="number">10</span>ms&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 添加定时器：计算 ticks，逐层查找适合的层级</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">addToWheel</span><span class="params">(shared_ptr&lt;TimerTask&gt; task, <span class="type">uint64_t</span> ticks)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">size_t</span> level = <span class="number">0</span>; level &lt; WHEEL_COUNT; ++level) &#123;</span><br><span class="line">            <span class="keyword">if</span> (ticks &lt; WHEEL_SIZE) &#123;</span><br><span class="line">                <span class="type">size_t</span> slot = (currentTick_ + ticks) % WHEEL_SIZE;</span><br><span class="line">                wheels_[level][slot].<span class="built_in">push_back</span>(task);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            ticks /= WHEEL_SIZE; <span class="comment">// 降级到更高层</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 级联降级：高层时间轮向低层转移任务</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">cascadeTimers</span><span class="params">(<span class="type">size_t</span> level)</span> </span>&#123;</span><br><span class="line">        <span class="type">size_t</span> slot = (currentTick_ / (<span class="number">1ULL</span> &lt;&lt; (<span class="number">8</span> * level))) % WHEEL_SIZE;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; task : wheels_[level][slot]) &#123;</span><br><span class="line">            <span class="type">uint64_t</span> remaining = (task-&gt;<span class="built_in">getExpiry</span>() - now) / tickDuration_;</span><br><span class="line">            <span class="built_in">addToWheel</span>(task, remaining); <span class="comment">// 重新分配到下层</span></span><br><span class="line">        &#125;</span><br><span class="line">        wheels_[level][slot].<span class="built_in">clear</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-muduo-方案：timerfd-set"><a href="#3-3-muduo-方案：timerfd-set" class="headerlink" title="3.3 muduo 方案：timerfd + set"></a>3.3 muduo 方案：timerfd + set</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TimerQueue</span> &#123;</span><br><span class="line">    <span class="keyword">using</span> Entry = pair&lt;Timestamp, Timer*&gt;;</span><br><span class="line">    <span class="keyword">using</span> TimerList = set&lt;Entry&gt;; <span class="comment">// 红黑树，按 Timestamp 排序</span></span><br><span class="line">    TimerList timers_;</span><br><span class="line">    <span class="type">int</span> timerfd_;                 <span class="comment">// Linux timerfd 文件描述符</span></span><br><span class="line">    Channel timerfdChannel_;      <span class="comment">// 纳入 EventLoop 事件循环</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取到期定时器</span></span><br><span class="line">    <span class="function">vector&lt;Entry&gt; <span class="title">getExpired</span><span class="params">(Timestamp now)</span> </span>&#123;</span><br><span class="line">        <span class="function">Entry <span class="title">sentry</span><span class="params">(now, <span class="keyword">reinterpret_cast</span>&lt;Timer*&gt;(UINTPTR_MAX))</span></span>;</span><br><span class="line">        <span class="keyword">auto</span> end = timers_.<span class="built_in">lower_bound</span>(sentry); <span class="comment">// 二分查找</span></span><br><span class="line">        <span class="function">vector&lt;Entry&gt; <span class="title">expired</span><span class="params">(timers_.begin(), end)</span></span>;</span><br><span class="line">        timers_.<span class="built_in">erase</span>(timers_.<span class="built_in">begin</span>(), end);</span><br><span class="line">        <span class="keyword">return</span> expired;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li><strong>timerfd 的优势</strong>：文件描述符可纳入 epoll 统一调度，与 I&#x2F;O 事件同一线程处理，无需额外线程。read 返回累积超时次数，可处理”追时间”问题。</li>
+<li><strong>时间精度与性能的权衡</strong>：时间轮精度受 tick 粒度限制（如 10ms）。降低 tick → 更高精度但 CPU 唤醒更频繁。优先队列精度最高（纳秒级）。</li>
+<li><strong>取消定时器的三种策略</strong>：(1) 标记取消（cancelledTimers_ 集合），执行时跳过；(2) 主动从数据结构中删除（set erase）；(3) shared_ptr 引用计数 + 析构延迟（TimerWheel 方案）。</li>
+<li><strong>异常安全</strong>：单个定时器回调异常不应影响其他定时器。在 try-catch 中执行回调，记录错误后继续处理后续任务。</li>
+<li><strong>定时器数量监控</strong>：activeTimers_.size() 过大（&gt;100万）可能表示内存泄漏或业务逻辑问题，应加告警。</li>
+<li><strong>多线程环境下</strong>：定时器触发和执行应在固定线程（EventLoop 线程），避免回调中的线程安全问题。</li>
+</ul>
+<h2 id="五、源码解析"><a href="#五、源码解析" class="headerlink" title="五、源码解析"></a>五、源码解析</h2><h3 id="5-1-timerfd-基础使用"><a href="#5-1-timerfd-基础使用" class="headerlink" title="5.1 timerfd 基础使用"></a>5.1 timerfd 基础使用</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建定时器</span></span><br><span class="line"><span class="type">int</span> timerfd = <span class="built_in">timerfd_create</span>(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 设置超时：首次 1s，之后每 1s 重复</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">itimerspec</span> itime;</span><br><span class="line">itime.it_value.tv_sec = <span class="number">1</span>;      <span class="comment">// 首次过期时间</span></span><br><span class="line">itime.it_value.tv_nsec = <span class="number">0</span>;</span><br><span class="line">itime.it_interval.tv_sec = <span class="number">1</span>;   <span class="comment">// 之后每次间隔</span></span><br><span class="line">itime.it_interval.tv_nsec = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">timerfd_settime</span>(timerfd, <span class="number">0</span>, &amp;itime, <span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定时器到期后，read 返回累积超时次数（uint64_t）</span></span><br><span class="line"><span class="type">uint64_t</span> expirations;</span><br><span class="line"><span class="built_in">read</span>(timerfd, &amp;expirations, <span class="built_in">sizeof</span>(expirations));</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-muduo-TimerQueue-完整流程"><a href="#5-2-muduo-TimerQueue-完整流程" class="headerlink" title="5.2 muduo TimerQueue 完整流程"></a>5.2 muduo TimerQueue 完整流程</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. 添加定时器</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TimerQueue::addTimer</span><span class="params">(TimerCallback cb, Timestamp when, <span class="type">double</span> interval)</span> </span>&#123;</span><br><span class="line">    Timer* timer = <span class="keyword">new</span> <span class="built_in">Timer</span>(std::<span class="built_in">move</span>(cb), when, interval);</span><br><span class="line">    loop_-&gt;<span class="built_in">runInLoop</span>(<span class="built_in">bind</span>(&amp;TimerQueue::addTimerInLoop, <span class="keyword">this</span>, timer));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TimerQueue::addTimerInLoop</span><span class="params">(Timer* timer)</span> </span>&#123;</span><br><span class="line">    <span class="type">bool</span> earliestChanged = <span class="built_in">insert</span>(timer); <span class="comment">// 插入红黑树</span></span><br><span class="line">    <span class="keyword">if</span> (earliestChanged) &#123;</span><br><span class="line">        <span class="built_in">resetTimerfd</span>(timerfd_, timer-&gt;<span class="built_in">expiration</span>()); <span class="comment">// 更新 timerfd 到期时间</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. timerfd 可读 → 处理到期</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TimerQueue::handleRead</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Timestamp now = Timestamp::<span class="built_in">now</span>();</span><br><span class="line">    <span class="built_in">readTimerfd</span>(timerfd_); <span class="comment">// 读取累积次数（消费事件）</span></span><br><span class="line">    vector&lt;Entry&gt; expired = <span class="built_in">getExpired</span>(now);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; entry : expired) &#123;</span><br><span class="line">        entry.second-&gt;<span class="built_in">run</span>(); <span class="comment">// 执行回调</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">reset</span>(expired, now); <span class="comment">// 重复任务重新插入</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 重置 timerfd</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">TimerQueue::resetTimerfd</span><span class="params">(<span class="type">int</span> timerfd_, Timestamp expiration)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">itimerspec</span> newValue;</span><br><span class="line">    <span class="type">int64_t</span> diff = expiration.<span class="built_in">microSecondsSinceEpoch</span>() - Timestamp::<span class="built_in">now</span>().<span class="built_in">microSecondsSinceEpoch</span>();</span><br><span class="line">    <span class="keyword">if</span> (diff &lt; <span class="number">100</span>) diff = <span class="number">100</span>; <span class="comment">// 最小 100μs，防止频繁触发</span></span><br><span class="line">    newValue.it_value = <span class="built_in">toTimespec</span>(diff);</span><br><span class="line">    ::<span class="built_in">timerfd_settime</span>(timerfd_, <span class="number">0</span>, &amp;newValue, <span class="literal">NULL</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-TimerWheel：shared-ptr-析构函数实现延迟取消"><a href="#5-3-TimerWheel：shared-ptr-析构函数实现延迟取消" class="headerlink" title="5.3 TimerWheel：shared_ptr + 析构函数实现延迟取消"></a>5.3 TimerWheel：shared_ptr + 析构函数实现延迟取消</h3><p>这是原笔记中最精彩的设计，利用 C++ 智能指针的引用计数特性实现”刷新即延迟”：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">TimerTask</span> &#123;</span><br><span class="line">    ~<span class="built_in">TimerTask</span>() &#123;</span><br><span class="line">        <span class="keyword">if</span> (!_canceled) &#123;</span><br><span class="line">            _cb();        <span class="comment">// 析构时才执行回调！</span></span><br><span class="line">        &#125;</span><br><span class="line">        _release();       <span class="comment">// 从 TimerWheel 的 _timers map 中移除自己</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">TimerWheel</span> &#123;</span><br><span class="line">    <span class="keyword">using</span> PtrTask = shared_ptr&lt;TimerTask&gt;;</span><br><span class="line">    <span class="keyword">using</span> WeakTask = weak_ptr&lt;TimerTask&gt;;</span><br><span class="line">    unordered_map&lt;<span class="type">uint64_t</span>, WeakTask&gt; _timers; <span class="comment">// ⚠️ 必须用 weak_ptr</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">AddTimer</span><span class="params">(<span class="type">uint64_t</span> id, <span class="type">uint32_t</span> delay, <span class="type">const</span> TaskFunc&amp; cb)</span> </span>&#123;</span><br><span class="line">        <span class="function">PtrTask <span class="title">pt</span><span class="params">(<span class="keyword">new</span> TimerTask(id, delay, cb, _tick))</span></span>;</span><br><span class="line">        pt-&gt;<span class="built_in">SetReleaser</span>(<span class="built_in">bind</span>(&amp;TimerWheel::RemoveTimer, <span class="keyword">this</span>, id));</span><br><span class="line">        <span class="type">int</span> pos = (_tick + delay) % _capacity;</span><br><span class="line">        _wheel[pos].<span class="built_in">push_back</span>(pt);          <span class="comment">// 计数 = 1</span></span><br><span class="line">        _timers[id] = <span class="built_in">WeakTask</span>(pt);         <span class="comment">// weak_ptr 不增加计数！</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">RefreshTimer</span><span class="params">(<span class="type">uint64_t</span> id)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> it = _timers.<span class="built_in">find</span>(id);</span><br><span class="line">        PtrTask pt = it-&gt;second.<span class="built_in">lock</span>();     <span class="comment">// 获取 shared_ptr，计数 +1</span></span><br><span class="line">        <span class="keyword">if</span> (!pt) <span class="keyword">return</span>;</span><br><span class="line">        <span class="type">int</span> pos = (_tick + pt-&gt;<span class="built_in">GetDelayTime</span>()) % _capacity;</span><br><span class="line">        _wheel[pos].<span class="built_in">push_back</span>(pt);          <span class="comment">// 计数再 +1</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">RunTimerTask</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        _tick = (_tick + <span class="number">1</span>) % _capacity;</span><br><span class="line">        _wheel[_tick].<span class="built_in">clear</span>();              <span class="comment">// 清空槽位 → shared_ptr 析构</span></span><br><span class="line">        <span class="comment">// 如果被 Refresh 过，槽位内的 shared_ptr 只是其中之一</span></span><br><span class="line">        <span class="comment">// 引用计数 -1 但不归零 → 不会真正析构 → 不执行回调</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>添加任务：<code>_wheel[pos]</code> 持有 shared_ptr（计数&#x3D;1），<code>_timers</code> 用 weak_ptr（不增加计数）</li>
+<li>刷新任务：通过 weak_ptr.lock() 获取 shared_ptr，再次放入新槽位（计数+1）</li>
+<li>时间轮推进：旧槽 clear → 计数-1，但若不归零（曾被刷新）→ 不析构 → 回调延迟执行</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法"><a href="#6-1-高频问法" class="headerlink" title="6.1 高频问法"></a>6.1 高频问法</h3><p><strong>Q1：定时器有哪几种实现方案？各自优劣？</strong><br>优先队列（O(log n)，实现简单，适合小规模）、红黑树&#x2F;Set（O(log n)，支持按需删除任意任务）、分层时间轮（O(1)，适合海量任务，精度受 tick 限制）。</p>
+<p><strong>Q2：时间轮为什么是 O(1)？</strong><br>添加：计算目标槽位直接 push_back（不涉及排序），O(1)；删除：标记取消或从槽位链表移除，O(1)；执行：只处理当前 tick 指向的槽，槽内任务数通常很小，均摊 O(1)。</p>
+<p><strong>Q3：timerfd 相比 sleep&#x2F;usleep 有什么优势？</strong><br>timerfd 是文件描述符，可纳入 epoll 统一事件循环，与 I&#x2F;O 事件同线程处理，无需额外线程。支持绝对时间、read 返回累积次数避免漏触发。</p>
+<p><strong>Q4：shared_ptr 如何实现定时任务延迟？</strong><br>任务对象的析构函数执行回调。Refresh 时创建新的 shared_ptr 放入新槽位，引用计数+1。旧槽 clear 时计数-1，若不归零则不析构 → 回调延迟到所有引用释放后才执行。</p>
+<p><strong>Q5：为什么 TimerWheel 用 weak_ptr 存 _timers 映射？</strong><br>如果用 shared_ptr，_timers 会永久持有引用（计数永远≥1），任务永远不会被析构。weak_ptr 不增加计数，只提供”能否访问”的能力。</p>
+<p><strong>Q6：muduo 为什么用红黑树（set）存定时器？</strong><br>set 天然有序（按 Timestamp 排序），lower_bound 可快速找到所有到期任务（O(log n + k)）。且支持 O(log n) 删除任意任务，TimerQueue 只有一个 timerfd，每次重置到最早到期时间即可。</p>
+<p><strong>Q7：分层时间轮的级联（cascade）是什么意思？</strong><br>高层时间轮粒度粗（如第2层每格&#x3D;655s），当该层指针移动到某格时，该格任务需重新插入低层（计算剩余 tick，重新分配槽位）。逐层降级直到第0层（最细粒度）到期执行。</p>
+<p><strong>Q8：如何处理定时器回调中的”死锁”风险？</strong><br>执行回调前释放锁（lock.unlock()），回调执行完毕再重新加锁。避免用户在回调中再次操作定时器（如添加&#x2F;取消）导致死锁。</p>
+<p><strong>Q9：定时器精度如何保证？</strong><br>优先队列&#x2F;红黑树 → 天然高精度（纳秒级），依赖系统时钟。时间轮 → 精度 &#x3D; tick 粒度（如 10ms），高精度场景需缩小 tick 或混合方案。</p>
+<p><strong>Q10：大量定时器（&gt;100 万）的内存占用如何优化？</strong><br>时间轮方案中空槽不占额外内存（仅指针数组）。减少 TimerTask 对象大小（POD 数据 + 函数指针）、使用对象池批量分配、intrusive list（任务嵌入槽位链表节点而非独立分配）。</p>
+<h3 id="6-2-反问点"><a href="#6-2-反问点" class="headerlink" title="6.2 反问点"></a>6.2 反问点</h3><ul>
+<li>你们的定时器方案是优先队列、时间轮还是红黑树？为什么选这个？</li>
+<li>定时器精度要求是多少？毫秒级还是微秒级？</li>
+<li>有没有遇到过定时器回调阻塞导致后续任务堆积的问题？</li>
+<li>timerfd 在高并发下的表现如何？有没有做过压测？</li>
+<li>重复定时器的 drift 问题（执行耗时导致漂移）如何处理？</li>
+</ul>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ul>
+<li>时间轮 O(1) &#x3D; 添加直写槽位 + 执行只清当前槽</li>
+<li>timerfd &#x3D; 文件描述符定时器，纳入 epoll 统一事件循环</li>
+<li>shared_ptr 延迟取消 &#x3D; Refresh 增加引用计数，旧槽 clear 不归零不析构</li>
+<li>weak_ptr in _timers &#x3D; 不增加引用计数，避免永久持有</li>
+<li>红黑树 lower_bound &#x3D; O(log n + k) 找到所有到期任务</li>
+<li>级联 &#x3D; 高层时间轮任务降到低层重新分配</li>
+<li>执行回调前 unlock &#x3D; 避免用户在回调中操作定时器时死锁</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://mp.weixin.qq.com/s?__biz=MzkyNDIyNzU4Mg==&mid=2247485738&idx=1&sn=2c8e3022238261d42039feed84fd52cc">Linux 高性能编程——时间轮</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://developer.aliyun.com/article/1415701">定时器的实现方案：红黑树和多级时间轮 - 阿里云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/chenshuo/muduo">muduo 网络库</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://man7.org/linux/man-pages/man2/timerfd_create.2.html">Linux timerfd_create 手册</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/">https://weimo1.github.io/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/" title="密码加密"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">密码加密</div></div><div class="info-2"><div class="info-item-1">密码加密实现 适用范围：密码加密流程实现、加盐哈希代码、bcrypt&#x2F;Argon2 集成、ECC 椭圆曲线加密  一、项目&#x2F;模块概述 模块定位：密码加密是 IM 系统的安全基础，本文聚焦密码加密的具体实现细节，涵盖加盐哈希、密钥延申、ECC 椭圆曲线的工程落地。 技术栈与依赖：OpenSSL（SHA-256&#x2F;ECC）、bcrypt&#x2F;Argon2 库、CSPRNG（安全随机数生成器）。 模块边界：本文聚焦加密算法的代码实现，系统架构和安全策略见《密码加密方案》。  二、架构设计完整密码处理流程123456789注册流程：  用户输入密码 → 生成随机...</div></div></div></a><a class="pagination-related" href="/posts/%E5%AE%8F/" title="宏"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">宏</div></div><div class="info-2"><div class="info-item-1">宏长用宏定义： 1、用宏参数创建字符串：#运算符下面是一个类函数宏： 1#define PSQR(x) printf(&quot;The square of x is %d.\n&quot;,((x)*(x)))  假设这样使用宏： 1PSQR(8);  输出为： 1&quot;The square of x is 64.&quot;  注意双引号字符串中的x被视为普通文本，而不是一个可被替换的记号。 C允许在字符串中包含宏参数。在类函数宏的替换体中，#号作为一个预处理运算符，可以把记号转换成字符串。例如，如果x是一个宏形参，那么#x就是转换为字符串”x”的形参名。这个过程成为字符串化（...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8"><span class="toc-number">1.</span> <span class="toc-text">定时器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E7%A7%8D%E5%AE%9A%E6%97%B6%E5%99%A8%E6%96%B9%E6%A1%88%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.1.</span> <span class="toc-text">三种定时器方案对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%B6%E9%97%B4%E8%BD%AE%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.2.</span> <span class="toc-text">时间轮核心原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#muduo-%E6%96%B9%E6%A1%88%EF%BC%9Atimerfd-%E7%BA%A2%E9%BB%91%E6%A0%91"><span class="toc-number">1.2.3.</span> <span class="toc-text">muduo 方案：timerfd + 红黑树</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BC%98%E5%85%88%E9%98%9F%E5%88%97%E5%AE%9A%E6%97%B6%E5%99%A8%EF%BC%88TimerScheduler%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 优先队列定时器（TimerScheduler）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%88%86%E5%B1%82%E6%97%B6%E9%97%B4%E8%BD%AE%EF%BC%88TimeWheelScheduler%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 分层时间轮（TimeWheelScheduler）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-muduo-%E6%96%B9%E6%A1%88%EF%BC%9Atimerfd-set"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 muduo 方案：timerfd + set</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.</span> <span class="toc-text">四、工程实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-timerfd-%E5%9F%BA%E7%A1%80%E4%BD%BF%E7%94%A8"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 timerfd 基础使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-muduo-TimerQueue-%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 muduo TimerQueue 完整流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-TimerWheel%EF%BC%9Ashared-ptr-%E6%9E%90%E6%9E%84%E5%87%BD%E6%95%B0%E5%AE%9E%E7%8E%B0%E5%BB%B6%E8%BF%9F%E5%8F%96%E6%B6%88"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 TimerWheel：shared_ptr + 析构函数实现延迟取消</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.7.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

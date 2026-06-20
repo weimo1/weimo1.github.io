@@ -1,0 +1,1093 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Linux进程管理 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Linux进程管理 一、进程创建与生命周期 1. 进程描述符：task_structtask_struct是Linux内核中描述进程的核心数据结构，包含进程的所有元信息： 12345678910111213141516&#x2F;&#x2F; 内核源码：include&#x2F;linux&#x2F;sched.h（简化版）struct task_struct &#123;    volatile long state;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux进程管理">
+<meta property="og:url" content="https://weimo1.github.io/posts/Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Linux进程管理 一、进程创建与生命周期 1. 进程描述符：task_structtask_struct是Linux内核中描述进程的核心数据结构，包含进程的所有元信息： 12345678910111213141516&#x2F;&#x2F; 内核源码：include&#x2F;linux&#x2F;sched.h（简化版）struct task_struct &#123;    volatile long state;">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.547Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Linux进程管理",
+  "url": "https://weimo1.github.io/posts/Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.547Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Linux进程管理',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Linux进程管理</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Linux进程管理</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.547Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/">系统底层408</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">操作系统</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">7.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>26分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Linux进程管理"><a href="#Linux进程管理" class="headerlink" title="Linux进程管理"></a>Linux进程管理</h1><hr>
+<h2 id="一、进程创建与生命周期"><a href="#一、进程创建与生命周期" class="headerlink" title="一、进程创建与生命周期"></a><strong>一、进程创建与生命周期</strong></h2><hr>
+<h3 id="1-进程描述符：task-struct"><a href="#1-进程描述符：task-struct" class="headerlink" title="1. 进程描述符：task_struct"></a><strong>1. 进程描述符：</strong><code>task_struct</code></h3><p><code>task_struct</code>是Linux内核中描述进程的核心数据结构，包含进程的所有元信息：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 内核源码：include/linux/sched.h（简化版）</span><br><span class="line">struct task_struct &#123;</span><br><span class="line">    volatile long state;               // 进程状态（TASK_RUNNING等）</span><br><span class="line">    void *stack;                       // 内核栈指针</span><br><span class="line">    struct mm_struct *mm;              // 内存管理结构（地址空间）</span><br><span class="line">    struct files_struct *files;        // 打开文件表</span><br><span class="line">    pid_t pid;                         // 进程ID</span><br><span class="line">    pid_t tgid;                        // 线程组ID（主线程PID）</span><br><span class="line">    struct list_head tasks;            // 全局进程链表节点</span><br><span class="line">    struct thread_struct thread;       // CPU上下文（寄存器值）</span><br><span class="line">    struct sched_entity se;            // CFS调度实体（含vruntime）</span><br><span class="line">    int prio;                          // 动态优先级</span><br><span class="line">    int static_prio;                   // 静态优先级（nice值映射）</span><br><span class="line">    unsigned int policy;               // 调度策略（SCHED_NORMAL等）</span><br><span class="line">    // ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键字段说明</strong>：</li>
+</ul>
+<ul>
+<li><code>state</code>：进程状态（TASK_RUNNING, TASK_INTERRUPTIBLE, TASK_STOPPED等）</li>
+<li><code>mm</code>：指向虚拟内存管理结构，包含页表、内存区域（VMA）链表</li>
+<li><code>files</code>：文件描述符表，决定<code>fork()</code>后是否共享文件（由<code>CLONE_FILES</code>标志控制）</li>
+</ul>
+<hr>
+<h3 id="2-fork-系统调用深度解析"><a href="#2-fork-系统调用深度解析" class="headerlink" title="2. fork()系统调用深度解析"></a><strong>2.</strong> <code>fork()</code><strong>系统调用深度解析</strong></h3><h4 id="a-执行流程"><a href="#a-执行流程" class="headerlink" title="a. 执行流程"></a><strong>a. 执行流程</strong></h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">用户层：fork() → glibc封装 → 系统调用号SYS_fork</span><br><span class="line">内核层：sys_fork() → _do_fork() → copy_process()</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键步骤</strong>：</li>
+</ul>
+<ol>
+<li><strong>复制</strong><code>task_struct</code>：<code>dup_task_struct()</code>创建子进程描述符</li>
+<li><strong>拷贝资源</strong>：</li>
+</ol>
+<ul>
+<li>文件描述符表（<code>files</code>）：根据<code>CLONE_FILES</code>标志决定是否共享</li>
+<li>信号处理表（<code>sighand</code>）：根据<code>CLONE_SIGHAND</code>标志决定是否共享</li>
+<li>内存空间（<code>mm</code>）：触发写时复制（COW）机制</li>
+</ul>
+<ol start="3">
+<li><strong>设置返回值</strong>：子进程的<code>eax</code>寄存器设为0，父进程返回子进程PID</li>
+</ol>
+<h4 id="b-写时复制（Copy-On-Write）"><a href="#b-写时复制（Copy-On-Write）" class="headerlink" title="b. 写时复制（Copy-On-Write）"></a>b. 写时复制（Copy-On-Write）</h4><ul>
+<li><strong>实现原理</strong>：</li>
+</ul>
+<ul>
+<li>父进程和子进程共享物理内存页，页表项标记为只读</li>
+<li>当任一进程尝试写入时触发缺页异常（Page Fault），内核复制该页并修改页表</li>
+</ul>
+<ul>
+<li><strong>内核代码路径</strong>：<br><code>do_page_fault() → handle_mm_fault() → handle_pte_fault() → do_wp_page()</code></li>
+<li><strong>优化价值</strong>：</li>
+</ul>
+<ul>
+<li>避免立即复制整个地址空间（如<code>fork()</code>后立即<code>exec()</code>的场景）</li>
+<li>减少内存开销和复制时间</li>
+</ul>
+<hr>
+<ul>
+<li><strong>细节</strong>：</li>
+<li><strong>页表标记</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 内核源码：kernel/fork.c (copy_page_range)</span><br><span class="line">for each 页表项 in 父进程页表:</span><br><span class="line">    if 页可写:</span><br><span class="line">        设置页表项为只读（清除_PAGE_RW标志）</span><br><span class="line">        增加页的引用计数</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>缺页异常处理</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 内核源码：arch/x86/mm/fault.c (do_page_fault)</span><br><span class="line">if 触发写操作的页是COW页:</span><br><span class="line">    分配新物理页</span><br><span class="line">    复制原页内容到新页</span><br><span class="line">    修改当前进程页表项指向新页，并设置为可写</span><br></pre></td></tr></table></figure>
+
+<h4 id="c-vfork-的特殊行为"><a href="#c-vfork-的特殊行为" class="headerlink" title="c. vfork()的特殊行为"></a><strong>c.</strong> <code>vfork()</code><strong>的特殊行为</strong></h4><ul>
+<li><strong>与</strong><code>fork()</code><strong>的区别</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>特性</strong></td>
+<td><code>vfork()</code></td>
+<td><code>fork()</code></td>
+</tr>
+<tr>
+<td><strong>地址空间</strong></td>
+<td>子进程共享父进程地址空间</td>
+<td>使用COW机制延迟复制</td>
+</tr>
+<tr>
+<td><strong>执行顺序</strong></td>
+<td>父进程阻塞直到子进程exit&#x2F;exec</td>
+<td>父子进程并行执行</td>
+</tr>
+<tr>
+<td><strong>使用场景</strong></td>
+<td>子进程立即exec新程序</td>
+<td>通用进程复制</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>内核实现</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sys_vfork() → _do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>CLONE_VM</code>：共享地址空间</li>
+<li><code>CLONE_VFORK</code>：父进程休眠，直到子进程释放地址空间</li>
+</ul>
+<h5 id="d-clone-系统调用"><a href="#d-clone-系统调用" class="headerlink" title="d clone()系统调用"></a><strong>d</strong> <code>clone()</code><strong>系统调用</strong></h5><ul>
+<li><strong>函数原型</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键标志位</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Flag</strong></td>
+<td><strong>作用</strong></td>
+</tr>
+<tr>
+<td><code>CLONE_VM</code></td>
+<td>共享地址空间（线程的核心标志）</td>
+</tr>
+<tr>
+<td><code>CLONE_FS</code></td>
+<td>共享文件系统信息（根目录、当前目录等）</td>
+</tr>
+<tr>
+<td><code>CLONE_FILES</code></td>
+<td>共享文件描述符表</td>
+</tr>
+<tr>
+<td><code>CLONE_SIGHAND</code></td>
+<td>共享信号处理函数表</td>
+</tr>
+</tbody></table>
+<p><strong>整个过程实现如下：</strong></p>
+<ol>
+<li>p &#x3D; dup_task_struct(current); 为新进程创建一个内核栈、thread_iofo和task_struct,这里完全copy父进程的内容，所以到目前为止，父进程和子进程是没有任何区别的。</li>
+<li>为新进程在其内存上建立内核堆栈对子进程task_struct任务结构体中部分变量进行初始化设置，检查所有的进程数目是否已经超出了系统规定的最大进程数，如果没有的话，那么就开始设置进程描诉符中的初始值，从这开始，父进程和子进程就开始区别开了。</li>
+<li>把父进程的有关信息复制给子进程，建立共享关系设置子进程的状态为不可被TASK_UNINTERRUPTIBLE，从而保证这个进程现在不能被投入运行，因为还有很多的标志位、数据等没有被设置</li>
+<li>复制标志位（falgs成员）以及权限位(PE_SUPERPRIV)和其他的一些标志</li>
+<li>调用get_pid()给子进程获取一个有效的并且是唯一的进程标识符PID</li>
+<li>return ret_from_fork;返回一个指向子进程的指针，开始执行</li>
+</ol>
+<p><strong>总结</strong></p>
+<p>linux创建一个新的进程是从复制开始的，在系统内核里首先是将父进程的进程控制块PCB进行拷贝，然后再根据自己的情况修改相应的参数，获取自己的进程号，再开始执行。我觉得整个过程重点就是理解子进程如何创建，在内核调用的几个重要的内核函数，以及子进程怎么返回开始执行的。把握这些点就OK了。</p>
+<h3 id="3-exe-系统调用深度解析"><a href="#3-exe-系统调用深度解析" class="headerlink" title="3. exe()系统调用深度解析"></a><strong>3.</strong> <code>exe()</code><strong>系统调用深度解析</strong></h3><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=243188821&content_type=Article&match_order=1&q=exec+%E5%87%BD%E6%95%B0%E6%97%8F&zhida_source=entity">exec 函数族</a>是 Linux 系统中的系统调用函数，它们都以 exec 开头，共有 6 个，分别是 <code>execl</code>、<code>execle</code>、<code>execlp</code>、<code>execv</code>、<code>execve</code>、<code>execvp</code>，使用 exec 函数可以将当前的进程替换为一个新进程，且新进程与原进程具有相同的 PID。</p>
+<h2 id="函数原型"><a href="#函数原型" class="headerlink" title="函数原型"></a>函数原型</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;unistd.h&gt;</span><br><span class="line"></span><br><span class="line">extern char **environ;</span><br><span class="line"></span><br><span class="line">int execl(const char *path, const char *arg, ...);</span><br><span class="line">int execlp(const char *file, const char *arg, ...);</span><br><span class="line">int execle(const char *path, const char *arg,..., char * const envp[]);</span><br><span class="line">int execv(const char *path, char *const argv[]);</span><br><span class="line">int execvp(const char *file, char *const argv[]);</span><br><span class="line">int execvpe(const char *file, char *const argv[], char *const envp[]);</span><br></pre></td></tr></table></figure>
+
+<h2 id="参数说明"><a href="#参数说明" class="headerlink" title="参数说明"></a>参数说明</h2><ul>
+<li><code>path</code>：指定要执行的可执行文件及其路径，可以是相对路径、也可以是绝对路径。</li>
+<li><code>arg</code>：指定传递给可执行文件的一系列参数，以可变参数列表的形式，一般第一个参数为可执行文件的名称，且最后一个参数必须是 <code>NULL</code>。</li>
+<li><code>file</code>：若参数中包含”<code>/</code>“则视为路径并在指定路径下查找可执行文件，否则将在 <code>PATH</code> 环境变量指定的路径中查找可执行文件。</li>
+<li><code>envp</code>：指定新进程的环境变量，不使用当前的环境变量。</li>
+<li><code>argv</code>：指定传递给可执行文件的一系列参数，以参数数组的形式，且该数组最后一个元素必须是 <code>NULL</code>。</li>
+</ul>
+<h2 id="返回值"><a href="#返回值" class="headerlink" title="返回值"></a>返回值</h2><ul>
+<li>成功：不返回，从新程序的 main 函数开始执行。</li>
+<li>失败：返回 -1，继续执行原程序。</li>
+</ul>
+<h2 id="函数区别"><a href="#函数区别" class="headerlink" title="函数区别"></a>函数区别</h2><p>分别以函数中的字符 <code>l</code>、<code>p</code>、<code>v</code>、<code>e</code> 说明：</p>
+<ul>
+<li><code>l</code>：表示使用参数列表的形式传递参数。</li>
+<li><code>p</code>：表示使用文件名，若不指定路径，将在 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=243188821&content_type=Article&match_order=1&q=PATH+%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F&zhida_source=entity">PATH 环境变量</a>指定的路径中查找可执行文件。</li>
+<li><code>v</code>：表示使用参数数组的形式传递参数。</li>
+<li><code>e</code>：表示要使用新的环境变量给新进程。</li>
+</ul>
+<hr>
+<h2 id="二、线程"><a href="#二、线程" class="headerlink" title="二、线程"></a><strong>二、线程</strong></h2><hr>
+<h3 id="1-线程的底层本质"><a href="#1-线程的底层本质" class="headerlink" title="1. 线程的底层本质"></a><strong>1. 线程的底层本质</strong></h3><p>Linux线程通过轻量级进程（LWP）实现，与进程共享资源：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// pthread_create底层调用（glibc实现）</span><br><span class="line">clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND, stack, ...)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键标志位</strong>：</li>
+</ul>
+<ul>
+<li><code>CLONE_VM</code>：共享地址空间（<code>mm_struct</code>）</li>
+<li><code>CLONE_FILES</code>：共享文件描述符表</li>
+<li><code>CLONE_SIGHAND</code>：共享信号处理函数表</li>
+</ul>
+<h3 id="2-线程本地存储（TLS）实现"><a href="#2-线程本地存储（TLS）实现" class="headerlink" title="2. 线程本地存储（TLS）实现"></a><strong>2. 线程本地存储（TLS）实现</strong></h3><h4 id="1-TLS的核心目标"><a href="#1-TLS的核心目标" class="headerlink" title="1. TLS的核心目标"></a><strong>1. TLS的核心目标</strong></h4><p>线程本地存储（Thread-Local Storage）是一种允许每个线程拥有独立变量副本的机制，其核心特性包括：</p>
+<ul>
+<li><strong>线程隔离性</strong>：每个线程对TLS变量的读写操作互不影响。</li>
+<li><strong>高效访问</strong>：通过硬件寄存器直接寻址，避免通过全局锁或哈希表查询。</li>
+<li><strong>隐式传递</strong>：无需显式传递线程上下文，函数可直接访问当前线程的变量副本。</li>
+</ul>
+<hr>
+<h4 id="2-Linux-TLS实现架构"><a href="#2-Linux-TLS实现架构" class="headerlink" title="2. Linux TLS实现架构"></a><strong>2. Linux TLS实现架构</strong></h4><p>Linux的TLS实现分为三个层级：</p>
+<ol>
+<li><strong>编译器支持</strong>（如GCC的<code>__thread</code>关键字）</li>
+<li><strong>动态链接器（GLIBC）管理</strong></li>
+<li><strong>内核系统调用支持</strong></li>
+</ol>
+<hr>
+<h5 id="一、编译器层：-thread关键字"><a href="#一、编译器层：-thread关键字" class="headerlink" title="一、编译器层：__thread关键字"></a><strong>一、编译器层：</strong><code>__thread</code><strong>关键字</strong></h5><h6 id="1-变量声明"><a href="#1-变量声明" class="headerlink" title="1. 变量声明"></a><strong>1. 变量声明</strong></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// 声明TLS变量</span><br><span class="line">__thread int tls_var = 42;</span><br><span class="line"></span><br><span class="line">// 在函数中使用</span><br><span class="line">void foo() &#123;</span><br><span class="line">    tls_var++;  // 每个线程独立修改自己的副本</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="2-编译器生成的代码"><a href="#2-编译器生成的代码" class="headerlink" title="2. 编译器生成的代码"></a><strong>2. 编译器生成的代码</strong></h5><p>以x86_64为例，编译器会将TLS变量访问转换为<code>%fs</code>段寄存器相对寻址：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 反汇编结果（GCC生成）</span><br><span class="line">movl    %gs:0xfffffffffffffffc, %eax  # 假设tls_var偏移为-4</span><br><span class="line">addl    $1, %eax</span><br><span class="line">movl    %eax, %gs:0xfffffffffffffffc</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>#####3333 <strong>二、动态链接器（GLIBC）管理</strong></p>
+<h6 id="1-TLS内存模型"><a href="#1-TLS内存模型" class="headerlink" title="1. TLS内存模型"></a><strong>1. TLS内存模型</strong></h6><ul>
+<li><strong>静态TLS（Static TLS）</strong>：<br>程序启动时加载的模块（主程序、静态库）的TLS变量，在进程初始化时分配空间。</li>
+<li><strong>动态TLS（Dynamic TLS）</strong>：<br>通过<code>dlopen()</code>加载的共享库中的TLS变量，在模块加载时动态分配。</li>
+</ul>
+<h6 id="2-内存布局"><a href="#2-内存布局" class="headerlink" title="2. 内存布局"></a><strong>2. 内存布局</strong></h6><p>每个线程的TLS区域分为两部分：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">+----------------------+</span><br><span class="line">| 系统保留区域          |  // 如线程ID、栈保护值等（struct pthread）</span><br><span class="line">+----------------------+</span><br><span class="line">| 用户TLS变量区         |  // __thread变量存储在此</span><br><span class="line">+----------------------+</span><br><span class="line">| 动态TLS模块区         |  // dlopen加载的模块TLS数据</span><br><span class="line">+----------------------+</span><br></pre></td></tr></table></figure>
+
+<h5 id="3-关键数据结构"><a href="#3-关键数据结构" class="headerlink" title="#3. 关键数据结构"></a>#<strong>3. 关键数据结构</strong></h5><ul>
+<li><code>dtv</code><strong>（Dynamic Thread Vector）</strong>：<br>每个线程的<code>dtv</code>数组记录动态加载模块的TLS块地址。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    void* tcb;          // 线程控制块（TCB）指针</span><br><span class="line">    size_t counter;     // 模块生成计数器</span><br><span class="line">    void* entries[];    // 模块TLS块指针数组</span><br><span class="line">&#125; dtv_t;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tls_index</code>：<br>动态模块的TLS变量通过<code>tls_index</code>结构定位：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">struct tls_index &#123;</span><br><span class="line">    unsigned long ti_module;  // 模块ID（对应dtv索引）</span><br><span class="line">    unsigned long ti_offset;  // 变量在模块TLS块内的偏移</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h5 id="三、内核层支持"><a href="#三、内核层支持" class="headerlink" title="三、内核层支持"></a><strong>三、内核层支持</strong></h5><h6 id="1-系统调用arch-prctl"><a href="#1-系统调用arch-prctl" class="headerlink" title="1. 系统调用arch_prctl"></a><strong>1. 系统调用</strong><code>arch_prctl</code></h6><ul>
+<li><strong>功能</strong>：设置线程的<code>fs</code>&#x2F;<code>gs</code>寄存器基址（TLS起始地址）。</li>
+<li><strong>使用场景</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// GLIBC在创建线程时设置fs寄存器基址</span><br><span class="line">arch_prctl(ARCH_SET_FS, tls_base);</span><br></pre></td></tr></table></figure>
+
+<h6 id="2-内核数据结构"><a href="#2-内核数据结构" class="headerlink" title="2. 内核数据结构"></a><strong>2. 内核数据结构</strong></h6><ul>
+<li><code>struct thread_struct</code>：<br>存储线程的寄存器状态和TLS基址。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// x86架构定义（arch/x86/include/asm/processor.h）</span><br><span class="line">struct thread_struct &#123;</span><br><span class="line">    unsigned long   fsbase;    // 用户态fs基址</span><br><span class="line">    unsigned long   gsbase;    // 用户态gs基址</span><br><span class="line">    // ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h5 id="四、TLS访问全过程"><a href="#四、TLS访问全过程" class="headerlink" title="四、TLS访问全过程"></a><strong>四、TLS访问全过程</strong></h5><h6 id="1-静态TLS变量访问"><a href="#1-静态TLS变量访问" class="headerlink" title="1. 静态TLS变量访问"></a><strong>1. 静态TLS变量访问</strong></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">用户代码访问tls_var → 编译器生成`%fs:offset`指令 → </span><br><span class="line">CPU通过FS寄存器基址 + 固定偏移 → 直接访问内存</span><br></pre></td></tr></table></figure>
+
+<h6 id="2-动态TLS变量访问（dlopen模块中的变量）"><a href="#2-动态TLS变量访问（dlopen模块中的变量）" class="headerlink" title="2. 动态TLS变量访问（dlopen模块中的变量）"></a><strong>2. 动态TLS变量访问（dlopen模块中的变量）</strong></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">用户代码访问dyn_tls_var → 编译器生成`__tls_get_addr()`调用 →</span><br><span class="line">动态链接器通过tls_index查询dtv → 返回变量地址</span><br></pre></td></tr></table></figure>
+
+<h6 id="3-tls-get-addr-实现"><a href="#3-tls-get-addr-实现" class="headerlink" title="3. __tls_get_addr()实现"></a><strong>3.</strong> <code>__tls_get_addr()</code><strong>实现</strong></h6><p>GLIBC中的关键函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">void* __tls_get_addr(struct tls_index* ti) &#123;</span><br><span class="line">    dtv_t* dtv = THREAD_DTV();          // 获取当前线程的dtv</span><br><span class="line">    if (ti-&gt;ti_module &gt; dtv-&gt;counter) &#123;</span><br><span class="line">        // 触发动态TLS分配（_dl_allocate_tls）</span><br><span class="line">    &#125;</span><br><span class="line">    return (char*)dtv-&gt;entries[ti-&gt;ti_module] + ti-&gt;ti_offset;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h5 id="五、调试与诊断"><a href="#五、调试与诊断" class="headerlink" title="五、调试与诊断"></a><strong>五、调试与诊断</strong></h5><h6 id="1-查看线程TLS地址"><a href="#1-查看线程TLS地址" class="headerlink" title="1. 查看线程TLS地址"></a><strong>1. 查看线程TLS地址</strong></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 使用GDB查看fs寄存器基址</span><br><span class="line">(gdb) p $fs_base</span><br><span class="line">$1 = 140737488347136</span><br><span class="line"></span><br><span class="line"># 查看TLS变量内存</span><br><span class="line">(gdb) x/xw $fs_base - 4  # 假设tls_var偏移为-4</span><br></pre></td></tr></table></figure>
+
+<h6 id="2-分析TLS内存布局"><a href="#2-分析TLS内存布局" class="headerlink" title="2. 分析TLS内存布局"></a><strong>2. 分析TLS内存布局</strong></h6><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 查看线程的TCB和TLS区域</span><br><span class="line">LD_DEBUG=files ./program 2&gt;&amp;1 | grep &#x27;TLS&#x27;</span><br><span class="line"></span><br><span class="line"># 使用readelf查看模块的TLS大小</span><br><span class="line">readelf -S libfoo.so | grep TLS</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h5 id="六、设计哲学与权衡"><a href="#六、设计哲学与权衡" class="headerlink" title="六、设计哲学与权衡"></a><strong>六、设计哲学与权衡</strong></h5><ol>
+<li><strong>性能 vs 灵活性</strong>：</li>
+</ol>
+<ul>
+<li>静态TLS访问快但无法动态加载，动态TLS灵活但有性能损耗。</li>
+</ul>
+<ol start="2">
+<li><strong>兼容性挑战</strong>：</li>
+</ol>
+<ul>
+<li>Windows使用<code>TlsAlloc()</code>+索引方式，Linux直接使用地址偏移，导致ABI不兼容。</li>
+</ul>
+<ol start="3">
+<li><strong>硬件依赖</strong>：</li>
+</ol>
+<ul>
+<li>TLS性能高度依赖架构提供的段寄存器支持（如x86的<code>fs</code>&#x2F;<code>gs</code>）。</li>
+</ul>
+<hr>
+<h2 id="三、进程同步机制"><a href="#三、进程同步机制" class="headerlink" title="三、进程同步机制"></a><strong>三、进程同步机制</strong></h2><hr>
+<h3 id="一、共享内存（Shared-Memory）"><a href="#一、共享内存（Shared-Memory）" class="headerlink" title="一、共享内存（Shared Memory）"></a><strong>一、共享内存（Shared Memory）</strong></h3><h5 id="特点："><a href="#特点：" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>最高效的IPC方式</strong>：直接操作内存，无需内核介入数据拷贝。</li>
+<li><strong>无结构化</strong>：需自行设计同步机制（如配合信号量）。</li>
+<li><strong>两种实现</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V共享内存</strong>：<code>shmget()</code> + <code>shmat()</code></li>
+<li><strong>POSIX共享内存</strong>：<code>shm_open()</code> + <code>mmap()</code></li>
+</ul>
+<h4 id="底层实现："><a href="#底层实现：" class="headerlink" title="底层实现："></a><strong>底层实现</strong>：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct shmid_kernel &#123;    // System V共享内存</span><br><span class="line">    struct kern_ipc_perm shm_perm;</span><br><span class="line">    struct file *shm_file;   // 关联的tmpfs文件</span><br><span class="line">    unsigned long shm_nattch; // 附加计数</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内存映射</strong>：通过<code>tmpfs</code>文件系统实现，<code>shmat()</code>调用触发<code>mmap()</code>系统调用。</li>
+</ul>
+<h4 id="同步要求："><a href="#同步要求：" class="headerlink" title="同步要求："></a><strong>同步要求</strong>：</h4><ul>
+<li><strong>必须配合信号量&#x2F;互斥锁</strong>：因共享内存本身无同步机制。</li>
+</ul>
+<hr>
+<h3 id="二、信号量（Semaphore）"><a href="#二、信号量（Semaphore）" class="headerlink" title="二、信号量（Semaphore）"></a><strong>二、信号量（Semaphore）</strong></h3><h5 id="特点：-1"><a href="#特点：-1" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>计数同步</strong>：可控制N个线程同时访问资源。</li>
+<li><strong>两种类型</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V信号量</strong>：<code>semget()</code>&#x2F;<code>semop()</code>，支持信号量集。</li>
+<li><strong>POSIX信号量</strong>：<code>sem_init()</code>，更轻量。</li>
+</ul>
+<h4 id="底层实现（System-V）："><a href="#底层实现（System-V）：" class="headerlink" title="底层实现（System V）："></a><strong>底层实现</strong>（System V）：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">struct sem_array &#123;        // 信号量集</span><br><span class="line">    struct kern_ipc_perm sem_perm;</span><br><span class="line">    struct sem *sems;     // 信号量数组</span><br><span class="line">    struct list_head pending; // 等待队列</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct sem &#123;</span><br><span class="line">    int semval;           // 当前计数值</span><br><span class="line">    int sempid;           // 最后操作进程PID</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>原子操作</strong>：</li>
+</ul>
+<ul>
+<li><code>semop()</code>操作通过<code>ipc_lock()</code>锁定信号量集。</li>
+<li>修改计数值使用<code>ADD_VAL</code>原子指令。</li>
+</ul>
+<ul>
+<li><strong>等待队列</strong>：当信号量不足时，进程加入<code>pending</code>队列，状态设为<code>TASK_INTERRUPTIBLE</code>。</li>
+</ul>
+<hr>
+<h3 id="三、管道（Pipe）"><a href="#三、管道（Pipe）" class="headerlink" title="三、管道（Pipe）"></a><strong>三、管道（Pipe）</strong></h3><h5 id="特点：-2"><a href="#特点：-2" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>半双工通信</strong>：数据单向流动，需两个管道实现双向。</li>
+<li><strong>字节流传输</strong>：无消息边界。</li>
+<li><strong>容量限制</strong>：默认64KB（Linux 2.6+可通过<code>fcntl(fd, F_SETPIPE_SZ)</code>调整）。</li>
+</ul>
+<h4 id="底层实现：-1"><a href="#底层实现：-1" class="headerlink" title="底层实现："></a><strong>底层实现</strong>：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pipe_inode_info &#123;</span><br><span class="line">    unsigned int head;      // 写指针</span><br><span class="line">    unsigned int tail;      // 读指针</span><br><span class="line">    struct page *pages;     // 环形缓冲区页数组</span><br><span class="line">    wait_queue_head_t wait; // 读写等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>环形缓冲区</strong>：使用16个内存页（默认64KB）组成循环队列。</li>
+<li><strong>同步机制</strong>：</li>
+</ul>
+<ul>
+<li><strong>写阻塞</strong>：缓冲区满时，写入进程进入<code>wait</code>队列。</li>
+<li><strong>读阻塞</strong>：缓冲区空时，读取进程进入<code>wait</code>队列。</li>
+<li>使用<code>wake_up_interruptible()</code>唤醒等待进程。</li>
+</ul>
+<hr>
+<h3 id="四、消息队列（Message-Queue）"><a href="#四、消息队列（Message-Queue）" class="headerlink" title="四、消息队列（Message Queue）"></a><strong>四、消息队列（Message Queue）</strong></h3><h5 id="特点：-3"><a href="#特点：-3" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>结构化数据</strong>：每条消息有明确边界和类型标识。</li>
+<li><strong>优先级支持</strong>：可指定消息优先级。</li>
+<li><strong>两种实现</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V消息队列</strong>：<code>msgget()</code>&#x2F;<code>msgsnd()</code></li>
+<li><strong>POSIX消息队列</strong>：<code>mq_open()</code>，更现代。</li>
+</ul>
+<h4 id="底层实现（System-V）：-1"><a href="#底层实现（System-V）：-1" class="headerlink" title="底层实现（System V）："></a><strong>底层实现</strong>（System V）：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">struct msg_queue &#123;</span><br><span class="line">    struct kern_ipc_perm q_perm;</span><br><span class="line">    struct list_head q_messages; // 消息链表</span><br><span class="line">    struct list_head q_receivers;// 接收等待队列</span><br><span class="line">    size_t q_cbytes;             // 当前字节数</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct msg_msg &#123;          // 单个消息</span><br><span class="line">    struct list_head m_list;</span><br><span class="line">    long m_type;          // 消息类型</span><br><span class="line">    size_t m_ts;          // 消息大小</span><br><span class="line">    /* 数据跟随在此结构之后 */</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>存储管理</strong>：消息超过4KB时分割为多个<code>msg_msgseg</code>页。</li>
+<li><strong>同步机制</strong>：</li>
+</ul>
+<ul>
+<li><code>msgsnd()</code>在队列满时阻塞，加入<code>q_senders</code>队列。</li>
+<li><code>msgrcv()</code>在队列空时阻塞，加入<code>q_receivers</code>队列。</li>
+</ul>
+<hr>
+<h3 id="五、互斥锁（Mutex）"><a href="#五、互斥锁（Mutex）" class="headerlink" title="五、互斥锁（Mutex）"></a><strong>五、互斥锁（Mutex）</strong></h3><h5 id="特点：-4"><a href="#特点：-4" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>二元锁</strong>：仅允许一个线程持有锁。</li>
+<li><strong>睡眠等待</strong>：竞争失败时线程进入睡眠，触发上下文切换。</li>
+<li><strong>优先级继承</strong>：防止优先级反转（高优先级线程等待低优先级线程）。</li>
+</ul>
+<h4 id="底层实现（基于futex）："><a href="#底层实现（基于futex）：" class="headerlink" title="底层实现（基于futex）："></a><strong>底层实现</strong>（基于futex）：</h4><ul>
+<li><strong>用户态快速路径</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 无竞争时使用原子操作</span><br><span class="line">atomic_cmpxchg(&amp;lock, 0, 1);  // CAS操作尝试获取锁</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核态慢速路径</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">futex_wait(&amp;lock, 1);  // 锁被占用时进入等待</span><br><span class="line">futex_wake(&amp;lock, 1);  // 释放锁时唤醒一个等待者</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct mutex &#123;</span><br><span class="line">    atomic_long_t owner;      // 锁持有者任务结构指针</span><br><span class="line">    spinlock_t wait_lock;     // 保护等待队列</span><br><span class="line">    struct list_head wait_list; // 等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="六、自旋锁（Spinlock）"><a href="#六、自旋锁（Spinlock）" class="headerlink" title="六、自旋锁（Spinlock）"></a><strong>六、自旋锁（Spinlock）</strong></h3><h4 id="特点：-5"><a href="#特点：-5" class="headerlink" title="特点："></a><strong>特点</strong>：</h4><ul>
+<li><strong>忙等待</strong>：线程持续检查锁状态，不释放CPU。</li>
+<li><strong>适用场景</strong>：临界区极短（上下文切换时间）且不可睡眠（如中断上下文）。</li>
+<li><strong>无优先级继承</strong>：可能引发优先级反转问题。</li>
+</ul>
+<h4 id="底层实现（x86）："><a href="#底层实现（x86）：" class="headerlink" title="底层实现（x86）："></a><strong>底层实现</strong>（x86）：</h4><ul>
+<li><strong>原子指令</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lock; cmpxchg %edx, (%ecx)  // 原子比较交换</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核实现</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    volatile unsigned int lock; // 0=未锁，1=已锁</span><br><span class="line">&#125; spinlock_t;</span><br><span class="line"></span><br><span class="line">void spin_lock(spinlock_t *lock) &#123;</span><br><span class="line">    while (atomic_xchg(&amp;lock-&gt;lock, 1) != 0)</span><br><span class="line">        cpu_relax();         // 降低CPU占用（PAUSE指令）</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="七、读写锁（Reader-Writer-Lock）"><a href="#七、读写锁（Reader-Writer-Lock）" class="headerlink" title="七、读写锁（Reader-Writer Lock）"></a><strong>七、读写锁（Reader-Writer Lock）</strong></h3><h4 id="特点：-6"><a href="#特点：-6" class="headerlink" title="特点："></a><strong>特点</strong>：</h4><ul>
+<li><strong>并发优化</strong>：允许多个读线程同时访问。</li>
+<li><strong>写独占</strong>：写锁请求会阻塞后续所有读写请求。</li>
+<li><strong>防写饥饿</strong>：通常实现为写优先模式。</li>
+</ul>
+<h4 id="底层实现（以futex为基础）："><a href="#底层实现（以futex为基础）：" class="headerlink" title="底层实现（以futex为基础）："></a><strong>底层实现</strong>（以futex为基础）：</h4><ul>
+<li><strong>状态表示</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct rwlock &#123;</span><br><span class="line">    int readers;        // 当前读者数</span><br><span class="line">    int writer;         // 写者标记（0/1）</span><br><span class="line">    futex_t write_futex; // 写者等待队列</span><br><span class="line">    futex_t read_futex;  // 读者等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>获取读锁</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">while (atomic_load(&amp;lock-&gt;writer)) </span><br><span class="line">    futex_wait(&amp;lock-&gt;read_futex);</span><br><span class="line">atomic_inc(&amp;lock-&gt;readers);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>获取写锁</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">atomic_store(&amp;lock-&gt;writer, 1);</span><br><span class="line">while (atomic_load(&amp;lock-&gt;readers) &gt; 0)</span><br><span class="line">    futex_wait(&amp;lock-&gt;write_futex);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="对比与选型指南"><a href="#对比与选型指南" class="headerlink" title="对比与选型指南"></a><strong>对比与选型指南</strong></h3><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>机制</strong></td>
+<td><strong>适用场景</strong></td>
+<td><strong>性能特点</strong></td>
+<td><strong>注意事项</strong></td>
+</tr>
+<tr>
+<td>共享内存</td>
+<td>高频数据交换（如视频流处理）</td>
+<td>零拷贝，最高速</td>
+<td>必须自行实现同步</td>
+</tr>
+<tr>
+<td>信号量</td>
+<td>资源池管理（如数据库连接池）</td>
+<td>精确控制并发数</td>
+<td>复杂场景易死锁</td>
+</tr>
+<tr>
+<td>管道</td>
+<td>父子进程简单通信</td>
+<td>内核自动同步</td>
+<td>无消息边界，容量受限</td>
+</tr>
+<tr>
+<td>消息队列</td>
+<td>结构化跨进程通信（如任务分发）</td>
+<td>支持优先级和类型过滤</td>
+<td>数据拷贝影响性能</td>
+</tr>
+<tr>
+<td>互斥锁</td>
+<td>通用临界区保护</td>
+<td>可睡眠，支持优先级继承</td>
+<td>上下文切换开销大</td>
+</tr>
+<tr>
+<td>自旋锁</td>
+<td>极短临界区（如计数器更新）</td>
+<td>无上下文切换开销</td>
+<td>高竞争时浪费CPU</td>
+</tr>
+<tr>
+<td>读写锁</td>
+<td>读多写少场景（如配置热加载）</td>
+<td>读并发性能优化</td>
+<td>写者可能饥饿（需实现公平策略）</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="底层实现关键点总结"><a href="#底层实现关键点总结" class="headerlink" title="底层实现关键点总结"></a><strong>底层实现关键点总结</strong></h3><ol>
+<li><strong>原子操作</strong>：所有同步机制的基石（如x86的<code>LOCK</code>前缀指令）。</li>
+<li><strong>等待队列</strong>：阻塞线程的管理（<code>wait_queue_head_t</code> + <code>wake_up()</code>系列函数）。</li>
+<li><strong>内存屏障</strong>：确保指令执行顺序（如<code>mb()</code>, <code>rmb()</code>, <code>wmb()</code>）。</li>
+<li><strong>优先级继承</strong>：解决优先级反转问题（如互斥锁的<code>PI</code>模式）。</li>
+<li><strong>混合模式优化</strong>：用户态快速路径 + 内核态慢速路径（如futex）。</li>
+</ol>
+<hr>
+<h2 id="四、进程调度算法"><a href="#四、进程调度算法" class="headerlink" title="四、进程调度算法"></a><strong>四、进程调度算法</strong></h2><h5 id="1-实时进程调度策略"><a href="#1-实时进程调度策略" class="headerlink" title="1. 实时进程调度策略"></a><strong>1. 实时进程调度策略</strong></h5><ul>
+<li><strong>SCHED_FIFO</strong>：</li>
+</ul>
+<ul>
+<li>优先级范围：1（低）~99（高）</li>
+<li>行为：同优先级进程按队列顺序执行，直到主动让出CPU</li>
+</ul>
+<ul>
+<li><strong>SCHED_RR</strong>：</li>
+</ul>
+<ul>
+<li>优先级范围同SCHED_FIFO</li>
+<li>行为：时间片轮转（默认时间片100ms），超时后移到队列尾部</li>
+</ul>
+<h5 id="2-完全公平调度器（CFS）"><a href="#2-完全公平调度器（CFS）" class="headerlink" title="2. 完全公平调度器（CFS）"></a><strong>2. 完全公平调度器（CFS）</strong></h5><ul>
+<li><strong>核心思想</strong>：</li>
+</ul>
+<ul>
+<li>虚拟运行时间（vruntime）决定调度顺序</li>
+<li>红黑树管理可运行进程，选择vruntime最小的进程</li>
+</ul>
+<ul>
+<li><strong>vruntime计算公式</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vruntime += (实际运行时间) * (NICE_0_LOAD / 权重)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>权重计算</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">static const int prio_to_weight[40] = &#123;</span><br><span class="line">    /* -20 */ 88761, 71755, 56483, ..., // nice值映射到权重</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>NICE_0_LOAD</strong>：1024（对应nice&#x3D;0的基准权重）</li>
+</ul>
+<ul>
+<li><strong>调度周期（sched_latency）</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sysctl kernel.sched_latency_ns  # 默认值24,000,000 ns（24ms）</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>每个进程分配的时间片 &#x3D; 调度周期 * (权重 &#x2F; 总权重)</li>
+</ul>
+<h5 id="3-影响vruntime的因素"><a href="#3-影响vruntime的因素" class="headerlink" title="3. 影响vruntime的因素"></a><strong>3. 影响vruntime的因素</strong></h5><ol>
+<li><strong>进程优先级（nice值）</strong>：</li>
+</ol>
+<ul>
+<li>nice值每降低1（优先级升高），权重增加约25%</li>
+<li>示例：nice&#x3D;0（权重1024），nice&#x3D;-5（权重2726）</li>
+</ul>
+<ol start="2">
+<li><strong>CPU负载</strong>：</li>
+</ol>
+<ul>
+<li>当运行队列进程数增加，调度周期延长，每个进程时间片减少</li>
+</ul>
+<ol start="3">
+<li><strong>多核负载均衡</strong>：</li>
+</ol>
+<ul>
+<li>通过<code>migration</code>内核线程迁移进程，平衡各CPU的vruntime</li>
+</ul>
+<h5 id="4-调度器决策流程"><a href="#4-调度器决策流程" class="headerlink" title="4. 调度器决策流程"></a><strong>4. 调度器决策流程</strong></h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 内核调度主函数（schedule()）</span><br><span class="line">prev = rq-&gt;curr;</span><br><span class="line">next = pick_next_task(rq);  // 从红黑树选择最小vruntime进程</span><br><span class="line">context_switch(rq, prev, next);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="五、进程管理工具与诊断"><a href="#五、进程管理工具与诊断" class="headerlink" title="五、进程管理工具与诊断"></a><strong>五、进程管理工具与诊断</strong></h2><hr>
+<h3 id="1-进程状态监控命令"><a href="#1-进程状态监控命令" class="headerlink" title="1. 进程状态监控命令"></a><strong>1. 进程状态监控命令</strong></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># 查看进程树及线程</span><br><span class="line">ps -eLf         # 显示所有线程（LWP列）</span><br><span class="line">pstree -p       # 树形显示进程关系</span><br><span class="line"></span><br><span class="line"># 实时监控调度信息</span><br><span class="line">top -H          # 显示线程级CPU使用率</span><br><span class="line">perf sched record -- sleep 1  # 记录调度事件</span><br><span class="line"></span><br><span class="line"># 分析进程地址空间</span><br><span class="line">pmap -X pid&gt;    # 显示内存映射详情</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-调试与性能分析"><a href="#2-调试与性能分析" class="headerlink" title="2. 调试与性能分析"></a><strong>2. 调试与性能分析</strong></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 跟踪fork调用</span><br><span class="line">strace -e fork,clone,futex ./program</span><br><span class="line"></span><br><span class="line"># 检测锁竞争</span><br><span class="line">valgrind --tool=helgrind ./program</span><br><span class="line"></span><br><span class="line"># 分析调度延迟</span><br><span class="line">trace-cmd record -e sched_switch</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="六、总结与最佳实践"><a href="#六、总结与最佳实践" class="headerlink" title="六、总结与最佳实践"></a><strong>六、总结与最佳实践</strong></h2><hr>
+<h3 id="1-关键知识点"><a href="#1-关键知识点" class="headerlink" title="1. 关键知识点"></a><strong>1. 关键知识点</strong></h3><ul>
+<li><strong>进程创建</strong>：<code>fork()</code>的COW优化与<code>vfork()</code>的阻塞特性</li>
+<li><strong>线程本质</strong>：通过<code>clone()</code>共享资源的轻量级进程</li>
+<li><strong>同步机制</strong>：自旋锁（短临界区） vs 信号量（长等待） vs RCU（读多写少）</li>
+<li><strong>调度策略</strong>：实时进程（FIFO&#x2F;RR）优先于普通进程（CFS）</li>
+</ul>
+<h3 id="2-性能调优建议"><a href="#2-性能调优建议" class="headerlink" title="2. 性能调优建议"></a><strong>2. 性能调优建议</strong></h3><ul>
+<li><strong>减少</strong><code>fork()</code><strong>开销</strong>：在需要立即<code>exec()</code>时使用<code>vfork()</code></li>
+<li><strong>避免锁竞争</strong>：</li>
+</ul>
+<ul>
+<li>使用读写锁替代互斥锁（读多场景）</li>
+<li>缩短临界区代码（如将非关键操作移出锁外）</li>
+</ul>
+<ul>
+<li><strong>优化调度策略</strong>：</li>
+</ul>
+<ul>
+<li>关键线程设置为<code>SCHED_FIFO</code>（需谨慎，避免饥饿）</li>
+<li>调整CFS参数（<code>sched_latency_ns</code>, <code>sched_min_granularity_ns</code>）</li>
+</ul>
+<hr>
+<h2 id="进程同步机制深度解析"><a href="#进程同步机制深度解析" class="headerlink" title="进程同步机制深度解析"></a><strong>进程同步机制深度解析</strong></h2><hr>
+<h3 id="一、共享内存（Shared-Memory）-1"><a href="#一、共享内存（Shared-Memory）-1" class="headerlink" title="一、共享内存（Shared Memory）"></a><strong>一、共享内存（Shared Memory）</strong></h3><h5 id="特点：-7"><a href="#特点：-7" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>最高效的IPC方式</strong>：直接操作内存，无需内核介入数据拷贝。</li>
+<li><strong>无结构化</strong>：需自行设计同步机制（如配合信号量）。</li>
+<li><strong>两种实现</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V共享内存</strong>：<code>shmget()</code> + <code>shmat()</code></li>
+<li><strong>POSIX共享内存</strong>：<code>shm_open()</code> + <code>mmap()</code></li>
+</ul>
+<h4 id="底层实现：-2"><a href="#底层实现：-2" class="headerlink" title="底层实现："></a><strong>底层实现</strong>：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct shmid_kernel &#123;    // System V共享内存</span><br><span class="line">    struct kern_ipc_perm shm_perm;</span><br><span class="line">    struct file *shm_file;   // 关联的tmpfs文件</span><br><span class="line">    unsigned long shm_nattch; // 附加计数</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内存映射</strong>：通过<code>tmpfs</code>文件系统实现，<code>shmat()</code>调用触发<code>mmap()</code>系统调用。</li>
+</ul>
+<h4 id="同步要求：-1"><a href="#同步要求：-1" class="headerlink" title="同步要求："></a><strong>同步要求</strong>：</h4><ul>
+<li><strong>必须配合信号量&#x2F;互斥锁</strong>：因共享内存本身无同步机制。</li>
+</ul>
+<hr>
+<h3 id="二、信号量（Semaphore）-1"><a href="#二、信号量（Semaphore）-1" class="headerlink" title="二、信号量（Semaphore）"></a><strong>二、信号量（Semaphore）</strong></h3><h5 id="特点：-8"><a href="#特点：-8" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>计数同步</strong>：可控制N个线程同时访问资源。</li>
+<li><strong>两种类型</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V信号量</strong>：<code>semget()</code>&#x2F;<code>semop()</code>，支持信号量集。</li>
+<li><strong>POSIX信号量</strong>：<code>sem_init()</code>，更轻量。</li>
+</ul>
+<h4 id="底层实现（System-V）：-2"><a href="#底层实现（System-V）：-2" class="headerlink" title="底层实现（System V）："></a><strong>底层实现</strong>（System V）：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">struct sem_array &#123;        // 信号量集</span><br><span class="line">    struct kern_ipc_perm sem_perm;</span><br><span class="line">    struct sem *sems;     // 信号量数组</span><br><span class="line">    struct list_head pending; // 等待队列</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct sem &#123;</span><br><span class="line">    int semval;           // 当前计数值</span><br><span class="line">    int sempid;           // 最后操作进程PID</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>原子操作</strong>：</li>
+</ul>
+<ul>
+<li><code>semop()</code>操作通过<code>ipc_lock()</code>锁定信号量集。</li>
+<li>修改计数值使用<code>ADD_VAL</code>原子指令。</li>
+</ul>
+<ul>
+<li><strong>等待队列</strong>：当信号量不足时，进程加入<code>pending</code>队列，状态设为<code>TASK_INTERRUPTIBLE</code>。</li>
+</ul>
+<hr>
+<h3 id="三、管道（Pipe）-1"><a href="#三、管道（Pipe）-1" class="headerlink" title="三、管道（Pipe）"></a><strong>三、管道（Pipe）</strong></h3><h5 id="特点：-9"><a href="#特点：-9" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>半双工通信</strong>：数据单向流动，需两个管道实现双向。</li>
+<li><strong>字节流传输</strong>：无消息边界。</li>
+<li><strong>容量限制</strong>：默认64KB（Linux 2.6+可通过<code>fcntl(fd, F_SETPIPE_SZ)</code>调整）。</li>
+</ul>
+<h4 id="底层实现：-3"><a href="#底层实现：-3" class="headerlink" title="底层实现："></a><strong>底层实现</strong>：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct pipe_inode_info &#123;</span><br><span class="line">    unsigned int head;      // 写指针</span><br><span class="line">    unsigned int tail;      // 读指针</span><br><span class="line">    struct page *pages;     // 环形缓冲区页数组</span><br><span class="line">    wait_queue_head_t wait; // 读写等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>环形缓冲区</strong>：使用16个内存页（默认64KB）组成循环队列。</li>
+<li><strong>同步机制</strong>：</li>
+</ul>
+<ul>
+<li><strong>写阻塞</strong>：缓冲区满时，写入进程进入<code>wait</code>队列。</li>
+<li><strong>读阻塞</strong>：缓冲区空时，读取进程进入<code>wait</code>队列。</li>
+<li>使用<code>wake_up_interruptible()</code>唤醒等待进程。</li>
+</ul>
+<hr>
+<h3 id="四、消息队列（Message-Queue）-1"><a href="#四、消息队列（Message-Queue）-1" class="headerlink" title="四、消息队列（Message Queue）"></a><strong>四、消息队列（Message Queue）</strong></h3><h5 id="特点：-10"><a href="#特点：-10" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>结构化数据</strong>：每条消息有明确边界和类型标识。</li>
+<li><strong>优先级支持</strong>：可指定消息优先级。</li>
+<li><strong>两种实现</strong>：</li>
+</ul>
+<ul>
+<li><strong>System V消息队列</strong>：<code>msgget()</code>&#x2F;<code>msgsnd()</code></li>
+<li><strong>POSIX消息队列</strong>：<code>mq_open()</code>，更现代。</li>
+</ul>
+<h4 id="底层实现（System-V）：-3"><a href="#底层实现（System-V）：-3" class="headerlink" title="底层实现（System V）："></a><strong>底层实现</strong>（System V）：</h4><ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">struct msg_queue &#123;</span><br><span class="line">    struct kern_ipc_perm q_perm;</span><br><span class="line">    struct list_head q_messages; // 消息链表</span><br><span class="line">    struct list_head q_receivers;// 接收等待队列</span><br><span class="line">    size_t q_cbytes;             // 当前字节数</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct msg_msg &#123;          // 单个消息</span><br><span class="line">    struct list_head m_list;</span><br><span class="line">    long m_type;          // 消息类型</span><br><span class="line">    size_t m_ts;          // 消息大小</span><br><span class="line">    /* 数据跟随在此结构之后 */</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>存储管理</strong>：消息超过4KB时分割为多个<code>msg_msgseg</code>页。</li>
+<li><strong>同步机制</strong>：</li>
+</ul>
+<ul>
+<li><code>msgsnd()</code>在队列满时阻塞，加入<code>q_senders</code>队列。</li>
+<li><code>msgrcv()</code>在队列空时阻塞，加入<code>q_receivers</code>队列。</li>
+</ul>
+<hr>
+<h3 id="五、互斥锁（Mutex）-1"><a href="#五、互斥锁（Mutex）-1" class="headerlink" title="五、互斥锁（Mutex）"></a><strong>五、互斥锁（Mutex）</strong></h3><h5 id="特点：-11"><a href="#特点：-11" class="headerlink" title="特点："></a><strong>特点</strong>：</h5><ul>
+<li><strong>二元锁</strong>：仅允许一个线程持有锁。</li>
+<li><strong>睡眠等待</strong>：竞争失败时线程进入睡眠，触发上下文切换。</li>
+<li><strong>优先级继承</strong>：防止优先级反转（高优先级线程等待低优先级线程）。</li>
+</ul>
+<h4 id="底层实现（基于futex）：-1"><a href="#底层实现（基于futex）：-1" class="headerlink" title="底层实现（基于futex）："></a><strong>底层实现</strong>（基于futex）：</h4><ul>
+<li><strong>用户态快速路径</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 无竞争时使用原子操作</span><br><span class="line">atomic_cmpxchg(&amp;lock, 0, 1);  // CAS操作尝试获取锁</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核态慢速路径</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">futex_wait(&amp;lock, 1);  // 锁被占用时进入等待</span><br><span class="line">futex_wake(&amp;lock, 1);  // 释放锁时唤醒一个等待者</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核数据结构</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">struct mutex &#123;</span><br><span class="line">    atomic_long_t owner;      // 锁持有者任务结构指针</span><br><span class="line">    spinlock_t wait_lock;     // 保护等待队列</span><br><span class="line">    struct list_head wait_list; // 等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="六、自旋锁（Spinlock）-1"><a href="#六、自旋锁（Spinlock）-1" class="headerlink" title="六、自旋锁（Spinlock）"></a><strong>六、自旋锁（Spinlock）</strong></h3><h4 id="特点：-12"><a href="#特点：-12" class="headerlink" title="特点："></a><strong>特点</strong>：</h4><ul>
+<li><strong>忙等待</strong>：线程持续检查锁状态，不释放CPU。</li>
+<li><strong>适用场景</strong>：临界区极短（上下文切换时间）且不可睡眠（如中断上下文）。</li>
+<li><strong>无优先级继承</strong>：可能引发优先级反转问题。</li>
+</ul>
+<h4 id="底层实现（x86）：-1"><a href="#底层实现（x86）：-1" class="headerlink" title="底层实现（x86）："></a><strong>底层实现</strong>（x86）：</h4><ul>
+<li><strong>原子指令</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lock; cmpxchg %edx, (%ecx)  // 原子比较交换</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>内核实现</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">typedef struct &#123;</span><br><span class="line">    volatile unsigned int lock; // 0=未锁，1=已锁</span><br><span class="line">&#125; spinlock_t;</span><br><span class="line"></span><br><span class="line">void spin_lock(spinlock_t *lock) &#123;</span><br><span class="line">    while (atomic_xchg(&amp;lock-&gt;lock, 1) != 0)</span><br><span class="line">        cpu_relax();         // 降低CPU占用（PAUSE指令）</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="七、读写锁（Reader-Writer-Lock）-1"><a href="#七、读写锁（Reader-Writer-Lock）-1" class="headerlink" title="七、读写锁（Reader-Writer Lock）"></a><strong>七、读写锁（Reader-Writer Lock）</strong></h3><h4 id="特点：-13"><a href="#特点：-13" class="headerlink" title="特点："></a><strong>特点</strong>：</h4><ul>
+<li><strong>并发优化</strong>：允许多个读线程同时访问。</li>
+<li><strong>写独占</strong>：写锁请求会阻塞后续所有读写请求。</li>
+<li><strong>防写饥饿</strong>：通常实现为写优先模式。</li>
+</ul>
+<h4 id="底层实现（以futex为基础）：-1"><a href="#底层实现（以futex为基础）：-1" class="headerlink" title="底层实现（以futex为基础）："></a><strong>底层实现</strong>（以futex为基础）：</h4><ul>
+<li><strong>状态表示</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct rwlock &#123;</span><br><span class="line">    int readers;        // 当前读者数</span><br><span class="line">    int writer;         // 写者标记（0/1）</span><br><span class="line">    futex_t write_futex; // 写者等待队列</span><br><span class="line">    futex_t read_futex;  // 读者等待队列</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>获取读锁</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">while (atomic_load(&amp;lock-&gt;writer)) </span><br><span class="line">    futex_wait(&amp;lock-&gt;read_futex);</span><br><span class="line">atomic_inc(&amp;lock-&gt;readers);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>获取写锁</strong>：</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">atomic_store(&amp;lock-&gt;writer, 1);</span><br><span class="line">while (atomic_load(&amp;lock-&gt;readers) &gt; 0)</span><br><span class="line">    futex_wait(&amp;lock-&gt;write_futex);</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="对比与选型指南-1"><a href="#对比与选型指南-1" class="headerlink" title="对比与选型指南"></a><strong>对比与选型指南</strong></h3><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>机制</strong></td>
+<td><strong>适用场景</strong></td>
+<td><strong>性能特点</strong></td>
+<td><strong>注意事项</strong></td>
+</tr>
+<tr>
+<td>共享内存</td>
+<td>高频数据交换（如视频流处理）</td>
+<td>零拷贝，最高速</td>
+<td>必须自行实现同步</td>
+</tr>
+<tr>
+<td>信号量</td>
+<td>资源池管理（如数据库连接池）</td>
+<td>精确控制并发数</td>
+<td>复杂场景易死锁</td>
+</tr>
+<tr>
+<td>管道</td>
+<td>父子进程简单通信</td>
+<td>内核自动同步</td>
+<td>无消息边界，容量受限</td>
+</tr>
+<tr>
+<td>消息队列</td>
+<td>结构化跨进程通信（如任务分发）</td>
+<td>支持优先级和类型过滤</td>
+<td>数据拷贝影响性能</td>
+</tr>
+<tr>
+<td>互斥锁</td>
+<td>通用临界区保护</td>
+<td>可睡眠，支持优先级继承</td>
+<td>上下文切换开销大</td>
+</tr>
+<tr>
+<td>自旋锁</td>
+<td>极短临界区（如计数器更新）</td>
+<td>无上下文切换开销</td>
+<td>高竞争时浪费CPU</td>
+</tr>
+<tr>
+<td>读写锁</td>
+<td>读多写少场景（如配置热加载）</td>
+<td>读并发性能优化</td>
+<td>写者可能饥饿（需实现公平策略）</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="底层实现关键点总结-1"><a href="#底层实现关键点总结-1" class="headerlink" title="底层实现关键点总结"></a><strong>底层实现关键点总结</strong></h3><ol>
+<li><strong>原子操作</strong>：所有同步机制的基石（如x86的<code>LOCK</code>前缀指令）。</li>
+<li><strong>等待队列</strong>：阻塞线程的管理（<code>wait_queue_head_t</code> + <code>wake_up()</code>系列函数）。</li>
+<li><strong>内存屏障</strong>：确保指令执行顺序（如<code>mb()</code>, <code>rmb()</code>, <code>wmb()</code>）。</li>
+<li><strong>优先级继承</strong>：解决优先级反转问题（如互斥锁的<code>PI</code>模式）。</li>
+<li><strong>混合模式优化</strong>：用户态快速路径 + 内核态慢速路径（如futex）。</li>
+</ol>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="CFS-调度器的-vruntime-与红黑树——最核心调度逻辑"><a href="#CFS-调度器的-vruntime-与红黑树——最核心调度逻辑" class="headerlink" title="CFS 调度器的 vruntime 与红黑树——最核心调度逻辑"></a>CFS 调度器的 vruntime 与红黑树——最核心调度逻辑</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/sched/fair.c——CFS 调度入口</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> task_struct *<span class="title function_">pick_next_task_fair</span><span class="params">(<span class="keyword">struct</span> rq *rq)</span> &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cfs_rq</span> *<span class="title">cfs_rq</span> =</span> &amp;rq-&gt;cfs;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sched_entity</span> *<span class="title">se</span> =</span> __pick_first_entity(cfs_rq);</span><br><span class="line">    <span class="keyword">if</span> (!se) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">return</span> task_of(se);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">update_curr</span><span class="params">(<span class="keyword">struct</span> cfs_rq *cfs_rq)</span> &#123;</span><br><span class="line">    u64 delta_exec = now - curr-&gt;exec_start;</span><br><span class="line">    curr-&gt;vruntime += calc_delta_fair(delta_exec, curr);</span><br><span class="line">    <span class="keyword">if</span> (entity_before(curr, __pick_first_entity(cfs_rq)))</span><br><span class="line">        resched_curr(rq_of(cfs_rq));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>CFS 核心：<code>vruntime</code> &#x3D; 实际运行时间 × (1024 &#x2F; 权重)，nice 值越低权重越大 vruntime 增长越慢。每次选 vruntime 最小进程运行——红黑树 O(log n) 保证调度延迟可控。</p>
+<h4 id="fork-的-COW-内核路径"><a href="#fork-的-COW-内核路径" class="headerlink" title="fork() 的 COW 内核路径"></a>fork() 的 COW 内核路径</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// mm/memory.c——COW 缺页处理</span></span><br><span class="line"><span class="type">static</span> <span class="type">vm_fault_t</span> <span class="title function_">do_wp_page</span><span class="params">(<span class="keyword">struct</span> vm_fault *vmf)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (page_count(vmf-&gt;page) == <span class="number">1</span>)</span><br><span class="line">        <span class="keyword">return</span> reuse_page(vma, vmf);</span><br><span class="line">    new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, vmf-&gt;address);</span><br><span class="line">    copy_user_highpage(new_page, vmf-&gt;page, vmf-&gt;address, vma);</span><br><span class="line">    set_pte_at(vma-&gt;vm_mm, vmf-&gt;address, vmf-&gt;pte, </span><br><span class="line">               mk_pte(new_page, vma-&gt;vm_page_prot) | _PAGE_RW);</span><br><span class="line">    put_page(vmf-&gt;page);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>fork 后父子共享只读页，第一个写入触发 <code>do_wp_page</code> 分配新页——另一个进程仍用原页。</p>
+<h4 id="上下文切换中-CR3-的开销"><a href="#上下文切换中-CR3-的开销" class="headerlink" title="上下文切换中 CR3 的开销"></a>上下文切换中 CR3 的开销</h4><p>进程切换必须换 CR3 → TLB 全失效 → ~几百 cycles 额外开销。线程切换共享地址空间跳过了 CR3 切换——比进程切换快 5-10 倍。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>fork 后立即 exec 的优化</strong>：用 <code>vfork</code> + COW 配合 <code>exec</code> 避免无意义的内存复制</li>
+<li><strong>nice 值不是简单的优先级</strong>：nice(-20) 权重是 nice(19) 的 36 倍</li>
+<li><strong>CFS 延迟目标</strong>：<code>sysctl_sched_latency</code>（默认 6ms）保证交互式响应</li>
+<li><strong>进程 TLB 开销</strong>：大型应用（&gt;1GB 内存）切换开销可达 5-10μs</li>
+<li><strong>futex 是用户态锁的基础</strong>：<code>pthread_mutex</code> 竞争路径最终调用 <code>futex(FUTEX_WAIT)</code></li>
+<li><strong>task_struct 用 slab 分配</strong>：内核缓存复用，减少碎片</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: fork() 后父子进程共享什么？不共享什么？</strong></p>
+<p>共享：代码段、已映射文件、文件描述符（引用计数+1）。不共享：地址空间逻辑独立（COW）、PID、信号挂起队列。</p>
+<p><strong>Q2: 写时复制（COW）的内核实现细节？</strong></p>
+<p>fork 时拷贝页表而非物理页，PTE 标记只读。任一写入触发缺页异常 → <code>do_wp_page</code>：引用计数&#x3D;&#x3D;1 直接可写，&gt;1 分配新页复制。</p>
+<p><strong>Q3: CFS 调度算法的核心思想？</strong></p>
+<p>每个进程有 <code>vruntime</code>（&#x3D; 运行时间 × 1024&#x2F;权重），CFS 始终选 vruntime 最小的运行。nice 低权重高→vruntime 增长慢→更多 CPU 时间。</p>
+<p><strong>Q4: 进程上下文切换的完整流程和开销？</strong></p>
+<p>保存寄存器 → 切换页表 CR3 → 恢复寄存器 → 切换栈。开销 ~1-5μs，线程切换（不切 CR3）快 5-10 倍。</p>
+<p><strong>Q5: 用户态和内核态的切换如何发生？</strong></p>
+<p>三种：系统调用（同步）、中断（异步硬件）、异常（同步）。CPU 自动压栈 SS&#x2F;RSP&#x2F;CS&#x2F;RIP，切换内核栈。</p>
+<p><strong>Q6: CFS 红黑树为什么用 vruntime 而非实际时间作键？</strong></p>
+<p>实际时间相同但权重不同不公平。vruntime 按权重归一化，vruntime 相等 &#x3D; 真正公平。</p>
+<p><strong>Q7: 僵尸进程和孤儿进程的区别？</strong></p>
+<p>僵尸：子进程结束父进程未 wait——task_struct 残留。孤儿：父进程先于子进程死——init 收养并回收。</p>
+<p><strong>Q8: futex 如何实现用户态锁？</strong></p>
+<p>快路径：用户态 CAS，不涉及内核。慢路径：<code>futex(FUTEX_WAIT)</code> 内核挂起。解锁 <code>FUTEX_WAKE</code> 唤醒。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：fork 后共享 FILE* 导致输出混乱。<strong>修复</strong>：fork 前 <code>fflush(stdout)</code>。</p>
+</li>
+<li><p><strong>陷阱</strong>：多线程 fork——子进程只有调用线程存活，其他消失可能持有锁。<strong>修复</strong>：用 <code>pthread_atfork</code> 或子进程立即 exec。</p>
+</li>
+<li><p><strong>陷阱</strong>：短命进程池 fork+exec 开销大。<strong>修复</strong>：用 <code>posix_spawn</code>。</p>
+</li>
+<li><p><strong>反问</strong>：「为什么 Linux 用 CFS？」希望听到：O(1) 交互场景不公平，CFS 的 vruntime 保证长时间公平。</p>
+</li>
+<li><p><strong>反问</strong>：「为什么线程切换比进程快？」希望听到：共享地址空间→不换 CR3→TLB 不刷新。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>task_struct？</td>
+<td>内核描述进程核心结构体，含状态&#x2F;PID&#x2F;内存&#x2F;文件</td>
+</tr>
+<tr>
+<td>fork() 核心？</td>
+<td>copy_process 克隆 task_struct + COW 共享页</td>
+</tr>
+<tr>
+<td>COW 原理？</td>
+<td>fork 共享只读页，写入缺页触发物理页复制</td>
+</tr>
+<tr>
+<td>CFS 调度？</td>
+<td>选 vruntime 最小进程，nice 低权重高增长慢</td>
+</tr>
+<tr>
+<td>上下文切换开销？</td>
+<td>进程 ~1-5μs（含 TLB flush），线程 ~0.2μs</td>
+</tr>
+<tr>
+<td>用户态→内核态？</td>
+<td>syscall &#x2F; 中断 &#x2F; 异常</td>
+</tr>
+<tr>
+<td>僵尸进程？</td>
+<td>子死父未 wait，task_struct 未释放</td>
+</tr>
+<tr>
+<td>futex？</td>
+<td>用户 CAS 快路径 + 内核等待队列慢路径</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/">https://weimo1.github.io/posts/Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Log/" title="Log"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Log</div></div><div class="info-2"><div class="info-item-1">高性能日志库深度解析（glog &#x2F; muduoLog） 适用范围：高性能 C++ 日志库的设计与实现分析，涵盖 glog 源码走读、muduo 异步日志架构、双缓冲机制、工程优化策略。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：架构设计(二)≥200字、工程...</div></div></div></a><a class="pagination-related" href="/posts/Linux%E5%B8%B8%E7%94%A8%E6%8E%92%E6%9F%A5%E5%91%BD%E4%BB%A4/" title="Linux常用排查命令"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Linux常用排查命令</div></div><div class="info-2"><div class="info-item-1">Linux 常用排查命令 适用范围：Linux 系统管理——文件操作、进程管理、网络诊断、性能监控命令速查与源码原理。  一、核心概念 定义：Linux 常用命令是后端开发与线上运维的基础技能，涵盖文件操作、系统管理、网络诊断、进程监控四大类。掌握其使用方法和底层原理，是高效排查线上问题的前提。 关键词：文件操作（ls&#x2F;cd&#x2F;cat&#x2F;find&#x2F;grep）、系统管理（ps&#x2F;top&#x2F;df&#x2F;du&#x2F;free）、网络诊断（netstat&#x2F;ss&#x2F;ping&#x2F;tcpdump）、进程跟踪（stra...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86"><span class="toc-number">1.</span> <span class="toc-text">Linux进程管理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E8%BF%9B%E7%A8%8B%E5%88%9B%E5%BB%BA%E4%B8%8E%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">1.1.</span> <span class="toc-text">一、进程创建与生命周期</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%BF%9B%E7%A8%8B%E6%8F%8F%E8%BF%B0%E7%AC%A6%EF%BC%9Atask-struct"><span class="toc-number">1.1.1.</span> <span class="toc-text">1. 进程描述符：task_struct</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-fork-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">1.1.2.</span> <span class="toc-text">2. fork()系统调用深度解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#a-%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="toc-number">1.1.2.1.</span> <span class="toc-text">a. 执行流程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#b-%E5%86%99%E6%97%B6%E5%A4%8D%E5%88%B6%EF%BC%88Copy-On-Write%EF%BC%89"><span class="toc-number">1.1.2.2.</span> <span class="toc-text">b. 写时复制（Copy-On-Write）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#c-vfork-%E7%9A%84%E7%89%B9%E6%AE%8A%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.1.2.3.</span> <span class="toc-text">c. vfork()的特殊行为</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#d-clone-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="toc-number">1.1.2.3.1.</span> <span class="toc-text">d clone()系统调用</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-exe-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">1.1.3.</span> <span class="toc-text">3. exe()系统调用深度解析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%BD%E6%95%B0%E5%8E%9F%E5%9E%8B"><span class="toc-number">1.2.</span> <span class="toc-text">函数原型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E"><span class="toc-number">1.3.</span> <span class="toc-text">参数说明</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="toc-number">1.4.</span> <span class="toc-text">返回值</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%BD%E6%95%B0%E5%8C%BA%E5%88%AB"><span class="toc-number">1.5.</span> <span class="toc-text">函数区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%BA%BF%E7%A8%8B"><span class="toc-number">1.6.</span> <span class="toc-text">二、线程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%BA%95%E5%B1%82%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.6.1.</span> <span class="toc-text">1. 线程的底层本质</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%BA%BF%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8%EF%BC%88TLS%EF%BC%89%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.6.2.</span> <span class="toc-text">2. 线程本地存储（TLS）实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-TLS%E7%9A%84%E6%A0%B8%E5%BF%83%E7%9B%AE%E6%A0%87"><span class="toc-number">1.6.2.1.</span> <span class="toc-text">1. TLS的核心目标</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-Linux-TLS%E5%AE%9E%E7%8E%B0%E6%9E%B6%E6%9E%84"><span class="toc-number">1.6.2.2.</span> <span class="toc-text">2. Linux TLS实现架构</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E7%BC%96%E8%AF%91%E5%99%A8%E5%B1%82%EF%BC%9A-thread%E5%85%B3%E9%94%AE%E5%AD%97"><span class="toc-number">1.6.2.2.1.</span> <span class="toc-text">一、编译器层：__thread关键字</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-%E5%8F%98%E9%87%8F%E5%A3%B0%E6%98%8E"><span class="toc-number">1.6.2.2.1.1.</span> <span class="toc-text">1. 变量声明</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-%E7%BC%96%E8%AF%91%E5%99%A8%E7%94%9F%E6%88%90%E7%9A%84%E4%BB%A3%E7%A0%81"><span class="toc-number">1.6.2.2.2.</span> <span class="toc-text">2. 编译器生成的代码</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-TLS%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.6.2.2.2.1.</span> <span class="toc-text">1. TLS内存模型</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="toc-number">1.6.2.2.2.2.</span> <span class="toc-text">2. 内存布局</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#3-%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.6.2.2.3.</span> <span class="toc-text">#3. 关键数据结构</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%86%85%E6%A0%B8%E5%B1%82%E6%94%AF%E6%8C%81"><span class="toc-number">1.6.2.2.4.</span> <span class="toc-text">三、内核层支持</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8arch-prctl"><span class="toc-number">1.6.2.2.4.1.</span> <span class="toc-text">1. 系统调用arch_prctl</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-%E5%86%85%E6%A0%B8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.6.2.2.4.2.</span> <span class="toc-text">2. 内核数据结构</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%9B%9B%E3%80%81TLS%E8%AE%BF%E9%97%AE%E5%85%A8%E8%BF%87%E7%A8%8B"><span class="toc-number">1.6.2.2.5.</span> <span class="toc-text">四、TLS访问全过程</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-%E9%9D%99%E6%80%81TLS%E5%8F%98%E9%87%8F%E8%AE%BF%E9%97%AE"><span class="toc-number">1.6.2.2.5.1.</span> <span class="toc-text">1. 静态TLS变量访问</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-%E5%8A%A8%E6%80%81TLS%E5%8F%98%E9%87%8F%E8%AE%BF%E9%97%AE%EF%BC%88dlopen%E6%A8%A1%E5%9D%97%E4%B8%AD%E7%9A%84%E5%8F%98%E9%87%8F%EF%BC%89"><span class="toc-number">1.6.2.2.5.2.</span> <span class="toc-text">2. 动态TLS变量访问（dlopen模块中的变量）</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#3-tls-get-addr-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.6.2.2.5.3.</span> <span class="toc-text">3. __tls_get_addr()实现</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%B0%83%E8%AF%95%E4%B8%8E%E8%AF%8A%E6%96%AD"><span class="toc-number">1.6.2.2.6.</span> <span class="toc-text">五、调试与诊断</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#1-%E6%9F%A5%E7%9C%8B%E7%BA%BF%E7%A8%8BTLS%E5%9C%B0%E5%9D%80"><span class="toc-number">1.6.2.2.6.1.</span> <span class="toc-text">1. 查看线程TLS地址</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#2-%E5%88%86%E6%9E%90TLS%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="toc-number">1.6.2.2.6.2.</span> <span class="toc-text">2. 分析TLS内存布局</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6%E4%B8%8E%E6%9D%83%E8%A1%A1"><span class="toc-number">1.6.2.2.7.</span> <span class="toc-text">六、设计哲学与权衡</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E8%BF%9B%E7%A8%8B%E5%90%8C%E6%AD%A5%E6%9C%BA%E5%88%B6"><span class="toc-number">1.7.</span> <span class="toc-text">三、进程同步机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%EF%BC%88Shared-Memory%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">一、共享内存（Shared Memory）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A"><span class="toc-number">1.7.1.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%9A"><span class="toc-number">1.7.1.2.</span> <span class="toc-text">底层实现：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%8C%E6%AD%A5%E8%A6%81%E6%B1%82%EF%BC%9A"><span class="toc-number">1.7.1.3.</span> <span class="toc-text">同步要求：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E4%BF%A1%E5%8F%B7%E9%87%8F%EF%BC%88Semaphore%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">二、信号量（Semaphore）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-1"><span class="toc-number">1.7.2.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88System-V%EF%BC%89%EF%BC%9A"><span class="toc-number">1.7.2.2.</span> <span class="toc-text">底层实现（System V）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%AE%A1%E9%81%93%EF%BC%88Pipe%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">三、管道（Pipe）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-2"><span class="toc-number">1.7.3.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%9A-1"><span class="toc-number">1.7.3.2.</span> <span class="toc-text">底层实现：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%EF%BC%88Message-Queue%EF%BC%89"><span class="toc-number">1.7.4.</span> <span class="toc-text">四、消息队列（Message Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-3"><span class="toc-number">1.7.4.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88System-V%EF%BC%89%EF%BC%9A-1"><span class="toc-number">1.7.4.2.</span> <span class="toc-text">底层实现（System V）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E4%BA%92%E6%96%A5%E9%94%81%EF%BC%88Mutex%EF%BC%89"><span class="toc-number">1.7.5.</span> <span class="toc-text">五、互斥锁（Mutex）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-4"><span class="toc-number">1.7.5.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88%E5%9F%BA%E4%BA%8Efutex%EF%BC%89%EF%BC%9A"><span class="toc-number">1.7.5.2.</span> <span class="toc-text">底层实现（基于futex）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E8%87%AA%E6%97%8B%E9%94%81%EF%BC%88Spinlock%EF%BC%89"><span class="toc-number">1.7.6.</span> <span class="toc-text">六、自旋锁（Spinlock）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-5"><span class="toc-number">1.7.6.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88x86%EF%BC%89%EF%BC%9A"><span class="toc-number">1.7.6.2.</span> <span class="toc-text">底层实现（x86）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%AF%BB%E5%86%99%E9%94%81%EF%BC%88Reader-Writer-Lock%EF%BC%89"><span class="toc-number">1.7.7.</span> <span class="toc-text">七、读写锁（Reader-Writer Lock）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-6"><span class="toc-number">1.7.7.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A5futex%E4%B8%BA%E5%9F%BA%E7%A1%80%EF%BC%89%EF%BC%9A"><span class="toc-number">1.7.7.2.</span> <span class="toc-text">底层实现（以futex为基础）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E6%AF%94%E4%B8%8E%E9%80%89%E5%9E%8B%E6%8C%87%E5%8D%97"><span class="toc-number">1.7.8.</span> <span class="toc-text">对比与选型指南</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%85%B3%E9%94%AE%E7%82%B9%E6%80%BB%E7%BB%93"><span class="toc-number">1.7.9.</span> <span class="toc-text">底层实现关键点总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E7%AE%97%E6%B3%95"><span class="toc-number">1.8.</span> <span class="toc-text">四、进程调度算法</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#1-%E5%AE%9E%E6%97%B6%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">1. 实时进程调度策略</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-%E5%AE%8C%E5%85%A8%E5%85%AC%E5%B9%B3%E8%B0%83%E5%BA%A6%E5%99%A8%EF%BC%88CFS%EF%BC%89"><span class="toc-number">1.8.2.</span> <span class="toc-text">2. 完全公平调度器（CFS）</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#3-%E5%BD%B1%E5%93%8Dvruntime%E7%9A%84%E5%9B%A0%E7%B4%A0"><span class="toc-number">1.8.3.</span> <span class="toc-text">3. 影响vruntime的因素</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#4-%E8%B0%83%E5%BA%A6%E5%99%A8%E5%86%B3%E7%AD%96%E6%B5%81%E7%A8%8B"><span class="toc-number">1.8.4.</span> <span class="toc-text">4. 调度器决策流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%BF%9B%E7%A8%8B%E7%AE%A1%E7%90%86%E5%B7%A5%E5%85%B7%E4%B8%8E%E8%AF%8A%E6%96%AD"><span class="toc-number">1.9.</span> <span class="toc-text">五、进程管理工具与诊断</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%BF%9B%E7%A8%8B%E7%8A%B6%E6%80%81%E7%9B%91%E6%8E%A7%E5%91%BD%E4%BB%A4"><span class="toc-number">1.9.1.</span> <span class="toc-text">1. 进程状态监控命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E8%B0%83%E8%AF%95%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90"><span class="toc-number">1.9.2.</span> <span class="toc-text">2. 调试与性能分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93%E4%B8%8E%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.10.</span> <span class="toc-text">六、总结与最佳实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%85%B3%E9%94%AE%E7%9F%A5%E8%AF%86%E7%82%B9"><span class="toc-number">1.10.1.</span> <span class="toc-text">1. 关键知识点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%80%A7%E8%83%BD%E8%B0%83%E4%BC%98%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.10.2.</span> <span class="toc-text">2. 性能调优建议</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E5%90%8C%E6%AD%A5%E6%9C%BA%E5%88%B6%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">1.11.</span> <span class="toc-text">进程同步机制深度解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%EF%BC%88Shared-Memory%EF%BC%89-1"><span class="toc-number">1.11.1.</span> <span class="toc-text">一、共享内存（Shared Memory）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-7"><span class="toc-number">1.11.1.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%9A-2"><span class="toc-number">1.11.1.2.</span> <span class="toc-text">底层实现：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%8C%E6%AD%A5%E8%A6%81%E6%B1%82%EF%BC%9A-1"><span class="toc-number">1.11.1.3.</span> <span class="toc-text">同步要求：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E4%BF%A1%E5%8F%B7%E9%87%8F%EF%BC%88Semaphore%EF%BC%89-1"><span class="toc-number">1.11.2.</span> <span class="toc-text">二、信号量（Semaphore）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-8"><span class="toc-number">1.11.2.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88System-V%EF%BC%89%EF%BC%9A-2"><span class="toc-number">1.11.2.2.</span> <span class="toc-text">底层实现（System V）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E7%AE%A1%E9%81%93%EF%BC%88Pipe%EF%BC%89-1"><span class="toc-number">1.11.3.</span> <span class="toc-text">三、管道（Pipe）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-9"><span class="toc-number">1.11.3.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%9A-3"><span class="toc-number">1.11.3.2.</span> <span class="toc-text">底层实现：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%EF%BC%88Message-Queue%EF%BC%89-1"><span class="toc-number">1.11.4.</span> <span class="toc-text">四、消息队列（Message Queue）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-10"><span class="toc-number">1.11.4.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88System-V%EF%BC%89%EF%BC%9A-3"><span class="toc-number">1.11.4.2.</span> <span class="toc-text">底层实现（System V）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E4%BA%92%E6%96%A5%E9%94%81%EF%BC%88Mutex%EF%BC%89-1"><span class="toc-number">1.11.5.</span> <span class="toc-text">五、互斥锁（Mutex）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-11"><span class="toc-number">1.11.5.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88%E5%9F%BA%E4%BA%8Efutex%EF%BC%89%EF%BC%9A-1"><span class="toc-number">1.11.5.2.</span> <span class="toc-text">底层实现（基于futex）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E8%87%AA%E6%97%8B%E9%94%81%EF%BC%88Spinlock%EF%BC%89-1"><span class="toc-number">1.11.6.</span> <span class="toc-text">六、自旋锁（Spinlock）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-12"><span class="toc-number">1.11.6.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88x86%EF%BC%89%EF%BC%9A-1"><span class="toc-number">1.11.6.2.</span> <span class="toc-text">底层实现（x86）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%AF%BB%E5%86%99%E9%94%81%EF%BC%88Reader-Writer-Lock%EF%BC%89-1"><span class="toc-number">1.11.7.</span> <span class="toc-text">七、读写锁（Reader-Writer Lock）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%89%B9%E7%82%B9%EF%BC%9A-13"><span class="toc-number">1.11.7.1.</span> <span class="toc-text">特点：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A5futex%E4%B8%BA%E5%9F%BA%E7%A1%80%EF%BC%89%EF%BC%9A-1"><span class="toc-number">1.11.7.2.</span> <span class="toc-text">底层实现（以futex为基础）：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E6%AF%94%E4%B8%8E%E9%80%89%E5%9E%8B%E6%8C%87%E5%8D%97-1"><span class="toc-number">1.11.8.</span> <span class="toc-text">对比与选型指南</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%85%B3%E9%94%AE%E7%82%B9%E6%80%BB%E7%BB%93-1"><span class="toc-number">1.11.9.</span> <span class="toc-text">底层实现关键点总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.12.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.12.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#CFS-%E8%B0%83%E5%BA%A6%E5%99%A8%E7%9A%84-vruntime-%E4%B8%8E%E7%BA%A2%E9%BB%91%E6%A0%91%E2%80%94%E2%80%94%E6%9C%80%E6%A0%B8%E5%BF%83%E8%B0%83%E5%BA%A6%E9%80%BB%E8%BE%91"><span class="toc-number">1.12.1.1.</span> <span class="toc-text">CFS 调度器的 vruntime 与红黑树——最核心调度逻辑</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#fork-%E7%9A%84-COW-%E5%86%85%E6%A0%B8%E8%B7%AF%E5%BE%84"><span class="toc-number">1.12.1.2.</span> <span class="toc-text">fork() 的 COW 内核路径</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A2%E4%B8%AD-CR3-%E7%9A%84%E5%BC%80%E9%94%80"><span class="toc-number">1.12.1.3.</span> <span class="toc-text">上下文切换中 CR3 的开销</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.12.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.13.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">1.13.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">1.13.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">1.13.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

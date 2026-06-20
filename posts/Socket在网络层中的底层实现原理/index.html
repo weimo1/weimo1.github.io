@@ -1,0 +1,560 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Socket在网络层中的底层实现原理 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Socket在网络层中的底层实现原理 适用范围：Linux 内核网络协议栈分层处理、Socket 系统调用路径（sys_socket→inet_create→tcp_prot）、各网络层中 Socket 的角色与协作、struct socket&#x2F;struct sock&#x2F;struct inet_sock 层次关系  一、核心概念 定义：Socket 在 Linux 内核中体现为三">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Socket在网络层中的底层实现原理">
+<meta property="og:url" content="https://weimo1.github.io/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Socket在网络层中的底层实现原理 适用范围：Linux 内核网络协议栈分层处理、Socket 系统调用路径（sys_socket→inet_create→tcp_prot）、各网络层中 Socket 的角色与协作、struct socket&#x2F;struct sock&#x2F;struct inet_sock 层次关系  一、核心概念 定义：Socket 在 Linux 内核中体现为三">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.552Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Socket在网络层中的底层实现原理",
+  "url": "https://weimo1.github.io/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.552Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Socket在网络层中的底层实现原理',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Socket在网络层中的底层实现原理</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Socket在网络层中的底层实现原理</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.552Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">5.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>19分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Socket在网络层中的底层实现原理"><a href="#Socket在网络层中的底层实现原理" class="headerlink" title="Socket在网络层中的底层实现原理"></a>Socket在网络层中的底层实现原理</h1><blockquote>
+<p>适用范围：Linux 内核网络协议栈分层处理、Socket 系统调用路径（sys_socket→inet_create→tcp_prot）、各网络层中 Socket 的角色与协作、struct socket&#x2F;struct sock&#x2F;struct inet_sock 层次关系</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Socket 在 Linux 内核中体现为三层核心数据结构——<code>struct socket</code>（VFS 层，面向 fd）、<code>struct sock</code>（协议无关网络层）、<code>struct inet_sock</code>（IPv4 特定层）。用户空间的 <code>send()</code>&#x2F;<code>recv()</code> 经过系统调用，逐层经过 TCP→IP→链路层→网卡驱动，每层从 socket 结构体获取必要信息</li>
+<li><strong>关键词</strong>：sys_socket、inet_create、tcp_prot、sk_buff、NAPI、TSO&#x2F;GSO、IP 分片、路由缓存、跨层协作</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>理解内核网络协议栈的分层设计</li>
+<li>网络问题分层排查（哪一层丢包&#x2F;延迟）</li>
+<li>边界：不涉及应用层协议（HTTP 等），聚焦内核协议栈路径</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-Socket-核心数据结构层次"><a href="#2-1-Socket-核心数据结构层次" class="headerlink" title="2.1 Socket 核心数据结构层次"></a>2.1 Socket 核心数据结构层次</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">struct socket          // VFS 层（面向文件描述符）</span><br><span class="line">  ├─ state             // SS_CONNECTED / SS_UNCONNECTED</span><br><span class="line">  ├─ ops → ...         // 协议无关操作（connect/sendmsg/recvmsg）</span><br><span class="line">  └─ *sk ─────────────→ struct sock       // 协议无关网络层</span><br><span class="line">                            ├─ sk_receive_queue  // 接收 sk_buff 队列</span><br><span class="line">                            ├─ sk_write_queue    // 发送 sk_buff 队列</span><br><span class="line">                            └─ sk_prot → ...     // tcp_prot 操作表</span><br><span class="line">                                  │</span><br><span class="line">                                  ▼ (强制转换 inet_sk(sk))</span><br><span class="line">                              struct inet_sock  // IPv4 特定</span><br><span class="line">                                ├─ inet_saddr     // 源 IP</span><br><span class="line">                                ├─ inet_daddr     // 目标 IP</span><br><span class="line">                                ├─ inet_sport     // 源端口</span><br><span class="line">                                └─ inet_dport     // 目标端口</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-2-send-数据从用户态到网卡的完整路径"><a href="#2-2-send-数据从用户态到网卡的完整路径" class="headerlink" title="2.2 send() 数据从用户态到网卡的完整路径"></a>2.2 send() 数据从用户态到网卡的完整路径</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">send() → sys_sendto() → sock_sendmsg()</span><br><span class="line">  → inet_sendmsg() → tcp_sendmsg()       // TCP 层：拷贝用户数据到 sk_write_queue</span><br><span class="line">    → __tcp_push_pending_frames()        // TCP 发送引擎</span><br><span class="line">      → tcp_write_xmit()                 // 拥塞控制检查</span><br><span class="line">        → tcp_transmit_skb()             // 构造 TCP 头</span><br><span class="line">          → ip_queue_xmit()              // IP 层：构造 IP 头 + 路由查找</span><br><span class="line">            → ip_local_out() → dst_output()</span><br><span class="line">              → dev_queue_xmit()         // 链路层：选择网卡队列</span><br><span class="line">                → ndo_start_xmit()       // 网卡驱动：写入 Ring Buffer</span><br></pre></td></tr></table></figure>
+
+<p>关键：用户数据在 <code>tcp_sendmsg</code> 阶段拷贝到内核 sk_buff，之后零拷贝沿协议栈流动。</p>
+<h3 id="2-3-硬件卸载特性"><a href="#2-3-硬件卸载特性" class="headerlink" title="2.3 硬件卸载特性"></a>2.3 硬件卸载特性</h3><table>
+<thead>
+<tr>
+<th>技术</th>
+<th>方向</th>
+<th>原理</th>
+<th>Socket 影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TSO (TCP Segmentation Offload)</td>
+<td>发送</td>
+<td>TCP 发送大段(64KB)给网卡，硬件按 MSS 分片</td>
+<td>一次 tcp_sendmsg 可发大块数据</td>
+</tr>
+<tr>
+<td>GSO (Generic Segmentation Offload)</td>
+<td>发送</td>
+<td>TSO 的软件模拟，内核中切分</td>
+<td>TSO 的 fallback</td>
+</tr>
+<tr>
+<td>GRO (Generic Receive Offload)</td>
+<td>接收</td>
+<td>内核协议栈合并连续小段后进入接收队列</td>
+<td>一次 recv 可能收到大包</td>
+</tr>
+</tbody></table>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-Socket-创建到-Listen-的系统调用"><a href="#3-1-Socket-创建到-Listen-的系统调用" class="headerlink" title="3.1 Socket 创建到 Listen 的系统调用"></a>3.1 Socket 创建到 Listen 的系统调用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 用户空间</span></span><br><span class="line"><span class="type">int</span> sockfd = <span class="built_in">socket</span>(AF_INET, SOCK_STREAM, IPPROTO_TCP);</span><br><span class="line"><span class="built_in">bind</span>(sockfd, (<span class="keyword">struct</span> sockaddr*)&amp;addr, <span class="built_in">sizeof</span>(addr));</span><br><span class="line"><span class="built_in">listen</span>(sockfd, backlog);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 内核调用链：</span></span><br><span class="line"><span class="comment">// sys_socket() → sock_create() → inet_create()</span></span><br><span class="line"><span class="comment">//   → sk_alloc()         // 分配 struct sock</span></span><br><span class="line"><span class="comment">//   → sock_init_data()   // 初始化收发队列</span></span><br><span class="line"><span class="comment">//   → sock_map_fd()      // 分配文件描述符</span></span><br><span class="line"><span class="comment">// sys_bind() → inet_bind() → tcp_v4_get_port()</span></span><br><span class="line"><span class="comment">// sys_listen() → inet_listen() → tcp_set_state(sk, TCP_LISTEN)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-TCP-连接状态转换"><a href="#3-2-TCP-连接状态转换" class="headerlink" title="3.2 TCP 连接状态转换"></a>3.2 TCP 连接状态转换</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 客户端 connect() 路径</span></span><br><span class="line"><span class="built_in">connect</span>() → <span class="built_in">tcp_v4_connect</span>()</span><br><span class="line">  → <span class="built_in">tcp_set_state</span>(sk, TCP_SYN_SENT)      <span class="comment">// 进入 SYN_SENT</span></span><br><span class="line">  → 收到 SYN+ACK → <span class="built_in">tcp_rcv_synsent_state_process</span>()</span><br><span class="line">    → <span class="built_in">tcp_set_state</span>(sk, TCP_ESTABLISHED)  <span class="comment">// 进入 ESTABLISHED</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 服务端 accept() 路径</span></span><br><span class="line"><span class="built_in">listen</span>() → <span class="built_in">tcp_set_state</span>(sk, TCP_LISTEN)</span><br><span class="line">  → 收到 SYN → 创建 request_sock（SYN_RECV 半连接）</span><br><span class="line">    → <span class="built_in">inet_csk_clone_lock</span>()              <span class="comment">// 从 listen socket 克隆子 socket</span></span><br><span class="line">      → <span class="built_in">tcp_set_state</span>(newsk, TCP_SYN_RECV)</span><br><span class="line">  → 收到第三次 ACK → <span class="built_in">tcp_set_state</span>(newsk, TCP_ESTABLISHED)</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-ICMP-错误如何通过-Socket-返回应用"><a href="#4-1-ICMP-错误如何通过-Socket-返回应用" class="headerlink" title="4.1 ICMP 错误如何通过 Socket 返回应用"></a>4.1 ICMP 错误如何通过 Socket 返回应用</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 路径：ICMP 不可达 → TCP 层 → socket 错误队列</span></span><br><span class="line">icmp_unreach()</span><br><span class="line">  → icmp_socket_deliver()</span><br><span class="line">    → tcp_v4_err()</span><br><span class="line">      → sk-&gt;sk_err = EHOSTUNREACH      <span class="comment">// 设置 socket 错误</span></span><br><span class="line">      → sk-&gt;sk_error_report(sk)          <span class="comment">// 唤醒等待的应用</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 应用获取错误</span></span><br><span class="line"><span class="type">int</span> err;</span><br><span class="line"><span class="type">socklen_t</span> len = <span class="keyword">sizeof</span>(err);</span><br><span class="line">getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &amp;err, &amp;len);</span><br><span class="line"><span class="comment">// sk_err 不会因 read 清除，需显式 getsockopt(SO_ERROR)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-TCP-拥塞窗口对-IP-层发送的控制"><a href="#4-2-TCP-拥塞窗口对-IP-层发送的控制" class="headerlink" title="4.2 TCP 拥塞窗口对 IP 层发送的控制"></a>4.2 TCP 拥塞窗口对 IP 层发送的控制</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tcp_write_xmit() 中的拥塞控制</span></span><br><span class="line"><span class="keyword">if</span> (tcp_packets_in_flight(tp) &gt;= tp-&gt;snd_cwnd) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;  <span class="comment">// 暂停调用 IP 层 ip_queue_xmit</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// TCP 层的拥塞控制直接决定何时调用 IP 层发送</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-PMTUD（路径-MTU-发现）与-MSS-动态调整"><a href="#4-3-PMTUD（路径-MTU-发现）与-MSS-动态调整" class="headerlink" title="4.3 PMTUD（路径 MTU 发现）与 MSS 动态调整"></a>4.3 PMTUD（路径 MTU 发现）与 MSS 动态调整</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// IP 层 MTU 信息影响 TCP MSS</span></span><br><span class="line">tcp_sync_mss(sk, pmtu) &#123;</span><br><span class="line">    mss_now = pmtu - <span class="keyword">sizeof</span>(<span class="keyword">struct</span> tcphdr) - <span class="keyword">sizeof</span>(<span class="keyword">struct</span> iphdr);</span><br><span class="line">    tp-&gt;mss_cache = mss_now;  <span class="comment">// MSS = PMTU - 40</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 发送大包设 DF 标志，收到 ICMP 不可达后缩小 PMTU</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-与其他主题的关联"><a href="#4-4-与其他主题的关联" class="headerlink" title="4.4 与其他主题的关联"></a>4.4 与其他主题的关联</h3><table>
+<thead>
+<tr>
+<th>关联主题</th>
+<th>关联点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>epoll</td>
+<td>epoll 监视 socket fd，收包路径触发回调</td>
+</tr>
+<tr>
+<td>序列号</td>
+<td>TCP 层在发送&#x2F;接收路径中管理序列号</td>
+</tr>
+<tr>
+<td>发送&#x2F;接收队列</td>
+<td>数据路径的关键中转站</td>
+</tr>
+<tr>
+<td>零拷贝</td>
+<td>sendfile 绕过 socket 层的用户空间拷贝</td>
+</tr>
+</tbody></table>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-inet-create-协议栈初始化"><a href="#5-1-inet-create-协议栈初始化" class="headerlink" title="5.1 inet_create 协议栈初始化"></a>5.1 inet_create 协议栈初始化</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/ipv4/af_inet.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">inet_create</span><span class="params">(<span class="keyword">struct</span> net *net, <span class="keyword">struct</span> socket *sock, <span class="type">int</span> protocol, <span class="type">int</span> kern)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span>;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 1. 根据协议类型查找协议操作表</span></span><br><span class="line">    list_for_each_entry_rcu(answer, &amp;inetsw[sock-&gt;type], <span class="built_in">list</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (protocol == answer-&gt;protocol) <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 2. 分配 struct sock</span></span><br><span class="line">    sk = sk_alloc(net, PF_INET, GFP_KERNEL, answer_prot, kern);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 初始化 socket 与 sock 的关联</span></span><br><span class="line">    sock_init_data(sock, sk);</span><br><span class="line">    sk-&gt;sk_protocol = protocol;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 4. 设置协议族特定的操作表</span></span><br><span class="line">    sock-&gt;ops = answer-&gt;ops;          <span class="comment">// inet_stream_ops</span></span><br><span class="line">    sk-&gt;sk_prot = answer-&gt;prot;       <span class="comment">// tcp_prot</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-NAPI-机制如何减少中-断开销"><a href="#5-2-NAPI-机制如何减少中-断开销" class="headerlink" title="5.2 NAPI 机制如何减少中 断开销"></a>5.2 NAPI 机制如何减少中 断开销</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/core/dev.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">net_rx_action</span><span class="params">(<span class="keyword">struct</span> softirq_action *h)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">softnet_data</span> *<span class="title">sd</span> =</span> this_cpu_ptr(&amp;softnet_data);</span><br><span class="line">    <span class="type">int</span> budget = netdev_budget;  <span class="comment">// 默认 300 包</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span> (budget &gt; <span class="number">0</span> &amp;&amp; !list_empty(&amp;sd-&gt;poll_list)) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">napi_struct</span> *<span class="title">n</span> =</span> list_first_entry(&amp;sd-&gt;poll_list, ...);</span><br><span class="line">        <span class="type">int</span> work = n-&gt;poll(n, weight);  <span class="comment">// 批量收割数据包</span></span><br><span class="line">        budget -= work;</span><br><span class="line">        <span class="keyword">if</span> (work &lt; weight || budget &lt;= <span class="number">0</span>)</span><br><span class="line">            list_del_init(&amp;n-&gt;poll_list);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>NAPI 核心思想：<strong>中断 + 轮询混合</strong>。第一个包触发硬件中断 → 中断处理程序关闭中断、加入 poll_list、触发软中断 → <code>net_rx_action</code> 在软中断上下文批量收割（默认 300 包&#x2F;次）→ 处理完毕重新开启中断。</p>
+<h3 id="5-3-实践感悟"><a href="#5-3-实践感悟" class="headerlink" title="5.3 实践感悟"></a>5.3 实践感悟</h3><ol>
+<li><p><strong>分层排查思维</strong>：<code>send()</code> 成功但对端未收到？分层排查：应用层（数据格式）→ TCP 层（检查重传计数，可能对端窗口为 0 或丢包）→ IP 层（路由可达性，ping）→ 链路层（ARP 表、网卡统计）。</p>
+</li>
+<li><p><strong>struct socket vs struct sock 的关系</strong>：<code>struct socket</code> 是 VFS 层的抽象（面向 open&#x2F;read&#x2F;write），<code>struct sock</code> 是网络层的核心（面向协议状态机）。所有协议族共用 <code>struct sock</code>，通过 <code>sk-&gt;sk_prot</code> 函数指针表实现多态。</p>
+</li>
+<li><p><strong>TSO&#x2F;GSO 的实践影响</strong>：启用 TSO 后 <code>tcpdump</code> 可能看到 64KB 的大包，但线路上实际是多个 MSS 大小的小包——TSO 卸载给网卡硬件分片。</p>
+</li>
+<li><p><strong>sk_buff 的引用计数陷阱</strong>：sk_buff 被多处引用（发送队列&#x2F;重传队列&#x2F;释放等待），通过 <code>skb-&gt;users</code> 管理。过早释放导致 UAF，忘记释放导致内存泄漏。</p>
+</li>
+<li><p><strong>connect() 成功后 send() 的误区</strong>：<code>connect()</code> 只完成三次握手，<code>send()</code> 数据可能仍在内核发送缓冲区中（被拥塞窗口延迟），真正到达对端需要 ACK 确认。</p>
+</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><h3 id="1-Socket创建阶段"><a href="#1-Socket创建阶段" class="headerlink" title="1. Socket创建阶段"></a>1. Socket创建阶段</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 用户空间调用</span><br><span class="line">int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);</span><br><span class="line"></span><br><span class="line">// 内核处理流程</span><br><span class="line">sys_socket() -&gt; sock_create() -&gt; inet_create() -&gt; tcp_prot.init()</span><br></pre></td></tr></table></figure>
+
+<p><strong>内核操作：</strong></p>
+<ul>
+<li>分配<code>struct socket</code>和<code>struct sock</code>结构体</li>
+<li>初始化协议相关的函数指针表</li>
+<li>建立用户空间文件描述符与内核socket对象的映射</li>
+</ul>
+<h3 id="2-地址绑定与监听"><a href="#2-地址绑定与监听" class="headerlink" title="2. 地址绑定与监听"></a>2. 地址绑定与监听</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">bind(sockfd, &amp;addr, sizeof(addr));</span><br><span class="line">listen(sockfd, backlog);</span><br><span class="line"></span><br><span class="line">// 内核实现</span><br><span class="line">inet_bind() -&gt; tcp_v4_get_port() -&gt; __inet_hash_connect()</span><br></pre></td></tr></table></figure>
+
+<h2 id="二、应用层与Socket接口"><a href="#二、应用层与Socket接口" class="headerlink" title="二、应用层与Socket接口"></a>二、应用层与Socket接口</h2><h3 id="Socket-API封装"><a href="#Socket-API封装" class="headerlink" title="Socket API封装"></a>Socket API封装</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// 应用层看到的接口</span><br><span class="line">ssize_t send(int sockfd, const void *buf, size_t len, int flags);</span><br><span class="line">ssize_t recv(int sockfd, void *buf, size_t len, int flags);</span><br><span class="line"></span><br><span class="line">// 内核中的实际处理</span><br><span class="line">sys_sendto() -&gt; sock_sendmsg() -&gt; inet_sendmsg() -&gt; tcp_sendmsg()</span><br><span class="line">sys_recvfrom() -&gt; sock_recvmsg() -&gt; inet_recvmsg() -&gt; tcp_recvmsg()</span><br></pre></td></tr></table></figure>
+
+<p><strong>底层操作：</strong></p>
+<ul>
+<li><strong>缓冲区管理</strong>：用户数据复制到内核发送缓冲区</li>
+<li><strong>协议选择</strong>：根据socket类型选择相应协议栈</li>
+<li><strong>参数验证</strong>：检查地址、长度、标志位等参数合法性</li>
+</ul>
+<h2 id="三、传输层（TCP）中的Socket处理"><a href="#三、传输层（TCP）中的Socket处理" class="headerlink" title="三、传输层（TCP）中的Socket处理"></a>三、传输层（TCP）中的Socket处理</h2><h3 id="1-连接建立过程"><a href="#1-连接建立过程" class="headerlink" title="1. 连接建立过程"></a>1. 连接建立过程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// 客户端connect流程</span><br><span class="line">connect() -&gt; tcp_v4_connect() -&gt; ip_route_output_flow()</span><br><span class="line"></span><br><span class="line">// 服务端accept流程  </span><br><span class="line">accept() -&gt; inet_csk_accept() -&gt; tcp_check_req() -&gt; tcp_create_openreq_child()</span><br></pre></td></tr></table></figure>
+
+<p><strong>TCP层Socket操作：</strong></p>
+<ul>
+<li><strong>状态管理</strong>：维护TCP连接状态机(CLOSED→SYN_SENT→ESTABLISHED)</li>
+<li><strong>序列号分配</strong>：为每个连接分配初始序列号</li>
+<li><strong>端口管理</strong>：绑定本地端口，管理端口哈希表</li>
+</ul>
+<h3 id="2-数据传输机制"><a href="#2-数据传输机制" class="headerlink" title="2. 数据传输机制"></a>2. 数据传输机制</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// TCP发送数据路径</span><br><span class="line">tcp_sendmsg() &#123;</span><br><span class="line">    // 1. 检查连接状态</span><br><span class="line">    if (sk-&gt;sk_state != TCP_ESTABLISHED)</span><br><span class="line">        return -ENOTCONN;</span><br><span class="line">    </span><br><span class="line">    // 2. 拷贝用户数据到发送队列</span><br><span class="line">    skb = sk_stream_alloc_skb(sk, select_size(sk));</span><br><span class="line">    skb_copy_from_iter(skb, from, copy);</span><br><span class="line">    </span><br><span class="line">    // 3. 添加到发送队列</span><br><span class="line">    tcp_queue_skb(sk, skb);</span><br><span class="line">    </span><br><span class="line">    // 4. 触发发送</span><br><span class="line">    __tcp_push_pending_frames(sk, mss_now);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键功能：</strong></p>
+<ul>
+<li><strong>流量控制</strong>：根据接收方窗口大小调整发送速率</li>
+<li><strong>拥塞控制</strong>：实现慢启动、拥塞避免算法</li>
+<li><strong>可靠传输</strong>：序列号确认、超时重传机制</li>
+<li><strong>数据分段</strong>：将应用数据按MSS分割成TCP段</li>
+</ul>
+<h3 id="3-接收数据处理"><a href="#3-接收数据处理" class="headerlink" title="3. 接收数据处理"></a>3. 接收数据处理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// TCP接收数据路径</span><br><span class="line">tcp_rcv_established() -&gt; tcp_data_queue() -&gt; sk_data_ready()</span><br><span class="line"></span><br><span class="line">// 用户读取数据</span><br><span class="line">tcp_recvmsg() &#123;</span><br><span class="line">    // 从接收队列复制数据到用户缓冲区</span><br><span class="line">    skb_copy_datagram_msg(skb, offset, msg, used);</span><br><span class="line">    // 更新接收窗口</span><br><span class="line">    tcp_rcv_space_adjust(sk);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、网络层（IP）中的Socket处理"><a href="#四、网络层（IP）中的Socket处理" class="headerlink" title="四、网络层（IP）中的Socket处理"></a>四、网络层（IP）中的Socket处理</h2><h3 id="1-路由决策"><a href="#1-路由决策" class="headerlink" title="1. 路由决策"></a>1. 路由决策</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// TCP调用IP层发送</span><br><span class="line">tcp_transmit_skb() -&gt; ip_queue_xmit() -&gt; ip_route_output_flow()</span><br><span class="line"></span><br><span class="line">struct rtable *ip_route_output_flow(struct flowi4 *fl4) &#123;</span><br><span class="line">    // 1. 检查路由缓存</span><br><span class="line">    struct rtable *rt = dst_cache_get(&amp;fl4-&gt;dst_cache);</span><br><span class="line">    </span><br><span class="line">    // 2. 查询FIB路由表</span><br><span class="line">    if (!rt) &#123;</span><br><span class="line">        fib_lookup(net, fl4, &amp;res);</span><br><span class="line">        rt = rt_dst_alloc(res.fi-&gt;fib_dev);</span><br><span class="line">    &#125;</span><br><span class="line">    return rt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>IP层Socket相关操作：</strong></p>
+<ul>
+<li><strong>路由查找</strong>：确定数据包的下一跳地址和出接口</li>
+<li><strong>MTU发现</strong>：确定路径最大传输单元，影响TCP分段</li>
+<li><strong>服务质量</strong>：处理TOS&#x2F;DSCP字段，影响数据包优先级</li>
+</ul>
+<h3 id="2-IP数据包构造"><a href="#2-IP数据包构造" class="headerlink" title="2. IP数据包构造"></a>2. IP数据包构造</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// IP头部构造</span><br><span class="line">int ip_queue_xmit(struct sock *sk, struct sk_buff *skb) &#123;</span><br><span class="line">    struct iphdr *iph = ip_hdr(skb);</span><br><span class="line">    </span><br><span class="line">    // 从socket获取IP选项</span><br><span class="line">    iph-&gt;protocol = sk-&gt;sk_protocol;  // IPPROTO_TCP</span><br><span class="line">    iph-&gt;saddr = inet-&gt;inet_saddr;    // 源IP地址</span><br><span class="line">    iph-&gt;daddr = inet-&gt;inet_daddr;    // 目标IP地址</span><br><span class="line">    </span><br><span class="line">    // 设置TTL</span><br><span class="line">    iph-&gt;ttl = ip_select_ttl(inet, &amp;rt-&gt;dst);</span><br><span class="line">    </span><br><span class="line">    return ip_local_out(net, sk, skb);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-分片处理"><a href="#3-分片处理" class="headerlink" title="3. 分片处理"></a>3. 分片处理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">// IP层分片（当TCP段超过MTU时）</span><br><span class="line">ip_fragment() &#123;</span><br><span class="line">    // 计算分片数量</span><br><span class="line">    mtu = rt-&gt;dst.dev-&gt;mtu;</span><br><span class="line">    hlen = iph-&gt;ihl * 4;</span><br><span class="line">    </span><br><span class="line">    // 创建分片</span><br><span class="line">    while (left &gt; 0) &#123;</span><br><span class="line">        len = left &gt; mtu ? mtu : left;</span><br><span class="line">        frag = ip_frag_create(skb, offset, len);</span><br><span class="line">        output(net, sk, frag);</span><br><span class="line">        left -= len;</span><br><span class="line">        offset += len;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、数据链路层中的Socket影响"><a href="#五、数据链路层中的Socket影响" class="headerlink" title="五、数据链路层中的Socket影响"></a>五、数据链路层中的Socket影响</h2><h3 id="1-网络设备选择"><a href="#1-网络设备选择" class="headerlink" title="1. 网络设备选择"></a>1. 网络设备选择</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// 根据路由结果选择网络接口</span><br><span class="line">dev_queue_xmit(skb) &#123;</span><br><span class="line">    // 从IP路由结果获取出接口</span><br><span class="line">    struct net_device *dev = skb-&gt;dev;</span><br><span class="line">    </span><br><span class="line">    // 调用设备驱动发送</span><br><span class="line">    dev-&gt;netdev_ops-&gt;ndo_start_xmit(skb, dev);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-硬件特性优化"><a href="#2-硬件特性优化" class="headerlink" title="2. 硬件特性优化"></a>2. 硬件特性优化</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// 利用网卡特性优化</span><br><span class="line">if (dev-&gt;features &amp; NETIF_F_TSO) &#123;</span><br><span class="line">    // TCP分段卸载到网卡</span><br><span class="line">    tcp_tso_segs(skb, mss_now);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if (dev-&gt;features &amp; NETIF_F_HW_CSUM) &#123;</span><br><span class="line">    // 校验和计算卸载到网卡</span><br><span class="line">    skb-&gt;ip_summed = CHECKSUM_PARTIAL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、关键数据结构关系"><a href="#六、关键数据结构关系" class="headerlink" title="六、关键数据结构关系"></a>六、关键数据结构关系</h2><h3 id="Socket核心结构体"><a href="#Socket核心结构体" class="headerlink" title="Socket核心结构体"></a>Socket核心结构体</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">struct socket &#123;</span><br><span class="line">    socket_state        state;      // socket状态</span><br><span class="line">    struct sock        *sk;         // 协议相关socket结构</span><br><span class="line">    const struct proto_ops *ops;    // 协议操作函数表</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct sock &#123;</span><br><span class="line">    struct sock_common  __sk_common;</span><br><span class="line">    struct sk_buff_head sk_receive_queue;  // 接收队列</span><br><span class="line">    struct sk_buff_head sk_write_queue;    // 发送队列</span><br><span class="line">    struct dst_entry   *sk_dst_cache;      // 路由缓存</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct inet_sock &#123;</span><br><span class="line">    struct sock         sk;</span><br><span class="line">    __be32             inet_saddr;   // 源IP地址  </span><br><span class="line">    __be16             inet_sport;   // 源端口</span><br><span class="line">    __be32             inet_daddr;   // 目标IP地址</span><br><span class="line">    __be16             inet_dport;   // 目标端口</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="七、跨层协作机制"><a href="#七、跨层协作机制" class="headerlink" title="七、跨层协作机制"></a>七、跨层协作机制</h2><h3 id="1-错误传播"><a href="#1-错误传播" class="headerlink" title="1. 错误传播"></a>1. 错误传播</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// IP层错误通过ICMP传递给TCP</span><br><span class="line">icmp_unreach() -&gt; tcp_v4_err() -&gt; sk-&gt;sk_error_queue</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-流量控制协作"><a href="#2-流量控制协作" class="headerlink" title="2. 流量控制协作"></a>2. 流量控制协作</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">// TCP拥塞窗口影响IP层发送</span><br><span class="line">if (tcp_packets_in_flight(tp) &gt;= tp-&gt;snd_cwnd)</span><br><span class="line">    return false;  // 延迟IP层发送</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-路径MTU发现"><a href="#3-路径MTU发现" class="headerlink" title="3. 路径MTU发现"></a>3. 路径MTU发现</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// IP层MTU信息影响TCP MSS</span><br><span class="line">tcp_sync_mss(sk, pmtu) &#123;</span><br><span class="line">    mss_now = pmtu - sizeof(struct tcphdr) - sizeof(struct iphdr);</span><br><span class="line">    tp-&gt;mss_cache = mss_now;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="八、性能优化机制"><a href="#八、性能优化机制" class="headerlink" title="八、性能优化机制"></a>八、性能优化机制</h2><h3 id="1-零拷贝技术"><a href="#1-零拷贝技术" class="headerlink" title="1. 零拷贝技术"></a>1. 零拷贝技术</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// sendfile系统调用避免用户空间拷贝</span><br><span class="line">splice_to_pipe() -&gt; pipe_to_sendpage() -&gt; tcp_sendpage()</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-批量处理"><a href="#2-批量处理" class="headerlink" title="2. 批量处理"></a>2. 批量处理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// NAPI网卡中断处理</span><br><span class="line">net_rx_action() &#123;</span><br><span class="line">    while (!list_empty(&amp;sd-&gt;poll_list)) &#123;</span><br><span class="line">        work = n-&gt;poll(n, weight);  // 批量处理多个数据包</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-CPU亲和性"><a href="#3-CPU亲和性" class="headerlink" title="3. CPU亲和性"></a>3. CPU亲和性</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">// RSS（接收端扩展）将不同连接分配到不同CPU</span><br><span class="line">rps_map = rcu_dereference(rxqueue-&gt;rps_map);</span><br><span class="line">cpu = map-&gt;cpus[reciprocal_scale(hash, map-&gt;len)];</span><br></pre></td></tr></table></figure>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Socket在各网络层的底层工作体现了分层设计的精髓：</p>
+<ul>
+<li><strong>应用层</strong>：提供统一的API接口，屏蔽底层复杂性</li>
+<li><strong>传输层</strong>：实现端到端可靠通信，管理连接状态和数据流</li>
+<li><strong>网络层</strong>：处理主机间路由，实现跨网络通信</li>
+<li><strong>数据链路层</strong>：利用硬件特性优化传输性能</li>
+</ul>
+<p>每一层都从socket结构体中获取必要信息，同时将处理结果反馈给上层，形成了高效的协作机制。</p>
+<h2 id="Socket在各层的核心作用"><a href="#Socket在各层的核心作用" class="headerlink" title="Socket在各层的核心作用"></a>Socket在各层的核心作用</h2><p><strong>1. 系统调用层面</strong></p>
+<ul>
+<li>Socket实际上是内核中<code>struct socket</code>和<code>struct sock</code>结构体在用户空间的句柄</li>
+<li>每个socket操作都会经过系统调用进入内核，触发相应的协议栈处理</li>
+</ul>
+<p><strong>2. 状态同步机制</strong></p>
+<ul>
+<li>Socket状态（如TCP的ESTABLISHED状态）会影响所有网络层的处理逻辑</li>
+<li>IP层的路由信息会缓存在socket结构中，避免重复查找</li>
+<li>网络设备的特性（如TSO、校验和卸载）通过socket传递给上层协议</li>
+</ul>
+<p><strong>3. 缓冲区管理</strong></p>
+<ul>
+<li>发送缓冲区：应用数据先进入socket发送缓冲区，再由TCP分段处理</li>
+<li>接收缓冲区：IP重组完成的数据包进入socket接收缓冲区等待应用读取</li>
+<li>缓冲区大小直接影响TCP的流量控制窗口计算</li>
+</ul>
+<p><strong>4. 错误处理链路</strong></p>
+<ul>
+<li>底层网络错误（如ICMP不可达）会通过socket的错误队列传递给应用</li>
+<li>每一层的错误都有对应的错误码，最终通过socket API返回给用户程序</li>
+</ul>
+<h2 id="六、面试准备-1"><a href="#六、面试准备-1" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A-1"><a href="#6-1-面试-Q-A-1" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: socket 系统调用在内核中是如何被处理的？</strong></p>
+<p>以 <code>socket(AF_INET, SOCK_STREAM, 0)</code> 为例，调用链为：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sys_socket() → sock_create() → inet_create()</span><br><span class="line">  → sk_alloc()        // 分配 struct sock</span><br><span class="line">  → sock_init_data()   // 初始化接收/发送队列</span><br><span class="line">  → 关联 tcp_prot 协议操作函数表</span><br><span class="line">  → sock_map_fd()      // 分配文件描述符</span><br></pre></td></tr></table></figure>
+<p>核心：为每个 socket 分配 <code>struct socket</code> + <code>struct sock</code>（协议无关），并在 <code>inet_create</code> 中绑定 TCP 协议的具体操作函数集。</p>
+<p><strong>Q2: send() 数据从用户态到网卡的完整路径是什么？</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">send() → sys_sendto() → sock_sendmsg() → inet_sendmsg() → tcp_sendmsg()</span><br><span class="line">  → 拷贝用户数据到 sk_write_queue 中的 sk_buff</span><br><span class="line">  → __tcp_push_pending_frames()          // TCP 发送引擎</span><br><span class="line">    → tcp_write_xmit()                   // 拥塞控制检查</span><br><span class="line">    → tcp_transmit_skb()                 // 构造 TCP 头</span><br><span class="line">      → ip_queue_xmit()                  // 构造 IP 头 + 路由查找</span><br><span class="line">        → ip_local_out() → dst_output()</span><br><span class="line">          → dev_queue_xmit()             // 网卡驱动发送</span><br></pre></td></tr></table></figure>
+<p>关键：用户数据在 <code>tcp_sendmsg</code> 阶段拷贝到内核 sk_buff，之后零拷贝沿协议栈流动。</p>
+<p><strong>Q3: socket 接收缓冲区与接收队列的区别与联系？</strong></p>
+<ul>
+<li><strong>接收队列（sk_receive_queue）</strong>：存放已收到但尚未被用户读取的完整 TCP 段（sk_buff 链表）。顺序按 TCP 序列号排列。</li>
+<li><strong>接收缓冲区</strong>：逻辑概念，指应用通过 <code>recv()</code> 读数据的那块用户空间内存。</li>
+<li><strong>关系</strong>：内核从 sk_receive_queue 取出 sk_buff，<code>skb_copy_datagram_msg()</code> 将数据拷贝到用户 recv 缓冲区，拷贝完成后标记该 sk_buff 可释放。</li>
+<li><strong>乱序包</strong>：接收队列中 sk_buff 保证有序；未按序到达的段放入 <code>out_of_order_queue</code>，等待空洞补齐后再移入。</li>
+</ul>
+<p><strong>Q4: TCP 连接从 SYN 到 ESTABLISHED，socket 状态如何变化？</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 客户端 connect() 流程</span></span><br><span class="line">connect() → tcp_v4_connect()</span><br><span class="line">  → tcp_set_state(sk, TCP_SYN_SENT)      <span class="comment">// 进入 SYN_SENT</span></span><br><span class="line">  → tcp_connect() 发送 SYN</span><br><span class="line">  → tcp_rcv_synsent_state_process()      <span class="comment">// 收到 SYN+ACK</span></span><br><span class="line">    → tcp_send_ack()                     <span class="comment">// 发送 ACK</span></span><br><span class="line">    → tcp_set_state(sk, TCP_ESTABLISHED) <span class="comment">// 进入 ESTABLISHED</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 服务端 accept() 流程</span></span><br><span class="line">listen() → inet_listen()</span><br><span class="line">  → tcp_set_state(sk, TCP_LISTEN)        <span class="comment">// 进入 LISTEN</span></span><br><span class="line">  → 收到 SYN 后创建 request_sock (SYN_RECV 状态的半连接)</span><br><span class="line">  → tcp_v4_do_rcv() → tcp_rcv_state_process()</span><br><span class="line">    → tcp_v4_syn_recv_sock()             <span class="comment">// 创建子 socket</span></span><br><span class="line">      → inet_csk_clone_lock()            <span class="comment">// 从 listen socket 克隆</span></span><br><span class="line">      → tcp_set_state(newsk, TCP_SYN_RECV)</span><br><span class="line">  → 收到第三次 ACK</span><br><span class="line">    → tcp_set_state(newsk, TCP_ESTABLISHED)</span><br><span class="line">    → inet_csk_complete_hashdance()      <span class="comment">// 移入 accept 队列</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Q5: IP 分片与 TCP MSS 的关系及其对 socket 的影响？</strong></p>
+<ul>
+<li><strong>MSS</strong>（Maximum Segment Size）：TCP 层协商的最大数据段大小，计算公式 <code>MSS = MTU - IP头(20) - TCP头(20)</code>。TCP 保证发出的段 ≤ MSS，避免在 IP 层被分片。</li>
+<li><strong>IP 分片</strong>：如果 TCP 段实际超出了路径 MTU（如路径中间有小 MTU 链路），IP 层会对其分片。分片后重组在接收端 IP 层完成，对 TCP&#x2F;socket 透明。</li>
+<li><strong>socket 层面的影响</strong>：<ul>
+<li>PMTUD（路径 MTU 发现）：<code>tcp_sync_mss()</code> 根据探测到的 PMTU 动态调整 MSS，socket 的 <code>sk_dst_cache</code> 缓存路由和 MTU 信息。</li>
+<li>分片丢包：任意一个分片丢失，整个 IP 数据报不可用，TCP 需重传整个段。因此 TCP 极力避免 IP 层分片。</li>
+</ul>
+</li>
+</ul>
+<p><strong>Q6: 内核网络协议栈如何利用网卡硬件卸载特性（TSO&#x2F;GSO&#x2F;LRO&#x2F;GRO）优化 socket 性能？</strong></p>
+<table>
+<thead>
+<tr>
+<th>技术</th>
+<th>方向</th>
+<th>原理</th>
+<th>对 socket 的影响</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TSO (TCP Segmentation Offload)</td>
+<td>发送</td>
+<td>TCP 发送大段（64KB）给网卡，由网卡硬件按 MSS 分片</td>
+<td>socket 一次 tcp_sendmsg 可发大块数据</td>
+</tr>
+<tr>
+<td>GSO (Generic Segmentation Offload)</td>
+<td>发送</td>
+<td>TSO 的软件模拟版，在内核中切分而非网卡</td>
+<td>作为 TSO 的 fallback</td>
+</tr>
+<tr>
+<td>LRO (Large Receive Offload)</td>
+<td>接收</td>
+<td>网卡硬件合并多个小段为大段再交内核</td>
+<td>socket 一次 recv 收到更多数据</td>
+</tr>
+<tr>
+<td>GRO (Generic Receive Offload)</td>
+<td>接收</td>
+<td>LRO 的软件版，内核协议栈自动合并连续小段</td>
+<td>NAPI 收包时合并，进入 sk_receive_queue 前合并</td>
+</tr>
+</tbody></table>
+<p><strong>Q7: ICMP 错误如何通过 socket 返回到应用程序？</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 路径：ICMP 不可达 → TCP 层 → socket 错误队列</span></span><br><span class="line">icmp_unreach()</span><br><span class="line">  → icmp_socket_deliver()</span><br><span class="line">    → raw_icmp_error() / tcp_v4_err()</span><br><span class="line">      → sk-&gt;sk_err = 错误码（如 EHOSTUNREACH）</span><br><span class="line">      → sk-&gt;sk_error_report(sk)          <span class="comment">// 唤醒等待的应用</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 应用通过 getsockopt 获取：</span></span><br><span class="line"><span class="type">int</span> err;</span><br><span class="line"><span class="type">socklen_t</span> len = <span class="keyword">sizeof</span>(err);</span><br><span class="line">getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &amp;err, &amp;len);</span><br></pre></td></tr></table></figure>
+<p>关键：<code>sk-&gt;sk_err</code> 是 socket 的错误缓存，不会因为应用 read 而清除，需显式 <code>getsockopt(SO_ERROR)</code>。</p>
+<p><strong>Q8: 跨层协作中，TCP 拥塞窗口如何影响 IP 层的数据发送？</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tcp_write_xmit() 中的拥塞控制检查</span></span><br><span class="line"><span class="type">bool</span> <span class="title function_">tcp_write_xmit</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="type">unsigned</span> <span class="type">int</span> mss_now, ...)</span> &#123;</span><br><span class="line">    <span class="keyword">while</span> ((skb = tcp_send_head(sk))) &#123;</span><br><span class="line">        tcp_cwnd_validate(sk, skb);      <span class="comment">// 校准拥塞窗口</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 关键检查：已发出且未确认的段数 ≥ 拥塞窗口</span></span><br><span class="line">        <span class="keyword">if</span> (tcp_packets_in_flight(tp) &gt;= tp-&gt;snd_cwnd) &#123;</span><br><span class="line">            <span class="comment">// 暂停发送，等待 ACK 扩大窗口</span></span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        tcp_transmit_skb(sk, skb, ...);  <span class="comment">// 通过 IP 层发送</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>TCP 层的拥塞控制直接决定何时调用 IP 层的 <code>ip_queue_xmit</code>，保证网络不会被过量数据淹没。</p>
+<p><strong>Q9: <code>struct socket</code>, <code>struct sock</code>, <code>struct inet_sock</code> 三者的层次关系？</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">struct socket          // VFS 层（面向文件描述符）</span><br><span class="line">  ├─ state             // SS_CONNECTED / SS_UNCONNECTED</span><br><span class="line">  ├─ ops→ ...          // 协议不可知操作（connect/sendmsg/recvmsg）</span><br><span class="line">  └─ *sk ─────────────→ struct sock       // 协议无关网络层</span><br><span class="line">                            ├─ sk_receive_queue  // 接收 sk_buff 队列</span><br><span class="line">                            ├─ sk_write_queue    // 发送 sk_buff 队列</span><br><span class="line">                            ├─ sk_protocol       // IPPROTO_TCP</span><br><span class="line">                            └─ sk_prot→ ...      // tcp_prot 操作表</span><br><span class="line">                                  │</span><br><span class="line">                                  ▼ (强制转换)</span><br><span class="line">                              struct inet_sock  // IPv4 特定</span><br><span class="line">                                ├─ inet_saddr     // 源 IP</span><br><span class="line">                                ├─ inet_daddr     // 目标 IP</span><br><span class="line">                                ├─ inet_sport     // 源端口</span><br><span class="line">                                └─ inet_dport     // 目标端口</span><br></pre></td></tr></table></figure>
+<p><code>struct sock</code> → <code>struct inet_sock</code> 的转换通过 <code>inet_sk(sk)</code> 宏实现（利用结构体继承）。</p>
+<p><strong>Q10: NAPI（New API）机制如何减少网络接收的中断开销？</strong></p>
+<p>NAPI 的核心思想是<strong>中断 + 轮询混合</strong>：</p>
+<ol>
+<li>第一个数据包到来触发硬件中断。</li>
+<li>中断处理程序不直接处理，而是将网卡加入 <code>poll_list</code>，<strong>关闭中断</strong>，触发软中断 <code>NET_RX_SOFTIRQ</code>。</li>
+<li><code>net_rx_action()</code> 在软中断上下文中调用 <code>n-&gt;poll()</code> 批量处理数据包（默认预算 300 个）。</li>
+<li>处理完毕后重新开启网卡中断。</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net_rx_action 核心循环</span></span><br><span class="line"><span class="keyword">while</span> (!list_empty(&amp;sd-&gt;poll_list)) &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">napi_struct</span> *<span class="title">n</span> =</span> list_first_entry(&amp;sd-&gt;poll_list, ...);</span><br><span class="line">    <span class="type">int</span> work = n-&gt;poll(n, weight);  <span class="comment">// 批量收割数据包</span></span><br><span class="line">    <span class="keyword">if</span> (work == weight)  <span class="comment">// 配额用完，延迟继续</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对 socket 的影响：数据包在 NAPI 批量收割后（可能在 GRO 合并后）逐层上传，最终通过 <code>tcp_rcv_established()</code> 进入 socket 接收队列。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：在 <code>connect()</code> 返回成功后立即 <code>send()</code>，以为数据已送达对端。<br><strong>事实</strong>：<code>connect()</code> 只完成 TCP 三次握手，<code>send()</code> 数据可能仍在内核发送缓冲区中（被 TCP 栈管理），真正到达对端需要 ACK 确认。</p>
+</li>
+<li><p><strong>陷阱</strong>：混淆 <code>struct socket</code> 和 <code>struct sock</code> 的作用域。<br><strong>事实</strong>：<code>struct socket</code> 是 VFS 层的抽象（面向 open&#x2F;read&#x2F;write），<code>struct sock</code> 是网络层的核心结构（面向协议状态机）。所有协议族共用 <code>struct sock</code>，但通过 <code>sk-&gt;sk_prot</code> 函数指针表实现多态。</p>
+</li>
+<li><p><strong>陷阱</strong>：忽略 <code>sk_buff</code> 的生命周期管理。<br><strong>事实</strong>：<code>sk_buff</code> 被多处引用（发送队列&#x2F;重传队列&#x2F;释放等待），通过 <code>skb-&gt;users</code> 引用计数管理。过早释放或忘记释放都可能导致内存泄漏或 UAF。</p>
+</li>
+<li><p><strong>反问</strong>：「如何定位 socket 连接在哪里卡住？」希望听到：</p>
+<ul>
+<li><code>/proc/net/tcp</code> 查看连接状态和发送&#x2F;接收队列大小</li>
+<li><code>ss -tni</code> 输出拥塞窗口（cwnd）、重传超时（rto）、未确认数据量</li>
+<li>eBPF&#x2F;SystemTap 挂钩 <code>tcp_sendmsg</code>、<code>tcp_retransmit_skb</code> 等函数观察数据流</li>
+<li><code>netstat -s</code> 统计 TCP 超时重传等异常计数</li>
+</ul>
+</li>
+<li><p><strong>反问</strong>：「如果 send() 能成功但数据一直未被对端确认，问题可能在哪一层？」希望有分层排查思路：应用层确认数据格式对端可解析 → TCP 层检查重传计数（可能对端窗口为 0 或网络丢包）→ IP 层检查路由是否可达（ping 测试）→ 数据链路层检查 ARP 表、网卡统计。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>socket() 返回什么？</td>
+<td>指向 <code>struct socket + struct sock</code> 内核对象的文件描述符</td>
+</tr>
+<tr>
+<td>send 数据路径？</td>
+<td>用户 buf → sk_write_queue → TCP 分段 → IP 路由 → 网卡</td>
+</tr>
+<tr>
+<td>recv 数据路径？</td>
+<td>网卡 → NAPI 合并 → IP 重组 → TCP 排序 → sk_receive_queue → 用户 buf</td>
+</tr>
+<tr>
+<td>TSO 干嘛的？</td>
+<td>让网卡硬件替你 TCP 分段，释放 CPU</td>
+</tr>
+<tr>
+<td>NAPI 优势？</td>
+<td>中断 + 轮询混合，高负载时关闭中断批量收割</td>
+</tr>
+<tr>
+<td>MSS vs MTU？</td>
+<td>MTU&#x3D;链路层最大包(1500)，MSS&#x3D;TCP 净荷(1460)，MSS &#x3D; MTU - 40</td>
+</tr>
+<tr>
+<td>PMTUD 原理？</td>
+<td>发送大包设 DF 标志，收到 ICMP 不可达后缩小 PMTU</td>
+</tr>
+<tr>
+<td>inet_sock 怎么从 sock 转？</td>
+<td><code>inet_sk(sk)</code> 宏，利用结构体内存继承</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">https://weimo1.github.io/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Socket%E5%8F%91%E9%80%81%E6%8E%A5%E6%94%B6%E9%98%9F%E5%88%97%E4%B8%8E%E7%BC%93%E5%86%B2%E5%8C%BA%E8%AF%A6%E8%A7%A3/" title="Socket发送接收队列与缓冲区详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Socket发送接收队列与缓冲区详解</div></div><div class="info-2"><div class="info-item-1">Socket发送接收队列与缓冲区详解 适用范围：Linux 内核 Socket 缓冲区管理、sk_write_queue&#x2F;sk_receive_queue、sk_buff 数据结构、TCP 流量控制、缓冲区调优  一、核心概念 定义：Socket 发送&#x2F;接收队列是 Linux 内核为每个 TCP 连接维护的数据缓冲机制。发送队列缓存待发送和未确认的数据，接收队列缓存已确认但尚未被用户读取的数据。两者通过 sk_buff 链表实现，是 TCP 可靠传输、流量控制、拥塞控制的基石 关键词：sk_write_queue、sk_receive_queue、sk_buff、tr...</div></div></div></a><a class="pagination-related" href="/posts/Sha/" title="Sha"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Sha</div></div><div class="info-2"><div class="info-item-1">Sha 适用范围：项目基础库中的 SHA 系列哈希算法（SHA-1&#x2F;SHA-256 等）实现  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。  一、项目&#x2F;模块概述 模块定位：项目基础库中的 SHA 系列安全哈希算法实现，提供 SHA-1、SHA-256 等摘要计算能力。通常与 MD5 模块并列，构成哈希摘要工具链。 技术栈与依赖：纯 C++ 标准库实现，无外部依赖 模...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.</span> <span class="toc-text">Socket在网络层中的底层实现原理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Socket-%E6%A0%B8%E5%BF%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%B1%82%E6%AC%A1"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 Socket 核心数据结构层次</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-send-%E6%95%B0%E6%8D%AE%E4%BB%8E%E7%94%A8%E6%88%B7%E6%80%81%E5%88%B0%E7%BD%91%E5%8D%A1%E7%9A%84%E5%AE%8C%E6%95%B4%E8%B7%AF%E5%BE%84"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 send() 数据从用户态到网卡的完整路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%A1%AC%E4%BB%B6%E5%8D%B8%E8%BD%BD%E7%89%B9%E6%80%A7"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 硬件卸载特性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-Socket-%E5%88%9B%E5%BB%BA%E5%88%B0-Listen-%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 Socket 创建到 Listen 的系统调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-TCP-%E8%BF%9E%E6%8E%A5%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 TCP 连接状态转换</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-ICMP-%E9%94%99%E8%AF%AF%E5%A6%82%E4%BD%95%E9%80%9A%E8%BF%87-Socket-%E8%BF%94%E5%9B%9E%E5%BA%94%E7%94%A8"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 ICMP 错误如何通过 Socket 返回应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-TCP-%E6%8B%A5%E5%A1%9E%E7%AA%97%E5%8F%A3%E5%AF%B9-IP-%E5%B1%82%E5%8F%91%E9%80%81%E7%9A%84%E6%8E%A7%E5%88%B6"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 TCP 拥塞窗口对 IP 层发送的控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-PMTUD%EF%BC%88%E8%B7%AF%E5%BE%84-MTU-%E5%8F%91%E7%8E%B0%EF%BC%89%E4%B8%8E-MSS-%E5%8A%A8%E6%80%81%E8%B0%83%E6%95%B4"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 PMTUD（路径 MTU 发现）与 MSS 动态调整</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-inet-create-%E5%8D%8F%E8%AE%AE%E6%A0%88%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 inet_create 协议栈初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-NAPI-%E6%9C%BA%E5%88%B6%E5%A6%82%E4%BD%95%E5%87%8F%E5%B0%91%E4%B8%AD-%E6%96%AD%E5%BC%80%E9%94%80"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 NAPI 机制如何减少中 断开销</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 实践感悟</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Socket%E5%88%9B%E5%BB%BA%E9%98%B6%E6%AE%B5"><span class="toc-number">1.6.2.</span> <span class="toc-text">1. Socket创建阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%9C%B0%E5%9D%80%E7%BB%91%E5%AE%9A%E4%B8%8E%E7%9B%91%E5%90%AC"><span class="toc-number">1.6.3.</span> <span class="toc-text">2. 地址绑定与监听</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%BA%94%E7%94%A8%E5%B1%82%E4%B8%8ESocket%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.7.</span> <span class="toc-text">二、应用层与Socket接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Socket-API%E5%B0%81%E8%A3%85"><span class="toc-number">1.7.1.</span> <span class="toc-text">Socket API封装</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E4%BC%A0%E8%BE%93%E5%B1%82%EF%BC%88TCP%EF%BC%89%E4%B8%AD%E7%9A%84Socket%E5%A4%84%E7%90%86"><span class="toc-number">1.8.</span> <span class="toc-text">三、传输层（TCP）中的Socket处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%BF%9E%E6%8E%A5%E5%BB%BA%E7%AB%8B%E8%BF%87%E7%A8%8B"><span class="toc-number">1.8.1.</span> <span class="toc-text">1. 连接建立过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6"><span class="toc-number">1.8.2.</span> <span class="toc-text">2. 数据传输机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%8E%A5%E6%94%B6%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86"><span class="toc-number">1.8.3.</span> <span class="toc-text">3. 接收数据处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E7%BD%91%E7%BB%9C%E5%B1%82%EF%BC%88IP%EF%BC%89%E4%B8%AD%E7%9A%84Socket%E5%A4%84%E7%90%86"><span class="toc-number">1.9.</span> <span class="toc-text">四、网络层（IP）中的Socket处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%B7%AF%E7%94%B1%E5%86%B3%E7%AD%96"><span class="toc-number">1.9.1.</span> <span class="toc-text">1. 路由决策</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-IP%E6%95%B0%E6%8D%AE%E5%8C%85%E6%9E%84%E9%80%A0"><span class="toc-number">1.9.2.</span> <span class="toc-text">2. IP数据包构造</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%88%86%E7%89%87%E5%A4%84%E7%90%86"><span class="toc-number">1.9.3.</span> <span class="toc-text">3. 分片处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%95%B0%E6%8D%AE%E9%93%BE%E8%B7%AF%E5%B1%82%E4%B8%AD%E7%9A%84Socket%E5%BD%B1%E5%93%8D"><span class="toc-number">1.10.</span> <span class="toc-text">五、数据链路层中的Socket影响</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87%E9%80%89%E6%8B%A9"><span class="toc-number">1.10.1.</span> <span class="toc-text">1. 网络设备选择</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%A1%AC%E4%BB%B6%E7%89%B9%E6%80%A7%E4%BC%98%E5%8C%96"><span class="toc-number">1.10.2.</span> <span class="toc-text">2. 硬件特性优化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%85%B3%E7%B3%BB"><span class="toc-number">1.11.</span> <span class="toc-text">六、关键数据结构关系</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Socket%E6%A0%B8%E5%BF%83%E7%BB%93%E6%9E%84%E4%BD%93"><span class="toc-number">1.11.1.</span> <span class="toc-text">Socket核心结构体</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E8%B7%A8%E5%B1%82%E5%8D%8F%E4%BD%9C%E6%9C%BA%E5%88%B6"><span class="toc-number">1.12.</span> <span class="toc-text">七、跨层协作机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E9%94%99%E8%AF%AF%E4%BC%A0%E6%92%AD"><span class="toc-number">1.12.1.</span> <span class="toc-text">1. 错误传播</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6%E5%8D%8F%E4%BD%9C"><span class="toc-number">1.12.2.</span> <span class="toc-text">2. 流量控制协作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E8%B7%AF%E5%BE%84MTU%E5%8F%91%E7%8E%B0"><span class="toc-number">1.12.3.</span> <span class="toc-text">3. 路径MTU发现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%9C%BA%E5%88%B6"><span class="toc-number">1.13.</span> <span class="toc-text">八、性能优化机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E9%9B%B6%E6%8B%B7%E8%B4%9D%E6%8A%80%E6%9C%AF"><span class="toc-number">1.13.1.</span> <span class="toc-text">1. 零拷贝技术</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%89%B9%E9%87%8F%E5%A4%84%E7%90%86"><span class="toc-number">1.13.2.</span> <span class="toc-text">2. 批量处理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-CPU%E4%BA%B2%E5%92%8C%E6%80%A7"><span class="toc-number">1.13.3.</span> <span class="toc-text">3. CPU亲和性</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.14.</span> <span class="toc-text">总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Socket%E5%9C%A8%E5%90%84%E5%B1%82%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BD%9C%E7%94%A8"><span class="toc-number">1.15.</span> <span class="toc-text">Socket在各层的核心作用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87-1"><span class="toc-number">1.16.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A-1"><span class="toc-number">1.16.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">1.16.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">1.16.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

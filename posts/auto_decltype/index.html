@@ -1,0 +1,485 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>auto_decltype | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="auto，decltype 适用范围：C++11 auto自动类型推导、decltype推导规则、尾置返回类型、引用折叠、cv限定符推导  一、核心概念 定义：auto 让编译器通过初始化表达式自动推导变量类型；decltype 在编译期获取表达式的确切类型（包括引用和cv限定符）而不求值 关键词：类型推导(type deduction)、万能引用(auto&amp;&amp;)、尾置返回类型(t">
+<meta property="og:type" content="article">
+<meta property="og:title" content="auto_decltype">
+<meta property="og:url" content="https://weimo1.github.io/posts/auto_decltype/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="auto，decltype 适用范围：C++11 auto自动类型推导、decltype推导规则、尾置返回类型、引用折叠、cv限定符推导  一、核心概念 定义：auto 让编译器通过初始化表达式自动推导变量类型；decltype 在编译期获取表达式的确切类型（包括引用和cv限定符）而不求值 关键词：类型推导(type deduction)、万能引用(auto&amp;&amp;)、尾置返回类型(t">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.555Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "auto_decltype",
+  "url": "https://weimo1.github.io/posts/auto_decltype/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.555Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/auto_decltype/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'auto_decltype',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">auto_decltype</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">auto_decltype</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.555Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">5.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>22分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="auto，decltype"><a href="#auto，decltype" class="headerlink" title="auto，decltype"></a>auto，decltype</h1><blockquote>
+<p>适用范围：C++11 auto自动类型推导、decltype推导规则、尾置返回类型、引用折叠、cv限定符推导</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>auto</code> 让编译器通过初始化表达式自动推导变量类型；<code>decltype</code> 在编译期获取表达式的确切类型（包括引用和cv限定符）而不求值</li>
+<li><strong>关键词</strong>：类型推导(type deduction)、万能引用(auto&amp;&amp;)、尾置返回类型(trailing return type)、转发引用、cv限定符保留</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>简化冗长类型名（迭代器、智能指针、模板类型）</li>
+<li>泛型编程中的类型转发（auto&amp;&amp; + decltype）</li>
+<li>函数返回类型推导（C++14 auto返回值）</li>
+<li>边界：auto必须立即初始化；不能用于类成员静态类型；分离声明和定义时不能用auto</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-auto推导规则（三层递进）"><a href="#2-1-auto推导规则（三层递进）" class="headerlink" title="2.1 auto推导规则（三层递进）"></a>2.1 auto推导规则（三层递进）</h3><p><strong>第一层：基础类型推导</strong>。auto的推导规则与模板参数推导一致（除<code>std::initializer_list</code>外）。auto会抛弃初始化表达式的顶层const和引用：<code>const int x = 1; auto y = x;</code> → y是<code>int</code>（非const）。</p>
+<p><strong>第二层：引用与cv修饰</strong>。<code>auto&amp;</code>保留cv限定符：<code>const int x = 1; auto&amp; y = x;</code> → y是<code>const int&amp;</code>。<code>auto&amp;&amp;</code>是万能引用：左值初始化→左值引用，右值初始化→右值引用。</p>
+<p><strong>第三层：decltype精确推导</strong>。<code>decltype(expr)</code>不执行表达式，而是获取其完整类型（包括引用和cv）。<code>decltype((x))</code> 对变量名加括号 → 始终得到引用类型，这是最常见陷阱。</p>
+<h3 id="2-2-auto推导核心规则"><a href="#2-2-auto推导核心规则" class="headerlink" title="2.2 auto推导核心规则"></a>2.2 auto推导核心规则</h3><p><strong>通过上面的一系列示例,可以得到下面这两条规则:</strong></p>
+<p><strong>1)当不声明为指针或引用时, auto 的推导结果和初始化表达式抛弃引用和cv限定符后 类型一致。</strong></p>
+<p><strong>2)当声明为指针或引用时, auto 的推导结果将保持初始化表达式的cv属性。</strong></p>
+<p><strong>auto让<strong><strong>编译器</strong></strong>通过初始值来推算变量的类型——–因此，auto定义的变量必须有初始值</strong>.</p>
+<h3 id="2-3-auto的五种用法"><a href="#2-3-auto的五种用法" class="headerlink" title="2.3 auto的五种用法"></a>2.3 auto的五种用法</h3><p>在函数返回值 &#x2F; range-for 等情况中使用 auto 时，有 5 种用法</p>
+<ul>
+<li><code>auto</code> ：拷贝</li>
+<li><code>auto&amp;</code> ：左值引用，只能接左值（和常量右值）</li>
+<li><code>auto&amp;&amp;</code> ：万能引用，能接左值和右值</li>
+<li><code>const auto&amp;</code> ：const 万能引用，能接左值和右值</li>
+<li><code>const auto&amp;&amp;</code> ：常量右值引用，只能接右值</li>
+</ul>
+<p>很多人直接就写 <code>auto&amp;&amp;</code>，但尽量分场景使用</p>
+<ul>
+<li><code>auto</code>：用于你想修改右值的情形</li>
+<li><code>auto&amp;</code>：用于你想修改左值的情形</li>
+<li><code>auto&amp;&amp;</code>：用于泛型编程中的转发</li>
+<li><code>const auto&amp;</code>：用于只读</li>
+<li><code>const auto&amp;&amp;</code>：基本没用，基本可被 <code>const auto&amp;</code> 替代（比 <code>const auto&amp;</code> 多一个语义：一定得是右值。然而这没什么用，因为你都不对其进行修改，是左还是右没什么影响）</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2539922">C++11 auto关键字：原理解析与使用指南-腾讯云开发者社区-腾讯云</a></p>
+<h2 id="auto"><a href="#auto" class="headerlink" title="auto"></a>auto</h2><p><strong>通过上面的一系列示例,可以得到下面这两条规则:</strong></p>
+<p><strong>1)当不声明为指针或引用时, auto 的推导结果和初始化表达式抛弃引用和cv限定符后 类型一致。</strong></p>
+<p><strong>2)当声明为指针或引用时, auto 的推导结果将保持初始化表达式的cv属性。</strong></p>
+<p><strong>auto让<strong><strong>编译器</strong></strong>通过初始值来推算变量的类型——–因此，auto定义的变量必须有初始值</strong>.</p>
+<p>在函数返回值 &#x2F; <a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=range-for&zhida_source=entity">range-for</a> 等情况中使用 auto 时，有 5 种用法</p>
+<ul>
+<li><code>auto</code> ：拷贝</li>
+<li><code>auto&amp;</code> ：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=%E5%B7%A6%E5%80%BC%E5%BC%95%E7%94%A8&zhida_source=entity">左值引用</a>，只能接左值（和常量右值）</li>
+<li><code>auto&amp;&amp;</code> ：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=%E4%B8%87%E8%83%BD%E5%BC%95%E7%94%A8&zhida_source=entity">万能引用</a>，能接左值和右值</li>
+<li><code>const auto&amp;</code> ：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=const+%E4%B8%87%E8%83%BD%E5%BC%95%E7%94%A8&zhida_source=entity">const 万能引用</a>，能接左值和右值</li>
+<li><code>const auto&amp;&amp;</code> ：常量<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=%E5%8F%B3%E5%80%BC%E5%BC%95%E7%94%A8&zhida_source=entity">右值引用</a>，只能接右值</li>
+</ul>
+<p>很多人直接就写 <code>auto&amp;&amp;</code>，但尽量分场景使用</p>
+<ul>
+<li><code>auto</code>：用于你想修改右值的情形</li>
+<li><code>auto&amp;</code>：用于你想修改左值的情形</li>
+<li><code>auto&amp;&amp;</code>：用于<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=%E6%B3%9B%E5%9E%8B%E7%BC%96%E7%A8%8B&zhida_source=entity">泛型编程</a>中的<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=262197759&content_type=Answer&match_order=1&q=%E8%BD%AC%E5%8F%91&zhida_source=entity">转发</a></li>
+<li><code>const auto&amp;</code>：用于只读</li>
+<li><code>const auto&amp;&amp;</code>：基本没用，基本可被 <code>const auto&amp;</code> 替代（比 <code>const auto&amp;</code> 多一个语义：一定得是右值。然而这没什么用，因为你都不对其进行修改，是左还是右没什么影响）</li>
+</ul>
+<h2 id="3-auto"><a href="#3-auto" class="headerlink" title="3 auto"></a>3 auto</h2><h3 id="3-1-为什么需要自动类型推导-auto"><a href="#3-1-为什么需要自动类型推导-auto" class="headerlink" title="3.1 为什么需要自动类型推导 (auto)"></a>3.1 为什么需要自动类型推导 (auto)</h3><p>没有 auto 的话，需要声明一个变量，必须重复一遍他的类型，非常麻烦:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct MyClassWithVeryLongName &#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::shared_ptr&lt;MyClassWithVeryLongName&gt; p = std::make_shared&lt;MyClassWithVeryLongName&gt;();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-自动类型推导-定义变量"><a href="#3-2-自动类型推导-定义变量" class="headerlink" title="3.2 自动类型推导: 定义变量"></a>3.2 自动类型推导: 定义变量</h3><p>因此 C++11 引入了 auto，使用 auto 定义的变量，其类型会自动根据等号右边的值来确定:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct MyClassWithVeryLongName &#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    auto p = std::make_shared&lt;MyClassWithVeryLongName&gt;();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-自动类型推导-一些局限性"><a href="#3-3-自动类型推导-一些局限性" class="headerlink" title="3.3 自动类型推导: 一些局限性"></a>3.3 自动类型推导: 一些局限性</h3><p>不过 auto 也并非万能，他也有很多限制。</p>
+<p>因为需要等号右边的类型信息，所以没有 &#x3D; 单独声明一个 auto 变量是不行的:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">auto p; // 错误的</span><br><span class="line">p = ...;</span><br></pre></td></tr></table></figure>
+
+<p>而且，类成员也不可以定义为 auto:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">struct MyClassWithVeryLongName &#123;</span><br><span class="line">    auto x = std::make_shared&lt;int&gt;(); // 错误的</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-自动类型推导-函数返回值"><a href="#3-4-自动类型推导-函数返回值" class="headerlink" title="3.4 自动类型推导: 函数返回值"></a>3.4 自动类型推导: 函数返回值</h3><p>除了可以用于定义变量，还可以用作函数的返回类型:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">auto func() &#123;</span><br><span class="line">    return std::make_shared&lt;MyClassWithVeryLongName&gt;();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 同上</span><br><span class="line">std::shared_ptr&lt;MyClassWithVeryLongName&gt; func() &#123;</span><br><span class="line">    return std::make_shared&lt;MyClassWithVeryLongName&gt;();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用 auto 以后，会自动被推导为 return 右边的类型。</p>
+<p>不过也有三点注意事项：</p>
+<ol>
+<li>当函数有多条 return 语句时，所有语句的返回类型必须一致，否则 auto 会报错。</li>
+<li>当函数没有 return 语句时，auto 会被推导为 void。</li>
+<li>如果声明和实现分离了，则不能声明为 auto。比如:</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">auto func(); // 错误</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-C-特性-引用-int"><a href="#3-5-C-特性-引用-int" class="headerlink" title="3.5 C++特性: 引用 (int &amp;)"></a>3.5 C++特性: 引用 (int &amp;)</h3><p>众所周知，C++ 中有一种特殊的类型，叫做引用。只需要在原类型后面加一个 &amp; 即可。</p>
+<p>引用的本质无非是指针，当我们试图修改一个引用时，实际上是修改了原来的对象:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int x = 233;</span><br><span class="line">    int &amp;ref = x;</span><br><span class="line">    ref = 42;</span><br><span class="line">    printf(&quot;%d\n&quot;, x);    // 42</span><br><span class="line">    x = 1024;</span><br><span class="line">    printf(&quot;%d\n&quot;, ref);  // 1024</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>等价于</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int x = 233;</span><br><span class="line">    int *ref = &amp;x;</span><br><span class="line">    *ref = 42;</span><br><span class="line">    printf(&quot;%d\n&quot;, x);    // 42</span><br><span class="line">    x = 1024;</span><br><span class="line">    printf(&quot;%d\n&quot;, *ref); // 1024</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可见，和C语言的<code>int *</code>相比无非是减少了<code>&amp;</code>和<code>*</code>的麻烦而已。</p>
+<h3 id="3-6-C-特性-常引用-int-const-const-int"><a href="#3-6-C-特性-常引用-int-const-const-int" class="headerlink" title="3.6 C++特性: 常引用 (int const &amp; &#x2F; const int &amp;)"></a>3.6 C++特性: 常引用 (int const &amp; &#x2F; const int &amp;)</h3><p>如果说<code>int &amp;</code>相当于<code>int *</code>，那么<code>int const &amp;</code>就相当于<code>int const *</code>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// 注意区分:</span><br><span class="line">int a = 114514; // 整数int</span><br><span class="line">int* p = &amp;a;    // int指针</span><br><span class="line"></span><br><span class="line">const int* cip = &amp;a;    // const int 指针, 是指向 常量int 的指针</span><br><span class="line">int const * icp = &amp;a;   // 同上为 const int 指针</span><br><span class="line"></span><br><span class="line">int * const ipc = &amp;a;   // 指针常量 (* const), 是常量, 不可变: 指的是指针的值, 即指向的地址不能变, 但是地址对应的值是可以变的</span><br><span class="line">const int * const = &amp;a; // 常量指针常量 (什么都不能变)</span><br><span class="line"></span><br><span class="line">///////////////////////</span><br><span class="line">int &amp; const iac = a; // 突发奇想, 以此类推?! 残念! 没有这个!</span><br></pre></td></tr></table></figure>
+
+<p><code>const</code>修饰符的存在，使得<code>ref</code>不能被写入（赋值）。</p>
+<p>这样的好处是更加安全（编译器也能够放心大胆地做自动优化）:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int x = 233;</span><br><span class="line">    int const &amp;ref = x;</span><br><span class="line">    // ref = 42;  // 会出错！</span><br><span class="line">    printf(&quot;%d\n&quot;, x);    // 233</span><br><span class="line">    x = 1024;</span><br><span class="line">    printf(&quot;%d\n&quot;, ref);  // 1024</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-7-自动类型推导-定义引用-auto"><a href="#3-7-自动类型推导-定义引用-auto" class="headerlink" title="3.7 自动类型推导: 定义引用 (auto &amp;)"></a>3.7 自动类型推导: 定义引用 (auto &amp;)</h3><p>当然，auto 也可以用来定义引用，只需要改成<code>auto &amp;</code>即可:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int x = 233;</span><br><span class="line">    auto &amp;ref = x;</span><br><span class="line">    ref = 42;</span><br><span class="line">    printf(&quot;%d\n&quot;, x);    // 42</span><br><span class="line">    x = 1024;</span><br><span class="line">    printf(&quot;%d\n&quot;, ref);  // 1024</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-8-自动类型推导-定义常引用-auto-const"><a href="#3-8-自动类型推导-定义常引用-auto-const" class="headerlink" title="3.8 自动类型推导: 定义常引用 (auto const &amp;)"></a>3.8 自动类型推导: 定义常引用 (auto const &amp;)</h3><p>同理，<code>auto const &amp;</code>可以定义常引用:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int x = 233;</span><br><span class="line">    auto const &amp;ref = x;</span><br><span class="line">    // ref = 42;  // 会出错！</span><br><span class="line">    printf(&quot;%d\n&quot;, x);    // 233</span><br><span class="line">    x = 1024;</span><br><span class="line">    printf(&quot;%d\n&quot;, ref);  // 1024</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-9-自动类型推导-函数返回引用"><a href="#3-9-自动类型推导-函数返回引用" class="headerlink" title="3.9 自动类型推导: 函数返回引用"></a>3.9 自动类型推导: 函数返回引用</h3><p>当然，函数的返回类型也可以是<code>auto &amp;</code>或者<code>auto const &amp;</code>。比如懒汉<a target="_blank" rel="noopener external nofollow noreferrer" href="https://hengxin666.github.io/HXLoLi/docs/%E8%AE%A1%E4%BD%AC%E5%B8%B8%E8%AD%98/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/%E5%88%9B%E5%BB%BA%E5%9E%8B%E6%A8%A1%E5%BC%8F/%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/">单例模式</a>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">auto &amp;product_table() &#123;</span><br><span class="line">    static std::map&lt;std::string, int&gt; instance;</span><br><span class="line">    return instance;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    product_table().emplace(&quot;佩奇&quot;, 80);</span><br><span class="line">    product_table().emplace(&quot;妈妈&quot;, 100);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-10-理解右值-即将消失的，不长时间存在于内存中的值"><a href="#3-10-理解右值-即将消失的，不长时间存在于内存中的值" class="headerlink" title="3.10 理解右值: 即将消失的，不长时间存在于内存中的值"></a>3.10 理解右值: 即将消失的，不长时间存在于内存中的值</h3><p>引用又称为左值（l-value）。左值通常对应着一个长时间存在于内存中的变量。</p>
+<p>除了左值之外，还有右值（r-value）。右值通常是一个表达式，代表计算过程中临时生成的中间变量。因此有的教材又称之为消亡引用。</p>
+<p>得名原因: 左值常常位于等号的左边，而右值只能位于等号右边。如: a &#x3D; 1;</p>
+<p>已知: <code>int a; int *p;</code></p>
+<ul>
+<li>左值类型：int &amp;，int const &amp;</li>
+<li>左值例子：a, *p, p[a]</li>
+<li>右值类型：int &amp;&amp;</li>
+<li>右值例子：1, a + 1, *p + 1</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;cstdio&gt;</span><br><span class="line"></span><br><span class="line">void test(int &amp;) &#123;</span><br><span class="line">    printf(&quot;int &amp;\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void test(int const &amp;) &#123;</span><br><span class="line">    printf(&quot;int const &amp;\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void test(int &amp;&amp;) &#123;</span><br><span class="line">    printf(&quot;int &amp;&amp;\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    int a = 0;</span><br><span class="line">    int *p = &amp;a;</span><br><span class="line">    test(a);      // int &amp;</span><br><span class="line">    test(*p);     // int &amp;</span><br><span class="line">    test(p[a]);   // int &amp;</span><br><span class="line">    test(1);      // int &amp;&amp;</span><br><span class="line">    test(a + 1);  // int &amp;&amp;</span><br><span class="line">    test(*p + 1); // int &amp;&amp;</span><br><span class="line"></span><br><span class="line">    const int b = 3;</span><br><span class="line">    test(b);      // int const &amp;</span><br><span class="line">    test(b + 1);  // int &amp;&amp;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>不理解右值和右值引用？没关系，老师也不理解，跳过即可！</p>
+<h3 id="3-11-理解-const-常值修饰符"><a href="#3-11-理解-const-常值修饰符" class="headerlink" title="3.11 理解 const: 常值修饰符"></a>3.11 理解 const: 常值修饰符</h3><p>与 &amp; 修饰符不同，<code>int const</code>和<code>int</code>可以看做两个不同的类型。不过<code>int const</code>是不可写入的。</p>
+<p>因此<code>int const &amp;</code>无非是另一个类型<code>int const</code>的引用罢了。这个引用不可写入。</p>
+<p>唯一特殊之处，就在于 C++ 规定<code>int &amp;&amp;</code>能自动转换成<code>int const &amp;</code>，但不能转换成<code>int &amp;</code>。</p>
+<p>例如，尽管<code>3</code>是右值<code>int &amp;&amp;</code>，但却能传到类型为<code>int const &amp;</code>的参数上:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">void func(const int&amp; i);</span><br><span class="line">func(3);</span><br></pre></td></tr></table></figure>
+
+<p>而<code>int &amp;</code>的参数:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">void func(int&amp; i);</span><br><span class="line">func(3);</span><br></pre></td></tr></table></figure>
+
+<p>就会报错。</p>
+<h3 id="3-12-小彭老师发明-一个方便查看类型名的小工具"><a href="#3-12-小彭老师发明-一个方便查看类型名的小工具" class="headerlink" title="3.12 小彭老师发明: 一个方便查看类型名的小工具"></a>3.12 小彭老师发明: 一个方便查看类型名的小工具</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;cstdlib&gt;</span><br><span class="line">#include &lt;string&gt;</span><br><span class="line">#if defined(__GNUC__) || defined(__clang__)</span><br><span class="line">#include &lt;cxxabi.h&gt;</span><br><span class="line">#endif</span><br><span class="line"></span><br><span class="line">template &lt;class T&gt;</span><br><span class="line">std::string cpp_type_name() &#123;</span><br><span class="line">    const char *name = typeid(T).name();</span><br><span class="line">#if defined(__GNUC__) || defined(__clang__)</span><br><span class="line">    int status;</span><br><span class="line">    char *p = abi::__cxa_demangle(name, 0, 0, &amp;status);</span><br><span class="line">    std::string s = p;</span><br><span class="line">    std::free(p);</span><br><span class="line">#else</span><br><span class="line">    std::string s = name;</span><br><span class="line">#endif</span><br><span class="line">    if (std::is_const_v&lt;std::remove_reference_t&lt;T&gt;&gt;)</span><br><span class="line">        s += &quot; const&quot;;</span><br><span class="line">    if (std::is_volatile_v&lt;std::remove_reference_t&lt;T&gt;&gt;)</span><br><span class="line">        s += &quot; volatile&quot;;</span><br><span class="line">    if (std::is_lvalue_reference_v&lt;T&gt;)</span><br><span class="line">        s += &quot; &amp;&quot;;</span><br><span class="line">    if (std::is_rvalue_reference_v&lt;T&gt;)</span><br><span class="line">        s += &quot; &amp;&amp;&quot;;</span><br><span class="line">    return s;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#define SHOW(T) std::cout &lt;&lt; cpp_type_name&lt;T&gt;() &lt;&lt; std::endl;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    SHOW(int);</span><br><span class="line">    SHOW(const int &amp;);</span><br><span class="line">    typedef const float *const &amp;MyType;</span><br><span class="line">    SHOW(MyType); // float const* const &amp;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-13-获取变量的类型-decltype"><a href="#3-13-获取变量的类型-decltype" class="headerlink" title="3.13 获取变量的类型: decltype"></a>3.13 获取变量的类型: decltype</h3><p>可以通过 decltype(变量名) 获取变量定义时候的类型。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int a;</span><br><span class="line">    auto &amp;c = a;</span><br><span class="line">    auto const &amp;b = a;</span><br><span class="line">    SHOW(decltype(a)); // int</span><br><span class="line">    SHOW(decltype(b)); // int &amp;</span><br><span class="line">    SHOW(decltype(c)); // int const &amp;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-14-获取表达式的类型-decltype"><a href="#3-14-获取表达式的类型-decltype" class="headerlink" title="3.14 获取表达式的类型: decltype"></a>3.14 获取表达式的类型: decltype</h3><p>可以通过<code>decltype(表达式)</code>获取表达式的类型。</p>
+<p>Tip</p>
+<p>注意<code>decltype(变量名)</code>和<code>decltype(表达式)</code>是不同的。</p>
+<p>可以通过<code>decltype((a))</code>来强制编译器使用后者，从而得到<code>int &amp;</code>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    int a, *p;</span><br><span class="line">    SHOW(decltype(3.14f + a));</span><br><span class="line">    SHOW(decltype(42));</span><br><span class="line">    SHOW(decltype(&amp;a));</span><br><span class="line">    SHOW(decltype(p[0]));</span><br><span class="line">    SHOW(decltype(&#x27;a&#x27;));</span><br><span class="line"></span><br><span class="line">    SHOW(decltype(a));    // int</span><br><span class="line">    SHOW(decltype((a)));  // int &amp;</span><br><span class="line">    // 后者由于额外套了层括号，所以变成了 decltype(表达式)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-15-自动类型推导-万能推导-decltype-auto"><a href="#3-15-自动类型推导-万能推导-decltype-auto" class="headerlink" title="3.15 自动类型推导: 万能推导 (decltype(auto))"></a>3.15 自动类型推导: 万能推导 (<code>decltype(auto)</code>)</h3><p>如果一个表达式，我不知道他是个可变引用（int &amp;），常引用（int const &amp;），右值引用（int &amp;&amp;），还是一个普通的值（int）。</p>
+<p>但我就是想要定义一个和表达式返回类型一样的变量，这时候可以用:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">decltype(auto) p = func(); // 会自动推导为 func() 的返回类型。</span><br><span class="line"></span><br><span class="line">// 和下面这种方式等价:</span><br><span class="line">decltype(func()) p = func();</span><br></pre></td></tr></table></figure>
+
+<p>在<code>代理模式</code>中，用于完美转发函数返回值。比如:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">decltype(auto) at(size_t i) const &#123;</span><br><span class="line">    return m_internal_class.at(i);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>示例:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">int t;</span><br><span class="line"></span><br><span class="line">int const &amp;func_ref() &#123;</span><br><span class="line">    return t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int const &amp;func_cref() &#123;</span><br><span class="line">    return t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int func_val() &#123;</span><br><span class="line">    return t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    decltype(auto) a = func_cref();  // int const &amp;a</span><br><span class="line">    decltype(auto) b = func_ref();   // int &amp;b</span><br><span class="line">    decltype(auto) c = func_val();   // int c</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-16-using-创建类型别名"><a href="#3-16-using-创建类型别名" class="headerlink" title="3.16 using: 创建类型别名"></a>3.16 using: 创建类型别名</h3><p>除了 typedef 外，还可以用 using 创建类型别名:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">typedef std::vector&lt;int&gt; VecInt;</span><br><span class="line">using VecInt = std::vector&lt;int&gt;;</span><br><span class="line">// 以上是等价的。</span><br><span class="line">typedef int (*PFunc)(int);</span><br><span class="line">using PFunc = int(*)(int);</span><br><span class="line">// 以上是等价的。</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-17-decltype-一个例子"><a href="#3-17-decltype-一个例子" class="headerlink" title="3.17 decltype: 一个例子"></a>3.17 decltype: 一个例子</h3><p>这是一个实现将两个不同类型 vector 逐元素相加的函数。</p>
+<p>用<code>decltype(T1{} * T2{})</code>算出<code>T1</code>和<code>T2</code>类型相加以后的结果，并做为返回的<code>vector</code>容器中的数据类型。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T1, class T2&gt;</span><br><span class="line">auto add(std::vector&lt;T1&gt; const &amp;a, std::vector&lt;T2&gt; const &amp;b) &#123;</span><br><span class="line">    using T0 = decltype(T1&#123;&#125; + T2&#123;&#125;);</span><br><span class="line">    std::vector&lt;T0&gt; ret;</span><br><span class="line">    for (size_t i = 0; i &lt; std::min(a.size(), b.size()); i++) &#123;</span><br><span class="line">        ret.push_back(a[i] + b[i]);</span><br><span class="line">    &#125;</span><br><span class="line">    return ret;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; a = &#123;2, 3, 4&#125;;</span><br><span class="line">    std::vector&lt;float&gt; b = &#123;0.5f, 1.0f, 2.0f&#125;;</span><br><span class="line">    auto c = add(a, b);</span><br><span class="line">    for (size_t i = 0; i &lt; c.size(); i++) &#123;</span><br><span class="line">        std::cout &lt;&lt; c[i] &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="decltype"><a href="#decltype" class="headerlink" title="decltype"></a>decltype</h2><p><code>decltype</code>是一个用于查询表达式类型的关键字。它在编译时检查参数的类型，并生成该类型。这意味着<code>decltype</code>不会产生运行时开销，它是一个纯粹的编译时操作</p>
+<h3 id="decltype与auto的比较"><a href="#decltype与auto的比较" class="headerlink" title="decltype与auto的比较"></a><code>decltype</code>与<code>auto</code>的比较</h3><p><code>decltype</code>和<code>auto</code>都可以用于类型推导，但它们在处理类型时有所不同。</p>
+<p><code>auto</code>会忽略顶层<code>const</code>，并且对引用的处理也有所不同：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">const int ci = 0;</span><br><span class="line">auto ai = ci;  // ai的类型是int，而不是const int</span><br><span class="line"></span><br><span class="line">int&amp; ri = x;</span><br><span class="line">auto ar = ri;  // ar的类型是int，而不是int&amp;</span><br></pre></td></tr></table></figure>
+
+<p>而<code>decltype</code>会保留顶层<code>const</code>，并且对引用的处理也不同：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">const int ci = 0;</span><br><span class="line">decltype(ci) di = ci;  // di的类型是const int</span><br><span class="line"></span><br><span class="line">int&amp; ri = x;</span><br><span class="line">decltype(ri) dr = ri;  // dr的类型是int&amp;</span><br></pre></td></tr></table></figure>
+
+<p>此外，<code>decltype</code>和<code>auto</code>在处理表达式类型时也有所区别。<code>auto</code>会忽略表达式的类型，只关注其值的类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int x = 0;</span><br><span class="line">auto ax = (x);  // ax的类型是int</span><br></pre></td></tr></table></figure>
+
+<p>而<code>decltype</code>会考虑表达式的类型：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int x = 0;</span><br><span class="line">decltype((x)) dx = x;  // dx的类型是int&amp;</span><br></pre></td></tr></table></figure>
+
+<p>在这个例子中，<code>(x)</code>是一个表达式，其类型是<code>int&amp;</code>，因此<code>decltype((x))</code>的结果是<code>int&amp;</code>。</p>
+<h3 id="auto和decltype的工作原理深入解析"><a href="#auto和decltype的工作原理深入解析" class="headerlink" title="auto和decltype的工作原理深入解析"></a><code>auto</code>和<code>decltype</code>的工作原理深入解析</h3><p>理解<code>auto</code>和<code>decltype</code>的工作原理需要深入C++的类型系统和编译器的工作方式。</p>
+<h4 id="auto的工作原理"><a href="#auto的工作原理" class="headerlink" title="auto的工作原理"></a><code>auto</code>的工作原理</h4><p><code>auto</code>关键字的工作原理基于C++的类型推导规则。在编译时，编译器会分析<code>auto</code>变量的初始化表达式，并根据该表达式的类型来推导<code>auto</code>变量的实际类型。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">auto x = 42; // x的类型是int</span><br></pre></td></tr></table></figure>
+
+<p>这个过程是在编译时完成的，不会导致运行时开销。它基于C++的类型系统，特别是模板参数推导规则。实际上，<code>auto</code>的工作方式与函数模板参数的推导方式非常相似。</p>
+<h4 id="decltype的工作原理"><a href="#decltype的工作原理" class="headerlink" title="decltype的工作原理"></a><code>decltype</code>的工作原理</h4><p><code>decltype</code>关键字的工作原理也基于C++的类型系统，但它的工作方式与<code>auto</code>有所不同。</p>
+<p><code>decltype</code>会分析其参数的类型，然后生成该类型。这个过程也是在编译时完成的，不会导致运行时开销。</p>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-尾置返回类型（Trailing-Return-Type）"><a href="#4-1-尾置返回类型（Trailing-Return-Type）" class="headerlink" title="4.1 尾置返回类型（Trailing Return Type）"></a>4.1 尾置返回类型（Trailing Return Type）</h3><p>C++11引入的尾置返回类型语法 <code>auto func() -&gt; Type</code> 允许返回类型出现在参数列表之后，这在以下场景不可或缺：</p>
+<ul>
+<li>返回类型依赖参数名：<code>auto add(T a, U b) -&gt; decltype(a + b)</code></li>
+<li>Lambda表达式指定返回类型：<code>[](int x) -&gt; double { return x * 0.5; }</code></li>
+<li>模板函数中推导复杂返回类型</li>
+</ul>
+<p>C++14简化了此语法：<code>auto func()</code> 直接从return推导返回类型（与模板推导规则一致，但不支持<code>decltype(auto)</code>的引用保留）。</p>
+<h3 id="4-2-decltype-auto-的精确推导"><a href="#4-2-decltype-auto-的精确推导" class="headerlink" title="4.2 decltype(auto) 的精确推导"></a>4.2 decltype(auto) 的精确推导</h3><p><code>decltype(auto)</code> 是C++14引入的特殊推导方式：</p>
+<ul>
+<li><code>auto</code> 推导规则 &#x3D; 模板参数推导（丢弃引用和顶层const）</li>
+<li><code>decltype(auto)</code> 推导规则 &#x3D; decltype规则（保留引用和cv）</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> x = <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span>&amp; rx = x;</span><br><span class="line"><span class="keyword">auto</span> y = rx;           <span class="comment">// y是int（丢失引用）</span></span><br><span class="line"><span class="keyword">decltype</span>(<span class="keyword">auto</span>) z = rx; <span class="comment">// z是int&amp;（保留引用）</span></span><br><span class="line"><span class="comment">// 典型用途：完美转发返回类型</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-结构化绑定中的auto"><a href="#4-3-结构化绑定中的auto" class="headerlink" title="4.3 结构化绑定中的auto"></a>4.3 结构化绑定中的auto</h3><p>C++17结构化绑定：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">std::map&lt;<span class="type">int</span>, std::string&gt; m;</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">auto</span>&amp; [key, value] : m) &#123;  <span class="comment">// key和value都是引用</span></span><br><span class="line">    value = <span class="string">&quot;modified&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-4-与其他主题的关联"><a href="#4-4-与其他主题的关联" class="headerlink" title="4.4 与其他主题的关联"></a>4.4 与其他主题的关联</h3><ul>
+<li><strong>模板参数推导</strong>：auto推导规则与模板参数推导一致（模板推导是auto推导的理论基础）</li>
+<li><strong>std::forward &#x2F; 完美转发</strong>：<code>auto&amp;&amp;</code> + <code>decltype</code> 是实现完美转发的关键组合</li>
+<li><strong>Lambda表达式</strong>：泛型lambda <code>[](auto x){}</code> 实际是模板的语法糖</li>
+<li><strong>类型萃取</strong>：<code>decltype</code> 与 <code>std::declval&lt;T&gt;()</code> 配合在不构造对象的情况下推导成员类型</li>
+<li><strong>if constexpr</strong>：结合<code>if constexpr</code>和<code>decltype</code>可实现编译期类型分支</li>
+</ul>
+<h3 id="4-5-工程中的最佳实践"><a href="#4-5-工程中的最佳实践" class="headerlink" title="4.5 工程中的最佳实践"></a>4.5 工程中的最佳实践</h3><ul>
+<li><strong>优先auto</strong>：复杂类型（迭代器、lambda）优先用auto，代码更简洁</li>
+<li><strong>注意拷贝</strong>：range-for中<code>for (auto x : v)</code>会拷贝元素；若只读用<code>const auto&amp;</code>，修改用<code>auto&amp;</code></li>
+<li><strong>慎用auto返回</strong>：auto返回值会丢弃引用，可能意外拷贝；关键场景用<code>decltype(auto)</code></li>
+<li><strong>避免AAA</strong>：不要所有变量都用auto——当类型信息对理解代码必要的场景保留显式类型</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-auto-的类型推导规则（模板推导模型的精确复刻）"><a href="#5-1-auto-的类型推导规则（模板推导模型的精确复刻）" class="headerlink" title="5.1 auto 的类型推导规则（模板推导模型的精确复刻）"></a>5.1 auto 的类型推导规则（模板推导模型的精确复刻）</h3><p>auto 与函数模板参数推导完全一致：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">f</span><span class="params">(T param)</span></span>;  <span class="comment">// auto x = expr 等价于推导 f(expr) 中的 T</span></span><br><span class="line"><span class="built_in">f</span>(expr);</span><br><span class="line"></span><br><span class="line"><span class="comment">// auto 不保留引用和 cv 限定符：</span></span><br><span class="line"><span class="type">const</span> <span class="type">int</span> ci = <span class="number">42</span>;</span><br><span class="line"><span class="keyword">auto</span> x = ci;      <span class="comment">// x 是 int，不是 const int</span></span><br><span class="line"><span class="comment">// 等价于 template&lt;typename T&gt; void f(T param); f(ci); → T = int</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// auto&amp; 保留 cv：</span></span><br><span class="line"><span class="keyword">auto</span>&amp; y = ci;     <span class="comment">// y 是 const int&amp;</span></span><br><span class="line"><span class="comment">// 等价于 template&lt;typename T&gt; void f(T&amp; param); f(ci); → T = const int</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-decltype-的实现原理"><a href="#5-2-decltype-的实现原理" class="headerlink" title="5.2 decltype 的实现原理"></a>5.2 decltype 的实现原理</h3><p>decltype 在 Clang 中的实现：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Clang AST 中 DecltypeType</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">DecltypeType</span> : <span class="keyword">public</span> Type &#123;</span><br><span class="line">    Expr *E;  <span class="comment">// 保留完整表达式</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">QualType <span class="title">desugar</span><span class="params">()</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (E-&gt;<span class="built_in">isLValue</span>())</span><br><span class="line">            <span class="keyword">return</span> E-&gt;<span class="built_in">getType</span>().<span class="built_in">withReference</span>();  <span class="comment">// 加 &amp;</span></span><br><span class="line">        <span class="keyword">return</span> E-&gt;<span class="built_in">getType</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// decltype((x)) → x 是 lvalue → 返回 int&amp;</span></span><br><span class="line"><span class="comment">// decltype(x)  → x 是变量名 → 返回 int（特殊规则）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-decltype-auto-的转发语义"><a href="#5-3-decltype-auto-的转发语义" class="headerlink" title="5.3 decltype(auto) 的转发语义"></a>5.3 decltype(auto) 的转发语义</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> F, <span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">decltype</span>(<span class="keyword">auto</span>) <span class="title">perfect_forward</span><span class="params">(F&amp;&amp; f, Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> std::forward&lt;F&gt;(f)(std::forward&lt;Args&gt;(args)...);</span><br><span class="line">&#125;  <span class="comment">// 返回值类型完美保留：左值引用/右值引用/值类型</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// decltype(auto) 的行为：</span></span><br><span class="line"><span class="comment">// 如果返回 expression，相当于 decltype(expression)</span></span><br><span class="line"><span class="comment">// 如果返回 variable，相当于 decltype(variable)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-4-auto-和-decltype-在泛型编程中的协同"><a href="#5-4-auto-和-decltype-在泛型编程中的协同" class="headerlink" title="5.4 auto 和 decltype 在泛型编程中的协同"></a>5.4 auto 和 decltype 在泛型编程中的协同</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Container&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">auto</span> <span class="title">get_element</span><span class="params">(Container&amp; c, <span class="type">size_t</span> idx)</span> -&gt; <span class="title">decltype</span><span class="params">(c[idx])</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> c[idx];  <span class="comment">// 尾置返回类型：auto 占位，decltype 推导</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// C++14 起可简化为 decltype(auto)：</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Container&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">decltype</span>(<span class="keyword">auto</span>) <span class="title">get_element</span><span class="params">(Container&amp; c, <span class="type">size_t</span> idx)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> c[idx];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-5-实践经验"><a href="#5-5-实践经验" class="headerlink" title="5.5 实践经验"></a>5.5 实践经验</h3><ol>
+<li><strong>auto 丢弃引用和 cv 是特性非缺陷</strong>：避免意外修改原值，大部分场景用 auto 足够。</li>
+<li><strong>遍历容器推荐 const auto&amp;</strong>：避免拷贝且不修改元素。如需修改用 auto&amp;。</li>
+<li><strong>auto&amp;&amp; 仅用于泛型转发</strong>：普通代码用 auto&amp; 或 const auto&amp; 更清晰绑定语义。</li>
+<li><strong>decltype(auto) 的危险</strong>：返回局部变量的引用导致空悬引用。<code>decltype(auto) f() { int x=0; return (x); }</code> 返回空悬引用。</li>
+<li><strong>decltype(变量) vs decltype((变量))</strong>：前者返回声明类型，后者返回表达式类型（加引用）。面试经典考点。</li>
+<li><strong>结构化绑定 + auto</strong>：<code>auto [a,b] = pair</code> 复制；<code>auto&amp; [a,b] = pair</code> 引用。用对可避免大量代码。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（11题）"><a href="#Q-A（11题）" class="headerlink" title="Q&amp;A（11题）"></a>Q&amp;A（11题）</h3><p><strong>Q1: auto 的类型推导规则？</strong><br>A: 与函数模板参数推导一致：auto 丢弃引用和顶层 const（T param）；auto&amp; 保留 cv（T&amp; param）；auto&amp;&amp; 是万能引用。</p>
+<p><strong>Q2: decltype(变量) vs decltype((变量))？</strong><br>A: decltype(x) 返回声明的类型（int→int, int&amp;→int&amp;）；decltype((x)) 加一层 lvalue→加引用（int→int&amp;）。</p>
+<p><strong>Q3: decltype(auto) 的用途？</strong><br>A: 完美转发返回值，保留值类别（左值&#x2F;右值&#x2F;纯右值）。代理类、泛型包装器的标准工具。</p>
+<p><strong>Q4: auto&amp;、const auto&amp;、auto&amp;&amp; 的区别？</strong><br>A: auto&amp; 只能绑定左值、const auto&amp; 绑定左值和右值（延长生命周期）、auto&amp;&amp; 万能引用转发。</p>
+<p><strong>Q5: 为什么 auto 丢掉 const？</strong><br>A: 按模板推导规则 T param 不保留顶层 const。需要 const 用 const auto 或 const auto&amp;。</p>
+<p><strong>Q6: 尾置返回类型和 decltype(auto) 何时用？</strong><br>A: 返回类型依赖模板参数时用尾置返回类型 + decltype；C++14 后多数场景可换 decltype(auto)。</p>
+<p><strong>Q7: 结构化绑定中的 auto 如何推导？</strong><br>A: <code>auto [a,b,c] = tup</code> → 每个元素按 auto 规则推导。<code>auto&amp; [a,b,c] = tup</code> → 每个元素为绑定引用。</p>
+<p><strong>Q8: auto 作为函数返回类型的特点？</strong><br>A: 所有 return 语句必须返回相同类型（否则编译错误）。无 return → auto 推导为 void。</p>
+<p><strong>Q9: decltype 和 auto 对表达式类型推导的差异？</strong><br>A: auto 丢弃引用和 cv；decltype 保留表达式完整类型（包括引用、cv）。</p>
+<p><strong>Q10: auto 不能用在哪些场景？</strong><br>A: 函数参数（C++20 前）、类非静态成员（C++11起不可）、非类型模板参数。C++20 支持 auto 函数参数（即简写模板）。</p>
+<p><strong>Q11: CTAD 与 auto 的关系？</strong><br>A: 都是 C++17 特性。CTAD 是类模板参数推导（<code>std::pair{1, 2.0}</code>），auto 是变量类型推导。内部机制类似。</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：<code>auto x = {1,2,3}</code> 推导为 <code>std::initializer_list&lt;int&gt;</code>。<strong>反问</strong>：”auto 遇上大括号初始化列表时如何推导？”</li>
+<li><strong>陷阱</strong>：<code>decltype(auto) f() { int x=0; return (x); }</code> 返回悬垂引用。<strong>反问</strong>：”decltype(auto) 返回值的安全规则？”</li>
+<li><strong>陷阱</strong>：<code>auto&amp; x = 42</code> 编译错误（不能绑定右值到非 const 左值引用）。</li>
+<li><strong>陷阱</strong>：<code>decltype(auto)</code> 用在 lambda 返回值中可能导致类型不匹配（各分支返回不同引用类型）。</li>
+<li><strong>陷阱</strong>：auto 不会触发隐式转换：<code>auto x = foo();</code> 需要 foo 返回支持移动&#x2F;复制；<code>decltype(auto) x = foo();</code> 完全保留。</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li>auto 遵循模板推导，舍弃引用和 const。</li>
+<li>decltype(x) 返回声明的类型，decltype((x)) 加引用。</li>
+<li>decltype(auto) &#x3D; 完美转发返回值的类型。</li>
+<li>auto&amp;&amp; &#x3D; 万能引用，泛型转发专用。</li>
+<li>结构化绑定 <code>auto [a,b] = x</code> 不会修改 x。</li>
+<li>C++20 起 auto 可做函数参数（简写函数模板）。</li>
+<li><code>auto{x}</code> 和 <code>auto x = {x}</code> 推导规则不同。</li>
+<li>尾置返回类型 <code>auto f() -&gt; decltype(...)</code> 解决前置声明问题。</li>
+</ol>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_12f658c4b734.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_aa71fc290db7.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/auto_decltype/">https://weimo1.github.io/posts/auto_decltype/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/const_%E9%9D%A2%E8%AF%95%E5%85%AB%E8%82%A1/" title="const_面试八股"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">const_面试八股</div></div><div class="info-2"><div class="info-item-1">const 适用范围：单一主题（一个概念&#x2F;机制&#x2F;模块），保持可复用、可检索。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，...</div></div></div></a><a class="pagination-related" href="/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/" title="const char与string实现"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">const char与string实现</div></div><div class="info-2"><div class="info-item-1">const char* 与 string 实现一、核心概念 定义：const char* 是 C 风格字符串的底层类型——指向常量字符的指针，以 \0 结尾；std::string 是 C++ RAII 封装的动态字符串类，内部管理堆内存分配和 SSO（短字符串优化） 关键词：const char* vs char*、字符串字面量、SSO、c_str()、自定义 string 实现、字符数组模板推导 适用场景&#x2F;边界：const char* 适合 C API 交互和性能关键路径；std::string 适合日常开发；自定义 string 适合学习内存管理和理解 SSO 原理  二...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#auto%EF%BC%8Cdecltype"><span class="toc-number">1.</span> <span class="toc-text">auto，decltype</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-auto%E6%8E%A8%E5%AF%BC%E8%A7%84%E5%88%99%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 auto推导规则（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-auto%E6%8E%A8%E5%AF%BC%E6%A0%B8%E5%BF%83%E8%A7%84%E5%88%99"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 auto推导核心规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-auto%E7%9A%84%E4%BA%94%E7%A7%8D%E7%94%A8%E6%B3%95"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 auto的五种用法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#auto"><span class="toc-number">1.4.</span> <span class="toc-text">auto</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-auto"><span class="toc-number">1.5.</span> <span class="toc-text">3 auto</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-auto"><span class="toc-number">1.5.1.</span> <span class="toc-text">3.1 为什么需要自动类型推导 (auto)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E5%AE%9A%E4%B9%89%E5%8F%98%E9%87%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">3.2 自动类型推导: 定义变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E4%B8%80%E4%BA%9B%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.5.3.</span> <span class="toc-text">3.3 自动类型推导: 一些局限性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E5%87%BD%E6%95%B0%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="toc-number">1.5.4.</span> <span class="toc-text">3.4 自动类型推导: 函数返回值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-C-%E7%89%B9%E6%80%A7-%E5%BC%95%E7%94%A8-int"><span class="toc-number">1.5.5.</span> <span class="toc-text">3.5 C++特性: 引用 (int &amp;)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-C-%E7%89%B9%E6%80%A7-%E5%B8%B8%E5%BC%95%E7%94%A8-int-const-const-int"><span class="toc-number">1.5.6.</span> <span class="toc-text">3.6 C++特性: 常引用 (int const &amp; &#x2F; const int &amp;)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E5%AE%9A%E4%B9%89%E5%BC%95%E7%94%A8-auto"><span class="toc-number">1.5.7.</span> <span class="toc-text">3.7 自动类型推导: 定义引用 (auto &amp;)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-8-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E5%AE%9A%E4%B9%89%E5%B8%B8%E5%BC%95%E7%94%A8-auto-const"><span class="toc-number">1.5.8.</span> <span class="toc-text">3.8 自动类型推导: 定义常引用 (auto const &amp;)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-9-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E5%87%BD%E6%95%B0%E8%BF%94%E5%9B%9E%E5%BC%95%E7%94%A8"><span class="toc-number">1.5.9.</span> <span class="toc-text">3.9 自动类型推导: 函数返回引用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-10-%E7%90%86%E8%A7%A3%E5%8F%B3%E5%80%BC-%E5%8D%B3%E5%B0%86%E6%B6%88%E5%A4%B1%E7%9A%84%EF%BC%8C%E4%B8%8D%E9%95%BF%E6%97%B6%E9%97%B4%E5%AD%98%E5%9C%A8%E4%BA%8E%E5%86%85%E5%AD%98%E4%B8%AD%E7%9A%84%E5%80%BC"><span class="toc-number">1.5.10.</span> <span class="toc-text">3.10 理解右值: 即将消失的，不长时间存在于内存中的值</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-11-%E7%90%86%E8%A7%A3-const-%E5%B8%B8%E5%80%BC%E4%BF%AE%E9%A5%B0%E7%AC%A6"><span class="toc-number">1.5.11.</span> <span class="toc-text">3.11 理解 const: 常值修饰符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-12-%E5%B0%8F%E5%BD%AD%E8%80%81%E5%B8%88%E5%8F%91%E6%98%8E-%E4%B8%80%E4%B8%AA%E6%96%B9%E4%BE%BF%E6%9F%A5%E7%9C%8B%E7%B1%BB%E5%9E%8B%E5%90%8D%E7%9A%84%E5%B0%8F%E5%B7%A5%E5%85%B7"><span class="toc-number">1.5.12.</span> <span class="toc-text">3.12 小彭老师发明: 一个方便查看类型名的小工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-13-%E8%8E%B7%E5%8F%96%E5%8F%98%E9%87%8F%E7%9A%84%E7%B1%BB%E5%9E%8B-decltype"><span class="toc-number">1.5.13.</span> <span class="toc-text">3.13 获取变量的类型: decltype</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-14-%E8%8E%B7%E5%8F%96%E8%A1%A8%E8%BE%BE%E5%BC%8F%E7%9A%84%E7%B1%BB%E5%9E%8B-decltype"><span class="toc-number">1.5.14.</span> <span class="toc-text">3.14 获取表达式的类型: decltype</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-15-%E8%87%AA%E5%8A%A8%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC-%E4%B8%87%E8%83%BD%E6%8E%A8%E5%AF%BC-decltype-auto"><span class="toc-number">1.5.15.</span> <span class="toc-text">3.15 自动类型推导: 万能推导 (decltype(auto))</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-16-using-%E5%88%9B%E5%BB%BA%E7%B1%BB%E5%9E%8B%E5%88%AB%E5%90%8D"><span class="toc-number">1.5.16.</span> <span class="toc-text">3.16 using: 创建类型别名</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-17-decltype-%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90"><span class="toc-number">1.5.17.</span> <span class="toc-text">3.17 decltype: 一个例子</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#decltype"><span class="toc-number">1.6.</span> <span class="toc-text">decltype</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#decltype%E4%B8%8Eauto%E7%9A%84%E6%AF%94%E8%BE%83"><span class="toc-number">1.6.1.</span> <span class="toc-text">decltype与auto的比较</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#auto%E5%92%8Cdecltype%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86%E6%B7%B1%E5%85%A5%E8%A7%A3%E6%9E%90"><span class="toc-number">1.6.2.</span> <span class="toc-text">auto和decltype的工作原理深入解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#auto%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="toc-number">1.6.2.1.</span> <span class="toc-text">auto的工作原理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#decltype%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="toc-number">1.6.2.2.</span> <span class="toc-text">decltype的工作原理</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%B0%BE%E7%BD%AE%E8%BF%94%E5%9B%9E%E7%B1%BB%E5%9E%8B%EF%BC%88Trailing-Return-Type%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">4.1 尾置返回类型（Trailing Return Type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-decltype-auto-%E7%9A%84%E7%B2%BE%E7%A1%AE%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.7.2.</span> <span class="toc-text">4.2 decltype(auto) 的精确推导</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E7%BB%93%E6%9E%84%E5%8C%96%E7%BB%91%E5%AE%9A%E4%B8%AD%E7%9A%84auto"><span class="toc-number">1.7.3.</span> <span class="toc-text">4.3 结构化绑定中的auto</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.7.4.</span> <span class="toc-text">4.4 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.7.5.</span> <span class="toc-text">4.5 工程中的最佳实践</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.8.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-auto-%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%8E%A8%E5%AF%BC%E8%A7%84%E5%88%99%EF%BC%88%E6%A8%A1%E6%9D%BF%E6%8E%A8%E5%AF%BC%E6%A8%A1%E5%9E%8B%E7%9A%84%E7%B2%BE%E7%A1%AE%E5%A4%8D%E5%88%BB%EF%BC%89"><span class="toc-number">1.8.1.</span> <span class="toc-text">5.1 auto 的类型推导规则（模板推导模型的精确复刻）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-decltype-%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.8.2.</span> <span class="toc-text">5.2 decltype 的实现原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-decltype-auto-%E7%9A%84%E8%BD%AC%E5%8F%91%E8%AF%AD%E4%B9%89"><span class="toc-number">1.8.3.</span> <span class="toc-text">5.3 decltype(auto) 的转发语义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-auto-%E5%92%8C-decltype-%E5%9C%A8%E6%B3%9B%E5%9E%8B%E7%BC%96%E7%A8%8B%E4%B8%AD%E7%9A%84%E5%8D%8F%E5%90%8C"><span class="toc-number">1.8.4.</span> <span class="toc-text">5.4 auto 和 decltype 在泛型编程中的协同</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.8.5.</span> <span class="toc-text">5.5 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8811%E9%A2%98%EF%BC%89"><span class="toc-number">1.9.1.</span> <span class="toc-text">Q&amp;A（11题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.9.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.9.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

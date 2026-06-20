@@ -1,0 +1,497 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>幂等性与分布式一致性 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="幂等性与分布式一致性保障 适用范围：分布式系统中的幂等性设计（唯一ID、乐观锁、状态机）、数据最终一致性方案（消息队列、TCC&#x2F;Saga事务）。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="幂等性与分布式一致性">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="幂等性与分布式一致性保障 适用范围：分布式系统中的幂等性设计（唯一ID、乐观锁、状态机）、数据最终一致性方案（消息队列、TCC&#x2F;Saga事务）。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.570Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "幂等性与分布式一致性",
+  "url": "https://weimo1.github.io/posts/%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.570Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '幂等性与分布式一致性',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">幂等性与分布式一致性</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">幂等性与分布式一致性</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.570Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E4%B8%8E%E6%9E%B6%E6%9E%84/">性能优化与架构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>13分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="幂等性与分布式一致性保障"><a href="#幂等性与分布式一致性保障" class="headerlink" title="幂等性与分布式一致性保障"></a>幂等性与分布式一致性保障</h1><blockquote>
+<p>适用范围：分布式系统中的幂等性设计（唯一ID、乐观锁、状态机）、数据最终一致性方案（消息队列、TCC&#x2F;Saga事务）。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备；源码要贴原始代码，有需要可贴汇编。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。</li>
+<li><strong>代码块必须标注语言</strong>：所有代码块必须根据实际语言标注，C++ 代码用 <code>c++</code>，Java 用 <code>java</code>，SQL 用 <code>sql</code>，Python 用 <code>python</code> 等。禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：幂等性与一致性是分布式系统的两大核心保障机制。在IM项目中，消息去重依赖幂等性设计，跨服务数据同步依赖最终一致性方案。</li>
+<li><strong>技术栈与依赖</strong>：Redis（幂等校验SETNX + TTL）、MySQL（唯一索引 + 乐观锁版本号）、Kafka（可靠消息队列）、Seata（分布式事务框架）</li>
+<li><strong>模块边界</strong>：<ul>
+<li>幂等性：客户端请求 → 服务端去重 → 业务处理</li>
+<li>一致性：跨服务数据同步 → 消息队列异步 → 补偿机制</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="幂等性设计三方案"><a href="#幂等性设计三方案" class="headerlink" title="幂等性设计三方案"></a>幂等性设计三方案</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    A[幂等性实现方案] --&gt; B[唯一标识符 Unique ID]</span><br><span class="line">    A --&gt; C[乐观锁 Version]</span><br><span class="line">    A --&gt; D[状态机 State Machine]</span><br><span class="line">    B --&gt; B1[Redis SETNX + TTL]</span><br><span class="line">    B --&gt; B2[数据库唯一索引]</span><br><span class="line">    C --&gt; C1[WHERE version = old_version]</span><br><span class="line">    C --&gt; C2[UPDATE version = version + 1]</span><br><span class="line">    D --&gt; D1[仅允许特定状态变更]</span><br><span class="line">    D --&gt; D2[PENDING → PAID → DONE]</span><br></pre></td></tr></table></figure>
+
+<h3 id="最终一致性三方案"><a href="#最终一致性三方案" class="headerlink" title="最终一致性三方案"></a>最终一致性三方案</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    A[最终一致性方案] --&gt; B[消息队列 MQ]</span><br><span class="line">    A --&gt; C[分布式事务 TCC/Saga]</span><br><span class="line">    B --&gt; B1[订单服务→MQ→库存服务]</span><br><span class="line">    B --&gt; B2[失败重试+死信队列]</span><br><span class="line">    C --&gt; C1[TCC: Try-Confirm-Cancel]</span><br><span class="line">    C --&gt; C2[Saga: 正向+补偿]</span><br></pre></td></tr></table></figure>
+
+<h3 id="关键设计决策"><a href="#关键设计决策" class="headerlink" title="关键设计决策"></a>关键设计决策</h3><ul>
+<li><strong>为什么不用强一致性</strong>：分布式系统中强一致性（如2PC）会严重影响性能和可用性。IM消息场景允许短暂不一致，最终一致性更适用。</li>
+<li><strong>为什么幂等性是必须的</strong>：网络重传、客户端重试、消息队列重试都会导致重复请求，服务端必须能安全处理重复请求。</li>
+</ul>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><h3 id="3-1-幂等性定义"><a href="#3-1-幂等性定义" class="headerlink" title="3.1 幂等性定义"></a>3.1 幂等性定义</h3><ul>
+<li><strong>数学定义</strong>：对于同一操作，执行一次或多次的结果相同。</li>
+<li><strong>分布式系统定义</strong>：客户端重复调用服务端接口时，系统状态保持一致（如支付接口防止重复扣款）。</li>
+</ul>
+<h3 id="3-2-实现方案一：唯一标识符（Unique-ID）"><a href="#3-2-实现方案一：唯一标识符（Unique-ID）" class="headerlink" title="3.2 实现方案一：唯一标识符（Unique ID）"></a>3.2 实现方案一：唯一标识符（Unique ID）</h3><p><strong>原理</strong>：客户端生成唯一请求ID（如UUID），服务端校验该ID是否已处理。</p>
+<p><strong>适用场景</strong>：支付、订单创建等关键操作。</p>
+<p><strong>实现步骤</strong>：</p>
+<ol>
+<li>客户端生成唯一ID（如 <code>request_id=uuid4()</code>），随请求发送</li>
+<li>服务端通过 <strong>Redis</strong> 或 <strong>数据库唯一索引</strong> 检查 <code>request_id</code> 是否存在</li>
+<li>若存在：返回之前的处理结果；若不存在：执行业务逻辑并记录ID</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 数据库唯一索引</span></span><br><span class="line"><span class="keyword">ALTER TABLE</span> orders <span class="keyword">ADD</span> <span class="keyword">UNIQUE</span> (request_id);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Java代码示例（Redis校验）</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">processOrder</span><span class="params">(String requestId, Order order)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (redis.setnx(requestId, <span class="string">&quot;processing&quot;</span>) == <span class="number">1</span>) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 执行业务逻辑</span></span><br><span class="line">            db.insertOrder(order);</span><br><span class="line">            redis.set(requestId, <span class="string">&quot;completed&quot;</span>);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            redis.delete(requestId);</span><br><span class="line">            <span class="keyword">throw</span> e;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 请求重复，直接返回</span></span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-实现方案二：乐观锁（Optimistic-Lock）"><a href="#3-3-实现方案二：乐观锁（Optimistic-Lock）" class="headerlink" title="3.3 实现方案二：乐观锁（Optimistic Lock）"></a>3.3 实现方案二：乐观锁（Optimistic Lock）</h3><p><strong>原理</strong>：基于数据版本号（Version）控制并发修改。</p>
+<p><strong>适用场景</strong>：库存扣减、账户余额更新。</p>
+<p><strong>实现步骤</strong>：</p>
+<ol>
+<li>读取数据时获取当前版本号（<code>version</code>）</li>
+<li>更新时校验版本号是否匹配，并递增版本号</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">UPDATE</span> products </span><br><span class="line"><span class="keyword">SET</span> stock <span class="operator">=</span> stock <span class="operator">-</span> <span class="number">1</span>, version <span class="operator">=</span> version <span class="operator">+</span> <span class="number">1</span> </span><br><span class="line"><span class="keyword">WHERE</span> id <span class="operator">=</span> <span class="number">1001</span> <span class="keyword">AND</span> version <span class="operator">=</span> <span class="number">3</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-实现方案三：状态机（State-Machine）"><a href="#3-4-实现方案三：状态机（State-Machine）" class="headerlink" title="3.4 实现方案三：状态机（State Machine）"></a>3.4 实现方案三：状态机（State Machine）</h3><p><strong>原理</strong>：业务操作设计为状态流转，仅允许特定状态变更。</p>
+<p><strong>适用场景</strong>：订单状态（待支付→已支付→已完成）。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (order.<span class="built_in">getStatus</span>() == OrderStatus.PENDING) &#123;</span><br><span class="line">    order.<span class="built_in">setStatus</span>(OrderStatus.PAID);</span><br><span class="line">    orderDao.<span class="built_in">update</span>(order);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-最终一致性：消息队列"><a href="#3-5-最终一致性：消息队列" class="headerlink" title="3.5 最终一致性：消息队列"></a>3.5 最终一致性：消息队列</h3><p><strong>原理</strong>：通过可靠消息传递实现异步数据同步。</p>
+<p><strong>核心步骤</strong>（以订单创建→扣库存为例）：</p>
+<ol>
+<li>订单服务本地事务中插入订单记录，并发送消息到MQ（如Kafka）</li>
+<li>库存服务消费消息，扣减库存</li>
+<li>若消费失败，MQ自动重试或进入死信队列（DLQ）人工处理</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 订单服务（Producer）</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">createOrder</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">    orderDao.insert(order);</span><br><span class="line">    kafkaTemplate.send(<span class="string">&quot;order-created&quot;</span>, order);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 库存服务（Consumer）</span></span><br><span class="line"><span class="meta">@KafkaListener(topics = &quot;order-created&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">deductStock</span><span class="params">(Order order)</span> &#123;</span><br><span class="line">    productService.deductStock(order.getProductId(), order.getQuantity());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-最终一致性：TCC（Try-Confirm-Cancel）"><a href="#3-6-最终一致性：TCC（Try-Confirm-Cancel）" class="headerlink" title="3.6 最终一致性：TCC（Try-Confirm-Cancel）"></a>3.6 最终一致性：TCC（Try-Confirm-Cancel）</h3><p>转账场景示例：</p>
+<ol>
+<li><strong>Try</strong>：预扣款（冻结资源）</li>
+<li><strong>Confirm</strong>：实际扣款（提交事务）</li>
+<li><strong>Cancel</strong>：回滚预扣款（释放资源）</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Try阶段</span></span><br><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">tryTransfer</span><span class="params">(String from, String to, BigDecimal amount)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (accountService.freeze(from, amount) &amp;&amp; accountService.reserve(to, amount)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">TransferException</span>(<span class="string">&quot;预扣款失败&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Confirm阶段（幂等）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">confirmTransfer</span><span class="params">(String txId)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (txLog.exists(txId)) <span class="keyword">return</span>; <span class="comment">// 已提交过</span></span><br><span class="line">    accountService.commit(from, to, amount);</span><br><span class="line">    txLog.save(txId);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Cancel阶段（幂等）</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">cancelTransfer</span><span class="params">(String txId)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (txLog.exists(txId)) <span class="keyword">return</span>;</span><br><span class="line">    accountService.unfreeze(from, amount);</span><br><span class="line">    accountService.unreserve(to, amount);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-7-补偿事务（Saga）"><a href="#3-7-补偿事务（Saga）" class="headerlink" title="3.7 补偿事务（Saga）"></a>3.7 补偿事务（Saga）</h3><p><strong>原理</strong>：每个业务步骤对应一个补偿操作，失败时逆向执行。</p>
+<p><strong>编排式示例</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">sequenceDiagram</span><br><span class="line">    participant OrderService</span><br><span class="line">    participant PaymentService</span><br><span class="line">    participant InventoryService</span><br><span class="line"></span><br><span class="line">    OrderService-&gt;&gt;PaymentService: 扣款</span><br><span class="line">    PaymentService--&gt;&gt;OrderService: 成功</span><br><span class="line">    OrderService-&gt;&gt;InventoryService: 扣库存</span><br><span class="line">    InventoryService--&gt;&gt;OrderService: 失败</span><br><span class="line">    OrderService-&gt;&gt;PaymentService: 退款（补偿）</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="幂等性设计要点"><a href="#幂等性设计要点" class="headerlink" title="幂等性设计要点"></a>幂等性设计要点</h3><ul>
+<li><strong>客户端与服务端协作</strong>：客户端生成唯一ID，服务端负责校验</li>
+<li><strong>设置合理过期时间</strong>：Redis中的请求ID需设置TTL，避免存储膨胀</li>
+<li><strong>区分业务类型</strong>：读操作天然幂等，写操作需显式设计</li>
+</ul>
+<h3 id="最终一致性设计要点"><a href="#最终一致性设计要点" class="headerlink" title="最终一致性设计要点"></a>最终一致性设计要点</h3><ul>
+<li><strong>异步化处理</strong>：避免同步阻塞，提升系统吞吐量</li>
+<li><strong>幂等消费</strong>：MQ消费者需保证多次处理结果一致</li>
+<li><strong>监控与告警</strong>：跟踪长时间未完成的事务，及时人工介入</li>
+</ul>
+<h3 id="典型场景示例"><a href="#典型场景示例" class="headerlink" title="典型场景示例"></a>典型场景示例</h3><h4 id="电商下单流程"><a href="#电商下单流程" class="headerlink" title="电商下单流程"></a>电商下单流程</h4><ul>
+<li><strong>幂等性</strong>：通过订单ID防止重复创建订单</li>
+<li><strong>最终一致性</strong>：<ol>
+<li>订单服务创建订单，发送消息到MQ</li>
+<li>库存服务扣减库存，积分服务增加积分</li>
+<li>若积分服务宕机，MQ重试直至成功</li>
+</ol>
+</li>
+</ul>
+<h4 id="跨行转账"><a href="#跨行转账" class="headerlink" title="跨行转账"></a>跨行转账</h4><ul>
+<li><strong>幂等性</strong>：交易流水号唯一标识每笔转账</li>
+<li><strong>最终一致性</strong>：<ol>
+<li>银行A预扣款，银行B预收款（Try）</li>
+<li>双方确认后完成转账（Confirm）</li>
+<li>若任一银行失败，执行退款（Cancel）</li>
+</ol>
+</li>
+</ul>
+<h3 id="工具与框架推荐"><a href="#工具与框架推荐" class="headerlink" title="工具与框架推荐"></a>工具与框架推荐</h3><table>
+<thead>
+<tr>
+<th align="left"><strong>工具</strong></th>
+<th align="left"><strong>用途</strong></th>
+<th align="left"><strong>示例场景</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Kafka</strong></td>
+<td align="left">可靠消息队列</td>
+<td align="left">订单-库存数据同步</td>
+</tr>
+<tr>
+<td align="left"><strong>Seata</strong></td>
+<td align="left">分布式事务框架（AT&#x2F;TCC模式）</td>
+<td align="left">跨服务转账</td>
+</tr>
+<tr>
+<td align="left"><strong>Redis</strong></td>
+<td align="left">幂等校验、分布式锁</td>
+<td align="left">防止重复支付</td>
+</tr>
+<tr>
+<td align="left"><strong>ZooKeeper</strong></td>
+<td align="left">分布式协调</td>
+<td align="left">Saga事务状态管理</td>
+</tr>
+<tr>
+<td align="left"><strong>ElasticJob</strong></td>
+<td align="left">分布式任务调度</td>
+<td align="left">补偿任务定时触发</td>
+</tr>
+</tbody></table>
+<h3 id="常见问题与解决方案"><a href="#常见问题与解决方案" class="headerlink" title="常见问题与解决方案"></a>常见问题与解决方案</h3><table>
+<thead>
+<tr>
+<th align="left"><strong>问题</strong></th>
+<th align="left"><strong>解决方案</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">消息重复消费</td>
+<td align="left">消费端实现幂等性（如唯一ID+数据库校验）</td>
+</tr>
+<tr>
+<td align="left">事务长时间未完成</td>
+<td align="left">设置超时时间，超时后触发补偿逻辑</td>
+</tr>
+<tr>
+<td align="left">服务宕机导致状态丢失</td>
+<td align="left">关键状态持久化到数据库，重启后恢复</td>
+</tr>
+<tr>
+<td align="left">跨地域网络延迟高</td>
+<td align="left">采用本地优先策略，异步同步数据</td>
+</tr>
+</tbody></table>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong>SETNX的原子性价值</strong>：</p>
+<p><code>redis.setnx(requestId, &quot;processing&quot;)</code> 一行代码实现了三个功能：</p>
+<ol>
+<li><strong>去重判断</strong>：key已存在 → 请求已处理</li>
+<li><strong>临时锁</strong>：key设置成功 → 获得处理权</li>
+<li><strong>过期保护</strong>：设置TTL → 避免死锁（如处理中途崩溃）</li>
+</ol>
+<p>这是分布式系统中”最简洁的幂等性实现”，仅依赖Redis的单命令原子性。</p>
+<p><strong>乐观锁 vs 悲观锁的选择依据</strong>：</p>
+<ul>
+<li>乐观锁（版本号）：适合读多写少（如商品浏览多、下单少）。冲突检测在写入时，失败则重试。</li>
+<li>悲观锁（SELECT FOR UPDATE）：适合写多读少（如秒杀库存）。持有锁期间其他事务等待。</li>
+</ul>
+<p>IM项目中，消息去重使用Redis SETNX（本质是乐观并发控制），因为消息重复的概率低，乐观锁开销更小。</p>
+<p><strong>TCC vs Saga的取舍</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>TCC</th>
+<th>Saga</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>一致性</td>
+<td>强一致（预留资源）</td>
+<td>最终一致</td>
+</tr>
+<tr>
+<td>实现复杂度</td>
+<td>高（需Try&#x2F;Confirm&#x2F;Cancel三接口）</td>
+<td>中（正向+补偿）</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>较低（预留资源占锁）</td>
+<td>较高（异步执行）</td>
+</tr>
+<tr>
+<td>适用场景</td>
+<td>金融转账</td>
+<td>订单履约</td>
+</tr>
+</tbody></table>
+<p>IM消息场景选择Saga：消息写入是一阶段，推送是二阶段，推送失败的补偿是”标记待重试”而非回滚。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><p><strong>SETNX的TTL设置陷阱</strong>：TTL太短→业务未处理完key已过期→重复请求通过；TTL太长→内存浪费。应设为业务处理最大时长×2。</p>
+</li>
+<li><p><strong>乐观锁的ABA问题</strong>：读取version&#x3D;1→业务处理→更新时version已变为1→2→1（被其他事务改了一圈）。解决方案：使用全局递增ID而非回绕版本号。</p>
+</li>
+<li><p><strong>消息队列的”恰好一次”语义</strong>：”恰好一次”在分布式系统中理论上不可能实现（Two Generals Problem）。实际实现是”至少一次” + 消费者幂等 &#x3D; “效果上恰好一次”。</p>
+</li>
+<li><p><strong>Saga补偿失败的处理</strong>：补偿操作本身也可能失败。需设计”补偿的补偿”或进入人工处理流程。实际方案：补偿失败时记录到死信表，人工介入。</p>
+</li>
+</ol>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>幂等性是分布式系统第一原则</strong>：任何可能被重试的操作都必须幂等。这不是可选的优化，而是正确性的必要条件。</li>
+<li><strong>一致性级别的选择</strong>：大多数业务不需要强一致性。最终一致性+合理的业务体验（如”订单处理中，请稍候”）是更好的选择。</li>
+<li><strong>“宁可重复，不可丢失”</strong>：IM消息系统的原则。重复消息可以幂等去重，但丢失的消息无法恢复。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：什么是幂等性？为什么分布式系统需要幂等性？</p>
+<p>A：幂等性指同一操作执行一次或多次的结果相同。分布式系统中网络重传、客户端重试、消息重复投递都会产生重复请求，服务端必须幂等处理以避免重复扣款、重复创建订单等问题。</p>
+<p>Q2：实现幂等性的常用方案有哪些？</p>
+<p>A：1) 唯一标识符（Redis SETNX&#x2F;DB唯一索引）；2) 乐观锁（版本号）；3) 状态机（限制状态流转方向）。选择依据：操作频率、冲突概率、性能要求。</p>
+<p>Q3：强一致性和最终一致性的区别？</p>
+<p>A：强一致性要求写入后立即对所有读可见（如单机数据库），但分布式系统中代价高（如2PC阻塞）。最终一致性允许短暂不一致，但保证最终收敛（如DNS更新、消息队列同步）。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：Redis SETNX实现幂等的原理和注意事项？</p>
+<p>A：SETNX是原子操作，只在key不存在时成功。成功&#x3D;获得处理权，失败&#x3D;请求已处理。注意：1) 必须设置TTL防止死锁；2) TTL需大于业务处理时间；3) 异常时要清理key（DELETE）。</p>
+<p>Q5：乐观锁的版本号是如何工作的？</p>
+<p>A：读取数据时获取version。更新时WHERE条件包含旧version，并SET version+1。若被其他事务抢先更新（version已变），WHERE匹配0行，更新失败。应用层检测affected_rows&#x3D;0则重试。</p>
+<p>Q6：TCC事务的三个阶段分别做什么？</p>
+<p>A：Try：预留&#x2F;冻结资源（不真正执行）；Confirm：提交，使用预留的资源完成操作（必须幂等）；Cancel：回滚，释放预留的资源（必须幂等）。TCC要求业务接口改造为三阶段。</p>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：消息队列如何保证最终一致性？</p>
+<p>A：生产者本地事务中写业务数据+发消息（事务消息&#x2F;本地消息表）。消费者处理业务+手动ACK。消费失败则MQ重试，直到成功或进入死信队列。</p>
+<p>Q8：Saga和TCC该选哪个？</p>
+<p>A：金融场景（一致性要求高）选TCC，需改造业务接口。电商&#x2F;IM场景（一致性要求低）选Saga，实现简单。TCC的Try阶段会锁定资源影响并发，Saga异步执行性能更好。</p>
+<p>Q9：如何处理Saga的补偿失败？</p>
+<p>A：1) 补偿重试（指数退避）；2) 记录到死信表，定时任务扫描重试；3) 告警+人工介入；4) 设计补偿操作的补偿（嵌套Saga）。通常最终兜底是人工作业。</p>
+<p>Q10：在IM项目中哪里用到了幂等性？</p>
+<p>A：1) 消息发送：客户端生成唯一消息ID，服务端SETNX去重；2) 好友申请：申请表中sender_id+receiver_id+status唯一约束；3) 好友认证：认证操作基于申请记录状态机（pending→agree&#x2F;reject）。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>常见的陷阱问题：</p>
+<ul>
+<li><strong>陷阱问题1</strong>：Redis SETNX实现的幂等性真的绝对可靠吗？ → 不是。Redis主从切换时可能丢失key（异步复制），导致重复请求通过。解决方案：1) 使用RedLock算法；2) 数据库唯一索引兜底；3) 业务层做最终一致性校验。</li>
+<li><strong>陷阱问题2</strong>：乐观锁在高并发下会有什么问题？ → 冲突率高时大量请求重试，造成”重试风暴”。解决方案：1) 随机退避重试；2) 分段锁（如库存分桶）；3) 改用悲观锁或队列串行化。</li>
+<li><strong>陷阱问题3</strong>：最终一致性方案如何向用户解释”为什么我看到的数据不是最新的”？ → 这是产品体验问题。解决方案：1) 前端显示”处理中”状态；2) 乐观更新（先展示预期结果，后台修正）；3) 重要操作使用强一致性（如余额查询）。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>幂等性的核心思想是<strong>对同一请求，多次执行 &#x3D; 一次执行</strong></li>
+<li>SETNX一行代码同时实现了<strong>去重 + 锁 + 过期保护</strong></li>
+<li>最终一致性的本质是<strong>用时间换可用性</strong>，允许短暂不一致</li>
+<li>避免的常见错误是<strong>SETNX不设TTL导致死锁key永久存在</strong></li>
+<li>分布式系统中”恰好一次”是伪命题，实际是<strong>至少一次 + 幂等 &#x3D; 效果恰好一次</strong></li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="总结原文"><a href="#总结原文" class="headerlink" title="总结原文"></a>总结原文</h3><ul>
+<li><strong>幂等性</strong>：通过唯一ID、乐观锁、状态机确保操作可重复执行</li>
+<li><strong>最终一致性</strong>：借助消息队列、TCC&#x2F;Saga事务实现跨服务数据同步</li>
+<li><strong>核心原则</strong>：<ul>
+<li><strong>业务设计优先</strong>：根据业务场景选择合适的一致性级别（强一致&#x2F;最终一致）</li>
+<li><strong>监控兜底</strong>：任何自动化机制都需配合人工监控和干预</li>
+</ul>
+</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/">https://weimo1.github.io/posts/%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%B9%B6%E5%8F%91%E4%B8%89%E5%89%91%E5%AE%A2future,-promise%E5%92%8Casync/" title="并发三剑客future, promise和async"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">并发三剑客future, promise和async</div></div><div class="info-2"><div class="info-item-1">并发三剑客future, promise和async C++ 异步编程的核心三件套：std::future 获取结果，std::promise 设置结果，std::async 一键启动异步任务。  一、核心概念补充  定义：future&#x2F;promise&#x2F;async 是 C++11 引入的异步编程基础设施。promise 在生产者端设置值或异常，future 在消费者端获取，async 封装线程创建+promise+future 的整套流程。 关键词：std::future、std::promise、std::async、std::packaged_task、std::...</div></div></div></a><a class="pagination-related" href="/posts/%E5%B9%B6%E5%8F%91%E6%A8%A1%E5%9E%8B/" title="并发模型"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">并发模型</div></div><div class="info-2"><div class="info-item-1">并发模型 并发编程中的几种常见模型：CSP、Actor、线程池等。  一、核心概念补充  定义：并发模型是描述并发计算中交互方式的抽象框架。 关键词：CSP、Actor、线程池、事件驱动 参考链接：https://zhuanlan.zhihu.com/p/699195031  关联主题 Actor_CSP设计模式 线程池 并发三剑客future, promise和async  </div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B9%82%E7%AD%89%E6%80%A7%E4%B8%8E%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E4%BF%9D%E9%9A%9C"><span class="toc-number">1.</span> <span class="toc-text">幂等性与分布式一致性保障</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%82%E7%AD%89%E6%80%A7%E8%AE%BE%E8%AE%A1%E4%B8%89%E6%96%B9%E6%A1%88"><span class="toc-number">1.3.1.</span> <span class="toc-text">幂等性设计三方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E4%B8%89%E6%96%B9%E6%A1%88"><span class="toc-number">1.3.2.</span> <span class="toc-text">最终一致性三方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.3.</span> <span class="toc-text">关键设计决策</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%B9%82%E7%AD%89%E6%80%A7%E5%AE%9A%E4%B9%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 幂等性定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%E4%B8%80%EF%BC%9A%E5%94%AF%E4%B8%80%E6%A0%87%E8%AF%86%E7%AC%A6%EF%BC%88Unique-ID%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 实现方案一：唯一标识符（Unique ID）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%E4%BA%8C%EF%BC%9A%E4%B9%90%E8%A7%82%E9%94%81%EF%BC%88Optimistic-Lock%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 实现方案二：乐观锁（Optimistic Lock）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%E4%B8%89%EF%BC%9A%E7%8A%B6%E6%80%81%E6%9C%BA%EF%BC%88State-Machine%EF%BC%89"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 实现方案三：状态机（State Machine）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%EF%BC%9A%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 最终一致性：消息队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%EF%BC%9ATCC%EF%BC%88Try-Confirm-Cancel%EF%BC%89"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 最终一致性：TCC（Try-Confirm-Cancel）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E8%A1%A5%E5%81%BF%E4%BA%8B%E5%8A%A1%EF%BC%88Saga%EF%BC%89"><span class="toc-number">1.4.7.</span> <span class="toc-text">3.7 补偿事务（Saga）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%82%E7%AD%89%E6%80%A7%E8%AE%BE%E8%AE%A1%E8%A6%81%E7%82%B9"><span class="toc-number">1.5.1.</span> <span class="toc-text">幂等性设计要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E7%BB%88%E4%B8%80%E8%87%B4%E6%80%A7%E8%AE%BE%E8%AE%A1%E8%A6%81%E7%82%B9"><span class="toc-number">1.5.2.</span> <span class="toc-text">最终一致性设计要点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.5.3.</span> <span class="toc-text">典型场景示例</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%94%B5%E5%95%86%E4%B8%8B%E5%8D%95%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.3.1.</span> <span class="toc-text">电商下单流程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B7%A8%E8%A1%8C%E8%BD%AC%E8%B4%A6"><span class="toc-number">1.5.3.2.</span> <span class="toc-text">跨行转账</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E5%85%B7%E4%B8%8E%E6%A1%86%E6%9E%B6%E6%8E%A8%E8%8D%90"><span class="toc-number">1.5.4.</span> <span class="toc-text">工具与框架推荐</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="toc-number">1.5.5.</span> <span class="toc-text">常见问题与解决方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.6.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%E5%8E%9F%E6%96%87"><span class="toc-number">1.8.1.</span> <span class="toc-text">总结原文</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>RTTI和四种指针 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="RTTI和四种指针 适用范围：RTTI（Run-Time Type Identification）机制及 C++ 四种类型转换运算符。  一、核心概念 定义：RTTI（运行时类型识别）是 C++ 通过 typeid 和 dynamic_cast 在运行时获取对象实际类型信息的机制。四种指针转换运算符（static_cast、dynamic_cast、const_cast、reinterpret_c">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RTTI和四种指针">
+<meta property="og:url" content="https://weimo1.github.io/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="RTTI和四种指针 适用范围：RTTI（Run-Time Type Identification）机制及 C++ 四种类型转换运算符。  一、核心概念 定义：RTTI（运行时类型识别）是 C++ 通过 typeid 和 dynamic_cast 在运行时获取对象实际类型信息的机制。四种指针转换运算符（static_cast、dynamic_cast、const_cast、reinterpret_c">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.550Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "RTTI和四种指针",
+  "url": "https://weimo1.github.io/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.550Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'RTTI和四种指针',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">RTTI和四种指针</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">RTTI和四种指针</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.550Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B/">对象模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>16分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="RTTI和四种指针"><a href="#RTTI和四种指针" class="headerlink" title="RTTI和四种指针"></a>RTTI和四种指针</h1><blockquote>
+<p>适用范围：RTTI（Run-Time Type Identification）机制及 C++ 四种类型转换运算符。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：RTTI（运行时类型识别）是 C++ 通过 <code>typeid</code> 和 <code>dynamic_cast</code> 在运行时获取对象实际类型信息的机制。四种指针转换运算符（<code>static_cast</code>、<code>dynamic_cast</code>、<code>const_cast</code>、<code>reinterpret_cast</code>）是 C++ 替代 C 风格强制转换的类型安全转换方式。</li>
+<li><strong>关键词</strong>：RTTI、<code>typeid</code>、<code>type_info</code>、<code>dynamic_cast</code>、<code>static_cast</code>、<code>const_cast</code>、<code>reinterpret_cast</code>、虚函数表（vtable）、多态类型</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>RTTI：需要根据基类指针&#x2F;引用判断实际派生类型的场景（如插件系统、序列化框架）</li>
+<li><code>dynamic_cast</code>：有虚函数的继承体系中安全的向下转型</li>
+<li><code>static_cast</code>：编译期已知的隐式转换（基本类型、父子类指针互转）</li>
+<li><code>const_cast</code>：移除或添加 <code>const</code>&#x2F;<code>volatile</code> 限定符</li>
+<li><code>reinterpret_cast</code>：底层位模式重解释（如网络字节序、内存映射 I&#x2F;O）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p>RTTI 的核心是编译器为每个多态类（含虚函数）生成一份 <code>type_info</code> 对象，并将其地址存入虚函数表。运行时通过 vtable 查找 <code>type_info</code> 完成类型判断：</p>
+<ul>
+<li><code>typeid(expr)</code>：若 expr 是多态类型，通过 vtable 获取 <code>type_info</code>；若是非多态类型，编译期直接确定</li>
+<li><code>dynamic_cast&lt;T*&gt;(ptr)</code>：通过 vtable 遍历继承链，检查目标类型是否在派生列表中</li>
+</ul>
+<p>四种 cast 各司其职：</p>
+<table>
+<thead>
+<tr>
+<th>运算符</th>
+<th>检查时机</th>
+<th>安全检查</th>
+<th>主要用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>static_cast</code></td>
+<td>编译期</td>
+<td>有限</td>
+<td>隐式转换的显式表达</td>
+</tr>
+<tr>
+<td><code>dynamic_cast</code></td>
+<td>运行期</td>
+<td>是</td>
+<td>多态类型的向下转型</td>
+</tr>
+<tr>
+<td><code>const_cast</code></td>
+<td>编译期</td>
+<td>无</td>
+<td>修改 cv 限定符</td>
+</tr>
+<tr>
+<td><code>reinterpret_cast</code></td>
+<td>编译期</td>
+<td>无</td>
+<td>底层位模式重解释</td>
+</tr>
+</tbody></table>
+<p><strong>第二层：关键步骤详解</strong></p>
+<p><code>dynamic_cast</code> 的执行流程：</p>
+<ol>
+<li>从源指针获取 vtable 指针</li>
+<li>从 vtable 的 RTTI 槽位获取源类型的 <code>type_info</code></li>
+<li>遍历继承图（DAG），检查目标类型是否可达</li>
+<li>若是，计算偏移量调整指针（多重继承时需 this 调整）</li>
+<li>返回调整后的指针或 <code>nullptr</code>（指针版本）&#x2F; 抛出 <code>std::bad_cast</code>（引用版本）</li>
+</ol>
+<p><strong>第三层：底层机制</strong></p>
+<p>编译器在 vtable 中为 RTTI 预留两个槽位：</p>
+<ul>
+<li><code>vtable[-1]</code>：指向 <code>type_info</code> 对象的指针</li>
+<li><code>vtable[-2]</code>：偏移量信息（用于多重继承的 this 调整）</li>
+</ul>
+<p>GCC&#x2F;Clang 的 <code>-fno-rtti</code> 标志可禁用 RTTI，此时 <code>dynamic_cast</code> 和 <code>typeid</code> 不可用，常见于嵌入式系统以减小二进制体积。</p>
+<ul>
+<li><strong>关键数据结构</strong>：<code>std::type_info</code>（含 <code>name()</code>、<code>before()</code>、<code>hash_code()</code> 等方法）、vtable RTTI 槽位</li>
+<li><strong>关键公式</strong>：多重继承中 <code>dynamic_cast</code> 的指针调整 &#x3D; <code>目标子对象偏移 - 源子对象偏移</code></li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-typeid-基本使用"><a href="#3-1-typeid-基本使用" class="headerlink" title="3.1 typeid 基本使用"></a>3.1 typeid 基本使用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;typeinfo&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Base</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Base</span>() = <span class="keyword">default</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Derived</span> : <span class="keyword">public</span> Base &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Base* p = <span class="keyword">new</span> <span class="built_in">Derived</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 多态类型：运行时获取真实类型</span></span><br><span class="line">    std::cout &lt;&lt; <span class="built_in">typeid</span>(*p).<span class="built_in">name</span>() &lt;&lt; std::endl;  <span class="comment">// 输出 Derived 的 mangled name</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 非多态类型：编译期确定</span></span><br><span class="line">    <span class="type">int</span> x = <span class="number">42</span>;</span><br><span class="line">    std::cout &lt;&lt; <span class="built_in">typeid</span>(x).<span class="built_in">name</span>() &lt;&lt; std::endl;   <span class="comment">// 输出 int</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 指针本身：静态类型</span></span><br><span class="line">    std::cout &lt;&lt; <span class="built_in">typeid</span>(p).<span class="built_in">name</span>() &lt;&lt; std::endl;   <span class="comment">// 输出 Base* 类型</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">delete</span> p;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-dynamic-cast-指针转换"><a href="#3-2-dynamic-cast-指针转换" class="headerlink" title="3.2 dynamic_cast 指针转换"></a>3.2 dynamic_cast 指针转换</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Animal</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Animal</span>() = <span class="keyword">default</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">speak</span><span class="params">()</span> </span>&#123; std::cout &lt;&lt; <span class="string">&quot;Animal sound\n&quot;</span>; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Dog</span> : <span class="keyword">public</span> Animal &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">speak</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123; std::cout &lt;&lt; <span class="string">&quot;Woof!\n&quot;</span>; &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">wagTail</span><span class="params">()</span> </span>&#123; std::cout &lt;&lt; <span class="string">&quot;Tail wagging\n&quot;</span>; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Cat</span> : <span class="keyword">public</span> Animal &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">speak</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123; std::cout &lt;&lt; <span class="string">&quot;Meow!\n&quot;</span>; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Animal* pet = <span class="keyword">new</span> <span class="built_in">Dog</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 安全的向下转型</span></span><br><span class="line">    Dog* dog = <span class="built_in">dynamic_cast</span>&lt;Dog*&gt;(pet);</span><br><span class="line">    <span class="keyword">if</span> (dog) &#123;</span><br><span class="line">        dog-&gt;<span class="built_in">wagTail</span>();  <span class="comment">// 安全调用</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 转型到不相关的派生类返回 nullptr</span></span><br><span class="line">    Cat* cat = <span class="built_in">dynamic_cast</span>&lt;Cat*&gt;(pet);</span><br><span class="line">    <span class="keyword">if</span> (!cat) &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;pet is not a Cat\n&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 引用版本的 dynamic_cast（失败抛 std::bad_cast）</span></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        Cat&amp; catRef = <span class="built_in">dynamic_cast</span>&lt;Cat&amp;&gt;(*pet);</span><br><span class="line">    &#125; <span class="built_in">catch</span> (<span class="type">const</span> std::bad_cast&amp; e) &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;bad_cast caught: &quot;</span> &lt;&lt; e.<span class="built_in">what</span>() &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">delete</span> pet;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-四种-cast-对比示例"><a href="#3-3-四种-cast-对比示例" class="headerlink" title="3.3 四种 cast 对比示例"></a>3.3 四种 cast 对比示例</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Base</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Base</span>() = <span class="keyword">default</span>;</span><br><span class="line">    <span class="type">int</span> base_val = <span class="number">10</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Derived</span> : <span class="keyword">public</span> Base &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="type">int</span> derived_val = <span class="number">20</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1. static_cast：编译期转换，不检查运行时类型</span></span><br><span class="line">    Derived d;</span><br><span class="line">    Base* bp = <span class="built_in">static_cast</span>&lt;Base*&gt;(&amp;d);       <span class="comment">// 向上转型（安全）</span></span><br><span class="line">    Derived* dp = <span class="built_in">static_cast</span>&lt;Derived*&gt;(bp);  <span class="comment">// 向下转型（不检查！可能不安全）</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 基本类型转换</span></span><br><span class="line">    <span class="type">double</span> pi = <span class="number">3.14159</span>;</span><br><span class="line">    <span class="type">int</span> ipi = <span class="built_in">static_cast</span>&lt;<span class="type">int</span>&gt;(pi);           <span class="comment">// 精度损失，但有明确意图</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// void* 互转</span></span><br><span class="line">    <span class="type">void</span>* vp = <span class="built_in">static_cast</span>&lt;<span class="type">void</span>*&gt;(&amp;d);</span><br><span class="line">    Derived* dp2 = <span class="built_in">static_cast</span>&lt;Derived*&gt;(vp);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. dynamic_cast：运行时检查</span></span><br><span class="line">    Derived* dp3 = <span class="built_in">dynamic_cast</span>&lt;Derived*&gt;(bp); <span class="comment">// 安全，运行时验证</span></span><br><span class="line">    <span class="keyword">if</span> (dp3) std::cout &lt;&lt; <span class="string">&quot;dynamic_cast success\n&quot;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. const_cast：移除 const</span></span><br><span class="line">    <span class="type">const</span> <span class="type">int</span> val = <span class="number">100</span>;</span><br><span class="line">    <span class="comment">// const_cast 移除 this 指针的 const</span></span><br><span class="line">    <span class="type">const</span> <span class="type">int</span>* cpi = &amp;val;</span><br><span class="line">    <span class="type">int</span>* pi = <span class="built_in">const_cast</span>&lt;<span class="type">int</span>*&gt;(cpi);  <span class="comment">// 危险：修改原 const 对象是 UB</span></span><br><span class="line">    <span class="comment">// *pi = 200;  // 未定义行为！除非原始对象本身不是 const</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 4. reinterpret_cast：位模式重解释</span></span><br><span class="line">    <span class="type">int</span> num = <span class="number">0x12345678</span>;</span><br><span class="line">    <span class="type">char</span>* bytes = <span class="built_in">reinterpret_cast</span>&lt;<span class="type">char</span>*&gt;(&amp;num);</span><br><span class="line">    std::cout &lt;&lt; std::hex &lt;&lt; <span class="string">&quot;Byte 0: &quot;</span> &lt;&lt; (<span class="type">int</span>)bytes[<span class="number">0</span>] &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-多重继承中的指针调整"><a href="#3-4-多重继承中的指针调整" class="headerlink" title="3.4 多重继承中的指针调整"></a>3.4 多重继承中的指针调整</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">A</span> &#123; <span class="keyword">virtual</span> ~<span class="built_in">A</span>() = <span class="keyword">default</span>; <span class="type">int</span> a = <span class="number">1</span>; &#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">B</span> &#123; <span class="keyword">virtual</span> ~<span class="built_in">B</span>() = <span class="keyword">default</span>; <span class="type">int</span> b = <span class="number">2</span>; &#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">C</span> : A, B &#123; <span class="type">int</span> c = <span class="number">3</span>; &#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    C* c = <span class="keyword">new</span> <span class="built_in">C</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// A 是 C 的第一个基类，地址相同</span></span><br><span class="line">    A* pa = <span class="built_in">static_cast</span>&lt;A*&gt;(c);</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;C*: &quot;</span> &lt;&lt; c &lt;&lt; <span class="string">&quot;\nA*: &quot;</span> &lt;&lt; pa &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// B 是第二个基类，指针需要偏移</span></span><br><span class="line">    B* pb = <span class="built_in">static_cast</span>&lt;B*&gt;(c);</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;B*: &quot;</span> &lt;&lt; pb &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// dynamic_cast 会自动处理偏移</span></span><br><span class="line">    C* c_from_b = <span class="built_in">dynamic_cast</span>&lt;C*&gt;(pb);</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;C* from B: &quot;</span> &lt;&lt; c_from_b &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;Same as original: &quot;</span> &lt;&lt; (c == c_from_b ? <span class="string">&quot;yes&quot;</span> : <span class="string">&quot;no&quot;</span>) &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">delete</span> c;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><p>RTTI 与虚拟机制紧密耦合：</p>
+<ul>
+<li><strong>虚函数表（vtable）</strong>：RTTI 信息存储在 vtable 中，只有含虚函数的类型才能使用 <code>dynamic_cast</code></li>
+<li><strong>对象模型</strong>：多重继承、虚继承下的 <code>dynamic_cast</code> 需要额外的偏移计算</li>
+<li><strong>异常处理</strong>：<code>dynamic_cast</code> 引用版本失败时抛出 <code>std::bad_cast</code>，与异常机制集成</li>
+<li><strong><code>type_info</code> 与 <code>std::type_index</code></strong>：<code>type_index</code> 是 <code>type_info</code> 的包装，可作为关联容器的 key</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ol>
+<li><p><strong>插件系统</strong>：基类定义接口，运行时 <code>dynamic_cast</code> 验证插件类型</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Plugin* p = loader.<span class="built_in">load</span>(<span class="string">&quot;plugin.so&quot;</span>);</span><br><span class="line"><span class="keyword">if</span> (<span class="keyword">auto</span>* audio = <span class="built_in">dynamic_cast</span>&lt;AudioPlugin*&gt;(p)) &#123;</span><br><span class="line">    audio-&gt;<span class="built_in">play</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>序列化&#x2F;反序列化</strong>：从基类指针恢复原始类型</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">deserialize</span><span class="params">(Base* obj)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">auto</span>* d = <span class="built_in">dynamic_cast</span>&lt;Derived*&gt;(obj)) &#123;</span><br><span class="line">        d-&gt;<span class="built_in">loadSpecificData</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>GUI 事件处理</strong>：Qt 框架的 <code>qobject_cast</code> 是对 <code>dynamic_cast</code> 的封装（禁用 RTTI 时仍可用）</p>
+</li>
+<li><p><strong>性能敏感的替代方案</strong>：</p>
+<ul>
+<li>使用虚函数代替 <code>dynamic_cast</code> 实现多态行为</li>
+<li>手写类型枚举 + <code>static_cast</code>（如 LLVM 的 <code>dyn_cast</code>）</li>
+<li>CRTP（奇异递归模板模式）实现编译期多态</li>
+</ul>
+</li>
+</ol>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>避免 <code>dynamic_cast</code> 的循环调用</strong>：缓存转换结果或使用虚函数分发</li>
+<li><strong><code>-fno-rtti</code> 编译</strong>：嵌入式系统禁用 RTTI 减小二进制体积（通常减 5-15%）</li>
+<li><strong><code>static_cast</code> 替代 <code>dynamic_cast</code></strong>：在编译期可确定的向下转型场景使用（如 CRTP）</li>
+<li><strong>类型枚举标记</strong>：手写 <code>enum class Type</code> + <code>static_cast</code> 比 <code>dynamic_cast</code> 快 10-100 倍</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong>GCC 的 vtable RTTI 布局</strong>（简化示意）：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每个多态类的 vtable 内存布局</span></span><br><span class="line"><span class="comment">// vtable 指针指向 vtable[0]，RTTI 信息在负索引</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">VirtualBase</span> &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// vtable 布局:</span></span><br><span class="line"><span class="comment">// [-2] offset_to_top   // 多重继承时到完整对象的偏移</span></span><br><span class="line"><span class="comment">// [-1] type_info*       // 指向 std::type_info 对象</span></span><br><span class="line"><span class="comment">// [0]  VirtualBase::~VirtualBase()  // 第一个虚函数</span></span><br><span class="line"><span class="comment">// [1]  ...</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><code>dynamic_cast</code> 的内部实现简化版</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ABItanium C++ ABI 规范的 dynamic_cast 简化实现</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Target&gt;</span></span><br><span class="line"><span class="function">Target <span class="title">dynamic_cast_impl</span><span class="params">(<span class="type">void</span>* obj_ptr, <span class="type">const</span> type_info* src_type)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!obj_ptr) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 1. 获取 vtable 指针</span></span><br><span class="line">    vtable* v = *(vtable**)obj_ptr;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 从 vtable[-1] 获取源类型的 type_info</span></span><br><span class="line">    <span class="type">const</span> type_info* actual_type = v-&gt;type_info_ptr;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 遍历继承链，检查目标类型</span></span><br><span class="line">    <span class="comment">// 实际实现更复杂，涉及 __class_type_info 的 __do_dyncast</span></span><br><span class="line">    <span class="keyword">if</span> (actual_type-&gt;__is_derived_from(target_type)) &#123;</span><br><span class="line">        <span class="comment">// 4. 计算偏移量（多重继承时需要调整 this 指针）</span></span><br><span class="line">        <span class="type">ptrdiff_t</span> offset = actual_type-&gt;__offset_to(target_type, obj_ptr);</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">reinterpret_cast</span>&lt;Target&gt;(</span><br><span class="line">            <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(obj_ptr) + offset</span><br><span class="line">        );</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span>;  <span class="comment">// 指针版本返回空</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>typeid</code> 操作符的编译结果</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">; typeid(*poly_ptr) 的简化汇编输出 (x86-64)</span><br><span class="line">mov     rax, [poly_ptr]          ; 获取对象地址</span><br><span class="line">mov     rax, [rax]               ; 获取 vtable 指针</span><br><span class="line">mov     rdi, [rax - 8]           ; 获取 vtable[-1] = type_info*</span><br><span class="line">; rdi 现在指向 type_info 对象，可调用 name() 等</span><br></pre></td></tr></table></figure>
+
+<h3 id="RTTI-的两个核心判定"><a href="#RTTI-的两个核心判定" class="headerlink" title="RTTI 的两个核心判定"></a>RTTI 的两个核心判定</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_83072dae2591.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_10379a5343de.png"></p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><p><strong>多重继承指针偏移陷阱</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">A</span> &#123; <span class="type">int</span> a; &#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">B</span> &#123; <span class="type">int</span> b; &#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">C</span> : A, B &#123;&#125;;</span><br><span class="line"></span><br><span class="line">C c;</span><br><span class="line">B* pb = &amp;c;            <span class="comment">// pb 指向 c 的 B 子对象（地址可能偏移）</span></span><br><span class="line">C* pc = (C*)pb;        <span class="comment">// C 风格转型：危险！直接位拷贝指针</span></span><br><span class="line"><span class="comment">// C* pc = static_cast&lt;C*&gt;(pb);  // 正确：编译器计算偏移</span></span><br><span class="line"><span class="comment">// C* pc = dynamic_cast&lt;C*&gt;(pb); // 最安全：运行时验证 + 偏移</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>非多态类型的 <code>dynamic_cast</code> 编译错误</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">NoVTable</span> &#123;&#125;;</span><br><span class="line">NoVTable* p = <span class="keyword">new</span> NoVTable;</span><br><span class="line"><span class="comment">// auto* dp = dynamic_cast&lt;NoVTable*&gt;(p);  // 编译错误！非多态类型</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong><code>const_cast</code> 修改原始 const 对象的 UB</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="type">int</span> val = <span class="number">42</span>;          <span class="comment">// 真正的 const 对象</span></span><br><span class="line"><span class="type">const</span> <span class="type">int</span>&amp; ref = val;</span><br><span class="line"><span class="type">int</span>&amp; mod = <span class="built_in">const_cast</span>&lt;<span class="type">int</span>&amp;&gt;(ref);</span><br><span class="line">mod = <span class="number">100</span>;                   <span class="comment">// 未定义行为！</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong><code>reinterpret_cast</code> 的别名规则违规</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">float</span> f = <span class="number">3.14f</span>;</span><br><span class="line"><span class="type">int</span>* ip = <span class="built_in">reinterpret_cast</span>&lt;<span class="type">int</span>*&gt;(&amp;f);</span><br><span class="line"><span class="type">int</span> val = *ip;               <span class="comment">// 违反严格别名规则，UB！</span></span><br><span class="line"><span class="comment">// 正确做法：使用 memcpy 或 std::bit_cast (C++20)</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>引用版 <code>dynamic_cast</code> 失败异常</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 引用版本失败不会返回空，而是抛出 std::bad_cast</span></span><br><span class="line">Animal&amp; ref = someAnimal;</span><br><span class="line"><span class="comment">// Dog&amp; dogRef = dynamic_cast&lt;Dog&amp;&gt;(ref);  // 若 ref 不是 Dog，抛异常</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ol>
+<li><strong>优先用虚函数而非 <code>dynamic_cast</code></strong>：虚函数是 C++ 原生多态机制，零额外开销且类型安全</li>
+<li><strong><code>static_cast</code> 用于编译期明确安全的转换</strong>：基本类型、向上转型、<code>void*</code> 互转</li>
+<li><strong><code>const_cast</code> 仅用于兼容老旧 API</strong>：如 C 库函数需要 <code>char*</code> 而非 <code>const char*</code></li>
+<li><strong><code>reinterpret_cast</code> 谨慎使用</strong>：仅在底层编程（网络&#x2F;文件 I&#x2F;O、内存映射）中使用</li>
+<li><strong>禁用 RTTI 时的替代方案</strong>：LLVM 使用 <code>llvm::dyn_cast</code>（手写类型 ID），Qt 使用 <code>qobject_cast</code>（元对象系统）</li>
+<li><strong>性能考虑</strong>：<code>dynamic_cast</code> 的时间复杂度为 O(n)，n 为继承深度；在热路径中避免使用</li>
+<li><strong>C++20 <code>std::bit_cast</code></strong>：安全替代 <code>reinterpret_cast</code> 用于位模式重解释</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>基础理解：</p>
+<p><strong>Q1：什么是 RTTI？它的底层实现机制是什么？</strong></p>
+<p>A：RTTI（Run-Time Type Identification）是 C++ 在运行时获取对象实际类型信息的机制。底层实现：编译器为每个多态类生成 <code>type_info</code> 对象，并将其指针存储在虚函数表的 <code>vtable[-1]</code> 槽位。<code>typeid</code> 通过 vtable 获取该指针，<code>dynamic_cast</code> 通过遍历 vtable 中的继承信息验证类型转换的安全性。</p>
+<p><strong>Q2：C++ 四种类型转换运算符分别是什么？各自的使用场景？</strong></p>
+<p>A：<code>static_cast</code>（编译期相关类型转换，基本类型、向上转型、void* 互转）、<code>dynamic_cast</code>（运行期多态类型的向下转型，含安全检查）、<code>const_cast</code>（添加&#x2F;移除 const&#x2F;volatile 限定符）、<code>reinterpret_cast</code>（底层位模式重解释，最不安全）。</p>
+<p><strong>Q3：<code>static_cast</code> 和 <code>dynamic_cast</code> 的核心区别是什么？</strong></p>
+<p>A：<code>static_cast</code> 在编译期转换，不进行运行时类型检查（向下转型时不验证实际类型）；<code>dynamic_cast</code> 在运行时通过 RTTI 检查，向下转型失败时指针版本返回 <code>nullptr</code>，引用版本抛出 <code>std::bad_cast</code>。<code>dynamic_cast</code> 要求类有虚函数（多态类型）。</p>
+<p><strong>Q4：<code>dynamic_cast</code> 在多重继承中如何工作？</strong></p>
+<p>A：<code>dynamic_cast</code> 通过 vtable 中的 RTTI 信息遍历继承图，确定目标类型是否在派生列表中。若成功，计算从源子对象到目标子对象的偏移量，调整 this 指针。例如 C 继承 A 和 B，从 B* 转 C* 需要减去 B 子对象在 C 中的偏移。</p>
+<p>原理深入：</p>
+<p><strong>Q5：为什么 <code>dynamic_cast</code> 要求类有虚函数？</strong></p>
+<p>A：因为 RTTI 信息存储在虚函数表中。无虚函数的类不生成 vtable，因此没有可查询的运行时类型信息。这是 C++ 标准的规定——<code>dynamic_cast</code> 只能用于多态类型。</p>
+<p><strong>Q6：<code>const_cast</code> 修改 const 对象安全吗？</strong></p>
+<p>A：不安全。<code>const_cast</code> 移除 const 限定符本身是合法的，但修改原本声明为 const 的对象（如 <code>const int x = 5</code>）是未定义行为。<code>const_cast</code> 的安全用途是：向不接受 const 参数的旧 API 传递 const 对象（前提是该 API 不实际修改对象）。</p>
+<p><strong>Q7：禁用 RTTI（<code>-fno-rtti</code>）有什么影响？</strong></p>
+<p>A：<code>dynamic_cast</code> 和 <code>typeid</code> 不可用；异常处理中的 <code>catch</code> 类型匹配可能受影响；二进制体积减小 5-15%；常见于嵌入式系统和对体积敏感的应用程序。</p>
+<p>实践应用：</p>
+<p><strong>Q8：如何用 <code>reinterpret_cast</code> 安全地查看内存布局？</strong></p>
+<p>A：将对象指针转换为 <code>char*</code> 或 <code>unsigned char*</code> 来逐字节查看（这是少数合法用法）：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> x = <span class="number">0x12345678</span>;</span><br><span class="line"><span class="keyword">auto</span>* bytes = <span class="built_in">reinterpret_cast</span>&lt;<span class="type">unsigned</span> <span class="type">char</span>*&gt;(&amp;x);</span><br><span class="line"><span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; <span class="built_in">sizeof</span>(x); i++)</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%02x &quot;</span>, bytes[i]);</span><br></pre></td></tr></table></figure>
+
+<p><strong>Q9：<code>typeid</code> 和 <code>dynamic_cast</code> 的性能对比？</strong></p>
+<p>A：<code>typeid</code> 通常比 <code>dynamic_cast</code> 快，因为它只需要获取 <code>type_info</code> 指针并比较（O(1)），而 <code>dynamic_cast</code> 需要遍历继承链（O(n)）。但两者都需要通过 vtable 间接访问，都有一定的运行时开销。</p>
+<p><strong>Q10：C 风格强制转换做了哪些事情？为什么推荐用 C++ 四种 cast 替代？</strong></p>
+<p>A：C 风格转换 <code>(T)expr</code> 会依次尝试 <code>const_cast</code> → <code>static_cast</code> → <code>static_cast</code>+<code>const_cast</code> → <code>reinterpret_cast</code> → <code>reinterpret_cast</code>+<code>const_cast</code>。它不明确意图，代码审查困难，可能隐藏错误。C++ 四种 cast 语义明确，便于搜索和审查。</p>
+<p><strong>Q11：<code>static_cast</code> 如何处理私有继承？</strong></p>
+<p>A：<code>static_cast</code> 不能将指向私有基类的指针转换为派生类指针（编译错误），因为私有继承对外部隐藏了继承关系。但同一翻译单元内的成员&#x2F;友元函数可以。</p>
+<p><strong>Q12：多重继承下 <code>dynamic_cast&lt;void*&gt;</code> 返回什么？</strong></p>
+<p>A：返回指向”最派生对象”起始地址的指针，即完整对象的 this 指针。这是多重继承中获取真实对象起始地址的标准方法。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>针对面试官的深度问题：</p>
+<ul>
+<li>在贵项目中，是如何处理需要 RTTI 但又要控制二进制大小的矛盾的？是否有类似 LLVM <code>dyn_cast</code> 的自定义方案？</li>
+<li>在性能敏感的代码路径中（如游戏引擎的逐帧更新），团队是如何避免 <code>dynamic_cast</code> 开销的？</li>
+<li>对于使用了 <code>reinterpret_cast</code> 的遗留代码，团队的审查标准是什么？</li>
+</ul>
+<p>常见的陷阱问题：</p>
+<ul>
+<li><strong>陷阱 1</strong>：<code>const int x = 5; const_cast&lt;int&amp;&gt;(x) = 10;</code> 的结果是什么？→ 未定义行为，可能看似成功但标准不保证</li>
+<li><strong>陷阱 2</strong>：在构造函数&#x2F;析构函数中使用 <code>dynamic_cast</code> 会发生什么？→ 此时对象的动态类型是当前构造&#x2F;析构的类，而非最终派生类</li>
+<li><strong>陷阱 3</strong>：<code>reinterpret_cast</code> 函数指针后调用的问题→ 不同调用约定的函数指针互转可能导致栈损坏</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ol>
+<li>RTTI 的核心：通过 vtable 存储 <code>type_info</code>，<code>typeid</code> 查询、<code>dynamic_cast</code> 验证</li>
+<li>四种 cast 的记忆方法：<code>static_cast</code>（隐转显）、<code>dynamic_cast</code>（运行检）、<code>const_cast</code>（去常量）、<code>reinterpret_cast</code>（重解释）</li>
+<li><code>dynamic_cast</code> 失败的处理：指针版本返回 <code>nullptr</code>，引用版本抛出 <code>std::bad_cast</code></li>
+<li>避免 <code>dynamic_cast</code> 性能开销的方法：虚函数分发、手写类型枚举 + <code>static_cast</code>、CRTP 编译期多态</li>
+<li><code>const_cast</code> 的安全用法：仅用于兼容不接受 const 参数且确认不修改的旧 API</li>
+</ol>
+<p>情景模拟答案：</p>
+<ul>
+<li>被问到”什么是 RTTI”→ “RTTI 是 C++ 运行时通过 vtable 获取对象实际类型信息的能力，核心工具是 <code>typeid</code> 和 <code>dynamic_cast</code>“</li>
+<li>被问到”为什么不直接用 C 风格转换”→ “C 风格转换没有明确语义，编译器会尝试多种转换方式，难以审查和搜索；C++ 四种 cast 各司其职，意图明确”</li>
+<li>被问到”<code>reinterpret_cast</code> 什么时候该用”→ “仅在底层编程中用于位模式重解释，如网络&#x2F;文件 I&#x2F;O 的序列化，或查看对象的内存布局；能用其他 cast 替代时就不要用它”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中有价值的原始内容，保持原样。</p>
+</blockquote>
+<h3 id="原-const-cast-笔记"><a href="#原-const-cast-笔记" class="headerlink" title="原 const_cast 笔记"></a>原 const_cast 笔记</h3><p>const_cast 移除 this 指针的 const</p>
+<h3 id="原面试八股图片"><a href="#原面试八股图片" class="headerlink" title="原面试八股图片"></a>原面试八股图片</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="D:\桌面\C++\EffectiveModernCppChinese-master\EffectiveModernCppChinese-master\1.DeducingTypes\base5.png" alt="base5"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="D:\桌面\C++\EffectiveModernCppChinese-master\EffectiveModernCppChinese-master\1.DeducingTypes\base5_1.png" alt="base5_1"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="D:\桌面\C++\EffectiveModernCppChinese-master\EffectiveModernCppChinese-master\1.DeducingTypes\base6.png" alt="base6"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/">https://weimo1.github.io/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/" title="Redis事务与Lua"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Redis事务与Lua</div></div><div class="info-2"><div class="info-item-1">Redis 事务 vs Lua 适用范围：Redis 事务机制（MULTI&#x2F;EXEC）与 Lua 脚本（EVAL&#x2F;EVALSHA）的对比——原子性保证、逻辑处理能力、网络开销、主从复制、Redis 7.0 Functions。  一、核心概念 定义：Redis 提供两种原子性操作方案——事务（MULTI&#x2F;EXEC，命令批量入队后执行）和 Lua 脚本（EVAL，服务器端执行，整个脚本作为一个原子整体）。两者各有适用场景，Lua 脚本在逻辑处理能力和性能上通常更优。 关键词：MULTI&#x2F;EXEC、EVAL&#x2F;EVALSHA、SCRIPT LO...</div></div></div></a><a class="pagination-related" href="/posts/RVO_NRVO/" title="RVO_NRVO"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">RVO_NRVO</div></div><div class="info-2"><div class="info-item-1">RVO&#x2F;NRVO 返回值优化（Return Value Optimization）是 C++ 编译器对函数返回值传递的核心优化手段，通过消除临时对象的构造&#x2F;拷贝&#x2F;析构，直接在调用者栈帧上构造返回值对象。  一、核心概念 定义：RVO（Return Value Optimization）是 C++ 编译器的一种优化技术，通过直接在调用者的栈帧上构造返回值对象，消除函数返回时的临时对象拷贝或移动。分为匿名 RVO（返回临时对象）和具名 NRVO（返回具名局部变量）。 关键词：返回值优化、拷贝消除（Copy Elision）、调用栈帧、隐藏参数传递、std::mo...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88"><span class="toc-number">1.</span> <span class="toc-text">RTTI和四种指针</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-typeid-%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 typeid 基本使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-dynamic-cast-%E6%8C%87%E9%92%88%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 dynamic_cast 指针转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%9B%9B%E7%A7%8D-cast-%E5%AF%B9%E6%AF%94%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 四种 cast 对比示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF%E4%B8%AD%E7%9A%84%E6%8C%87%E9%92%88%E8%B0%83%E6%95%B4"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 多重继承中的指针调整</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RTTI-%E7%9A%84%E4%B8%A4%E4%B8%AA%E6%A0%B8%E5%BF%83%E5%88%A4%E5%AE%9A"><span class="toc-number">1.5.2.</span> <span class="toc-text">RTTI 的两个核心判定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.3.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.5.4.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F-const-cast-%E7%AC%94%E8%AE%B0"><span class="toc-number">1.7.1.</span> <span class="toc-text">原 const_cast 笔记</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E9%9D%A2%E8%AF%95%E5%85%AB%E8%82%A1%E5%9B%BE%E7%89%87"><span class="toc-number">1.7.2.</span> <span class="toc-text">原面试八股图片</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

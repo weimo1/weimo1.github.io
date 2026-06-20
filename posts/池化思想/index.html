@@ -1,0 +1,374 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>池化思想 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="池化思想池化思想一：背景介绍最近接触到了很多池，例如 对象池、数据库连接池、线程池、等等，今天来总结一下这多种不同的池，体现的池化思想，希望通过这篇博客，大家能了解到什么是池化思想，学会应用池化思想。 二：什么是池化思想池化思想是一种通过创建和管理可重复使用的对象池来提高性能和资源利用率的编程思想。它的核心概念是在需要时从池中获取对象，而不是每次都创建新的对象，使用完毕后将对象返回到池中，以供其他">
+<meta property="og:type" content="article">
+<meta property="og:title" content="池化思想">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="池化思想池化思想一：背景介绍最近接触到了很多池，例如 对象池、数据库连接池、线程池、等等，今天来总结一下这多种不同的池，体现的池化思想，希望通过这篇博客，大家能了解到什么是池化思想，学会应用池化思想。 二：什么是池化思想池化思想是一种通过创建和管理可重复使用的对象池来提高性能和资源利用率的编程思想。它的核心概念是在需要时从池中获取对象，而不是每次都创建新的对象，使用完毕后将对象返回到池中，以供其他">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.574Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "池化思想",
+  "url": "https://weimo1.github.io/posts/%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.574Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '池化思想',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">池化思想</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">池化思想</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.574Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="池化思想"><a href="#池化思想" class="headerlink" title="池化思想"></a>池化思想</h1><h1 id="池化思想-1"><a href="#池化思想-1" class="headerlink" title="池化思想"></a>池化思想</h1><h2 id="一：背景介绍"><a href="#一：背景介绍" class="headerlink" title="一：背景介绍"></a>一：背景介绍</h2><p>最近接触到了很多池，例如 对象池、数据库连接池、线程池、等等，今天来总结一下这多种不同的池，体现的池化思想，希望通过这篇博客，大家能了解到什么是池化思想，学会应用池化思想。</p>
+<h2 id="二：什么是池化思想"><a href="#二：什么是池化思想" class="headerlink" title="二：什么是池化思想"></a>二：什么是池化思想</h2><p>池化思想是一种通过创建和管理可重复使用的对象池来提高性能和资源利用率的编程思想。它的核心概念是在需要时从池中获取对象，而不是每次都创建新的对象，使用完毕后将对象返回到池中，以供其他代码复用。</p>
+<p>通过使用池化思想，可以避免不必要的资源创建和销毁操作，减少系统开销，提高程序的性能和可伸缩性。同时，池化思想还能够更好地管理和控制资源的使用，防止资源过度消耗和浪费。</p>
+<h2 id="三：池化的优势利弊"><a href="#三：池化的优势利弊" class="headerlink" title="三：池化的优势利弊"></a>三：池化的优势利弊</h2><p>通过池化实现对象、连接或线程的复用具有以下优点和缺点：</p>
+<h3 id="3-1-优点"><a href="#3-1-优点" class="headerlink" title="3.1 优点"></a>3.1 优点</h3><ul>
+<li>提高性能：池化可以避免频繁地创建和销毁对象、连接或线程，从而减少了系统的开销。通过重复使用已存在的资源，可以节省创建和初始化的时间，提高整体的执行效率和响应速度。</li>
+<li>提高资源利用率：池化可以更好地管理和控制资源的使用。通过限制可用的资源数量，可以避免资源的过度消耗和浪费，从而提高系统的资源利用率。</li>
+<li>提高系统可伸缩性：通过使用池化，系统可以更好地处理并发请求。由于资源已经预先创建，可以快速分配给请求，并在处理完毕后返回池中，从而减少了资源的竞争和等待时间，提高了系统的并发能力和可伸缩性。</li>
+<li>代码简化：池化使得资源的获取和释放变得简单，代码更加清晰。不需要在每个使用时都创建和销毁资源的代码逻辑，而是通过获取和释放资源来实现复用，减少了重复代码的编写。</li>
+</ul>
+<h3 id="3-2-缺点"><a href="#3-2-缺点" class="headerlink" title="3.2 缺点"></a>3.2 缺点</h3><ul>
+<li>内存消耗：池化可能需要在内存中维护一定数量的资源实例，这会占用一定的内存空间。如果资源的需求不稳定或池的大小设置不合理，可能会导致内存消耗过大。</li>
+<li>额外的复杂性：实现池化机制可能会引入额外的复杂性和维护成本。需要处理资源的分配和释放逻辑，确保资源的正确获取和释放，以及处理资源池的并发访问和线程安全性等问题。</li>
+<li>潜在的资源泄露：在使用池化的情况下，如果没有正确释放资源或处理异常情况，可能会出现资源泄露的问题。资源泄露会导致资源无法回收和重用，最终影响系统性能和稳定性。</li>
+<li>可能不适用于特定场景：池化并不适用于所有场景。某些资源可能具有短暂的生命周期或频繁地变化，使用池化可能带来不必要的复杂性，并且无法带来显著的性能提升。</li>
+<li>在使用池化时，需要权衡其优点和缺点，并根据具体的需求和场景进行合理的设计和使用。</li>
+</ul>
+<h2 id="实现思路："><a href="#实现思路：" class="headerlink" title="实现思路："></a>实现思路：</h2><p><strong>单线程-&gt;效率问题-&gt;多线程-&gt;资源互斥性-&gt;挂起 轮询</strong></p>
+<p><strong>挂起：资源-&gt;通知</strong></p>
+<p>建了一个线程池来管理固定数量的线程，通过任务队列来管理任务，任务完成后线程不会被销毁，而是返回池中以便复用。</p>
+<h2 id="线程池的设计与生产者和消费者的设计模式类似"><a href="#线程池的设计与生产者和消费者的设计模式类似" class="headerlink" title="线程池的设计与生产者和消费者的设计模式类似"></a><strong>线程池的设计与生产者和消费者的设计模式类似</strong></h2><h2 id="IOContext-Pool"><a href="#IOContext-Pool" class="headerlink" title="IOContext Pool"></a>IOContext Pool</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;boost/asio.hpp&gt;</span><br><span class="line">#include &quot;Singleton.h&quot;</span><br><span class="line">class AsioIOServicePool:public Singleton&lt;AsioIOServicePool&gt;</span><br><span class="line">&#123;</span><br><span class="line">    friend Singleton&lt;AsioIOServicePool&gt;;</span><br><span class="line">public:</span><br><span class="line">    using IOService = boost::asio::io_context;</span><br><span class="line">    using Work = boost::asio::io_context::work;</span><br><span class="line">    using WorkPtr = std::unique_ptr&lt;Work&gt;;</span><br><span class="line">    ~AsioIOServicePool();</span><br><span class="line">    AsioIOServicePool(const AsioIOServicePool&amp;) = delete;</span><br><span class="line">    AsioIOServicePool&amp; operator=(const AsioIOServicePool&amp;) = delete;</span><br><span class="line">    // 使用 round-robin 的方式返回一个 io_service</span><br><span class="line">    boost::asio::io_context&amp; GetIOService();</span><br><span class="line">    void Stop();</span><br><span class="line">private:</span><br><span class="line">    AsioIOServicePool(std::size_t size = 2/*std::thread::hardware_concurrency()*/);</span><br><span class="line">    std::vector&lt;IOService&gt; _ioServices;</span><br><span class="line">    std::vector&lt;WorkPtr&gt; _works;</span><br><span class="line">    std::vector&lt;std::thread&gt; _threads;</span><br><span class="line">    std::size_t                        _nextIOService;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>实现</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">#include &quot;AsioIOServicePool.h&quot;</span><br><span class="line">#include &lt;iostream&gt;</span><br><span class="line">using namespace std;</span><br><span class="line">AsioIOServicePool::AsioIOServicePool(std::size_t size):_ioServices(size),</span><br><span class="line">_works(size), _nextIOService(0)&#123;</span><br><span class="line">    for (std::size_t i = 0; i &lt; size; ++i) &#123;</span><br><span class="line">        _works[i] = std::unique_ptr&lt;Work&gt;(new Work(_ioServices[i]));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    //遍历多个ioservice，创建多个线程，每个线程内部启动ioservice</span><br><span class="line">    for (std::size_t i = 0; i &lt; _ioServices.size(); ++i) &#123;</span><br><span class="line">        _threads.emplace_back([this, i]() &#123;</span><br><span class="line">            _ioServices[i].run();</span><br><span class="line">            &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">AsioIOServicePool::~AsioIOServicePool() &#123;</span><br><span class="line">    Stop();</span><br><span class="line">    std::cout &lt;&lt; &quot;AsioIOServicePool destruct&quot; &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">boost::asio::io_context&amp; AsioIOServicePool::GetIOService() &#123;</span><br><span class="line">    auto&amp; service = _ioServices[_nextIOService++];</span><br><span class="line">    if (_nextIOService == _ioServices.size()) &#123;</span><br><span class="line">        _nextIOService = 0;</span><br><span class="line">    &#125;</span><br><span class="line">    return service;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void AsioIOServicePool::Stop()&#123;</span><br><span class="line">    //因为仅仅执行work.reset并不能让iocontext从run的状态中退出</span><br><span class="line">    //当iocontext已经绑定了读或写的监听事件后，还需要手动stop该服务。</span><br><span class="line">    for (auto&amp; work : _works) &#123;</span><br><span class="line">        //把服务先停止</span><br><span class="line">        work-&gt;get_io_context().stop();</span><br><span class="line">        work.reset();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    for (auto&amp; t : _threads) &#123;</span><br><span class="line">        t.join();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="RPConPool"><a href="#RPConPool" class="headerlink" title="RPConPool"></a>RPConPool</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">class RPConPool &#123;</span><br><span class="line">public:</span><br><span class="line">    RPConPool(size_t poolSize, std::string host, std::string port)</span><br><span class="line">        : poolSize_(poolSize), host_(host), port_(port), b_stop_(false) &#123;</span><br><span class="line">        for (size_t i = 0; i &lt; poolSize_; ++i) &#123;</span><br><span class="line">            </span><br><span class="line">            std::shared_ptr&lt;Channel&gt; channel = grpc::CreateChannel(host+&quot;:&quot;+port,</span><br><span class="line">                grpc::InsecureChannelCredentials());</span><br><span class="line"></span><br><span class="line">            connections_.push(VarifyService::NewStub(channel));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~RPConPool() &#123;</span><br><span class="line">        std::lock_guard&lt;std::mutex&gt; lock(mutex_);</span><br><span class="line">        Close();</span><br><span class="line">        while (!connections_.empty()) &#123;</span><br><span class="line">            connections_.pop();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    std::unique_ptr&lt;VarifyService::Stub&gt; getConnection() &#123;</span><br><span class="line">        std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span><br><span class="line">        cond_.wait(lock, [this] &#123;</span><br><span class="line">            if (b_stop_) &#123;</span><br><span class="line">                return true;</span><br><span class="line">            &#125;</span><br><span class="line">            return !connections_.empty();</span><br><span class="line">            &#125;);</span><br><span class="line">        //如果停止则直接返回空指针</span><br><span class="line">        if (b_stop_) &#123;</span><br><span class="line">            return  nullptr;</span><br><span class="line">        &#125;</span><br><span class="line">        auto context = std::move(connections_.front());</span><br><span class="line">        connections_.pop();</span><br><span class="line">        return context;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void returnConnection(std::unique_ptr&lt;VarifyService::Stub&gt; context) &#123;</span><br><span class="line">        std::lock_guard&lt;std::mutex&gt; lock(mutex_);</span><br><span class="line">        if (b_stop_) &#123;</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line">        connections_.push(std::move(context));</span><br><span class="line">        cond_.notify_one();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    void Close() &#123;</span><br><span class="line">        b_stop_ = true;</span><br><span class="line">        cond_.notify_all();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">    atomic&lt;bool&gt; b_stop_;</span><br><span class="line">    size_t poolSize_;</span><br><span class="line">    std::string host_;</span><br><span class="line">    std::string port_;</span><br><span class="line">    std::queue&lt;std::unique_ptr&lt;VarifyService::Stub&gt;&gt; connections_;</span><br><span class="line">    std::mutex mutex_;</span><br><span class="line">    std::condition_variable cond_;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="连接池-get-return-back-的-RAII-自动回收机制"><a href="#连接池-get-return-back-的-RAII-自动回收机制" class="headerlink" title="连接池 get&#x2F;return_back 的 RAII 自动回收机制"></a>连接池 get&#x2F;return_back 的 RAII 自动回收机制</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// conn_guard 的核心——RAII 自动归还连接</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> DB&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">conn_guard</span> &#123;</span><br><span class="line">    std::weak_ptr&lt;DB&gt; conn_;</span><br><span class="line">    <span class="function"><span class="keyword">explicit</span> <span class="title">conn_guard</span><span class="params">(std::shared_ptr&lt;DB&gt; con)</span> : conn_(con) &#123;</span>&#125;</span><br><span class="line">    ~<span class="built_in">conn_guard</span>() &#123;</span><br><span class="line">        <span class="comment">// 析构时自动归还连接，使用者无需手动 return_back</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">auto</span> conn = conn_.<span class="built_in">lock</span>()) &#123;</span><br><span class="line">            connection_pool&lt;DB&gt;::<span class="built_in">instance</span>().<span class="built_in">return_back</span>(conn);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    std::shared_ptr&lt;DB&gt; <span class="keyword">operator</span>-&gt;() &#123; <span class="keyword">return</span> conn_.<span class="built_in">lock</span>(); &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这是池化思想的精髓——<strong>获取与释放对称管理</strong>。<code>conn_guard</code> 在作用域结束时自动归还，无论正常返回还是异常退出都不会泄漏连接。</p>
+<h4 id="条件变量的等待超时设计"><a href="#条件变量的等待超时设计" class="headerlink" title="条件变量的等待超时设计"></a>条件变量的等待超时设计</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::shared_ptr&lt;DB&gt; <span class="title">get</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">    <span class="keyword">while</span> (pool_.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">        <span class="comment">// 等待 3 秒，超时返回 nullptr（而非无限阻塞）</span></span><br><span class="line">        <span class="keyword">if</span> (condition_.<span class="built_in">wait_for</span>(lock, std::chrono::<span class="built_in">seconds</span>(<span class="number">3</span>)) ==</span><br><span class="line">            std::cv_status::timeout) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nullptr</span>;  <span class="comment">// 调用方需处理空指针</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>超时返回而非无限等待，防止线程被永久阻塞。调用方收到 <code>nullptr</code> 后可上报监控、降级处理或重试。</p>
+<h4 id="连接健康检测（ping-空闲超时）"><a href="#连接健康检测（ping-空闲超时）" class="headerlink" title="连接健康检测（ping + 空闲超时）"></a>连接健康检测（ping + 空闲超时）</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// get() 中的健康检查</span></span><br><span class="line"><span class="keyword">if</span> (conn == <span class="literal">nullptr</span> || !conn-&gt;<span class="built_in">ping</span>()) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">create_connection</span>();  <span class="comment">// 坏连接被自动替换</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">auto</span> mins = <span class="built_in">duration_cast</span>&lt;minutes&gt;(now - conn-&gt;<span class="built_in">get_latest_operate_time</span>()).<span class="built_in">count</span>();</span><br><span class="line"><span class="keyword">if</span> ((mins - <span class="number">6</span> * <span class="number">60</span>) &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">create_connection</span>();  <span class="comment">// 空闲超 6 小时的连接被替换</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>两层防护：<code>ping()</code> 检测 TCP 连接是否存活（MySQL 默认 8 小时超时），空闲超时检测防止长时间未用导致的连接失效。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>池大小配置黄金法则</strong>：初始连接数 &#x3D; 预期并发数 &#x2F; 单连接 QPS，最大连接数 &#x3D; 数据库 <code>max_connections</code> 的 60-80%</li>
+<li><strong>连接泄漏是最常见的池问题</strong>：忘记 <code>return_back</code> → 池被耗尽 → 所有请求阻塞超时。用 RAII guard 可从根源杜绝</li>
+<li><strong>对象池 vs 连接池的关键区别</strong>：对象池复用纯粹的内存对象，连接池复用的是远程资源（有状态、会过期、需心跳）</li>
+<li><strong>池的空闲回收策略</strong>：定时清理长时间未用的空闲连接（如每 5 分钟回收空闲 &gt; 10 分钟的对象），避免占用资源</li>
+<li><strong>预热连接池</strong>：系统启动时创建一批连接（如 10 个），避免冷启动时首个请求因建立连接而超时</li>
+<li><strong>监控池的健康指标</strong>：活跃连接数、空闲连接数、等待队列长度、获取超时次数——这些指标比 QPS 更早暴露问题</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: 什么是池化思想？它的核心价值是什么？</strong></p>
+<p>池化思想是通过<strong>预创建 + 复用</strong>而非频繁创建销毁来管理资源。核心价值：① 消除创建&#x2F;销毁开销（对象池&#x2F;连接池）；② 限制资源上限防止耗尽（线程池限制并发数）；③ 平滑流量波动（提前准备好资源应对突发）。</p>
+<p><strong>Q2: 对象池、连接池、线程池三者的异同？</strong></p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>对象池</th>
+<th>连接池</th>
+<th>线程池</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>复用对象</td>
+<td>普通内存对象</td>
+<td>TCP&#x2F;数据库连接</td>
+<td>操作系统线程</td>
+</tr>
+<tr>
+<td>创建成本</td>
+<td>低</td>
+<td>高（三次握手+认证）</td>
+<td>高（内核栈分配）</td>
+</tr>
+<tr>
+<td>是否有状态</td>
+<td>可选</td>
+<td>有（连接状态）</td>
+<td>有（TLS、栈）</td>
+</tr>
+<tr>
+<td>健康检测</td>
+<td>不需要</td>
+<td>需要（ping）</td>
+<td>需要（是否死锁）</td>
+</tr>
+<tr>
+<td>典型场景</td>
+<td>大对象复用</td>
+<td>DB&#x2F;Redis 连接</td>
+<td>并发任务调度</td>
+</tr>
+</tbody></table>
+<p><strong>Q3: 连接池的 max_size 如何确定？</strong></p>
+<p>受两个约束：① 数据库侧 <code>max_connections</code>（不能超过）；② 业务并发需求。公式：<code>pool_size = 预期并发数 × 平均查询耗时(秒)</code>。例如 1000 QPS、查询平均 20ms → 需要约 20 个连接。实际还需预留 20% 缓冲。</p>
+<p><strong>Q4: 连接池的连接泄漏如何检测？</strong></p>
+<p>① 监控获取超时次数（泄漏导致池耗尽）；② 记录连接持有时间（超过阈值打印调用栈）；③ 用 RAII guard 消除泄漏可能性。</p>
+<p><strong>Q5: 线程池的任务队列满了怎么办？</strong></p>
+<p>四种拒绝策略（Java ThreadPoolExecutor 经典）：① Abort（抛异常）；② CallerRuns（调用者线程执行）；③ Discard（静默丢弃）；④ DiscardOldest（丢弃最旧任务）。C++ 实现通常选 CallerRuns 或配合有界队列 + 阻塞等待。</p>
+<p><strong>Q6: 池化思想的缺点有哪些？</strong></p>
+<p>① 额外内存开销（预分配的资源闲置时浪费）；② 增加了系统复杂度（需管理生命周期、健康检测、容量控制）；③ 不适用短生命周期场景（如一次性的脚本任务）。</p>
+<p><strong>Q7: 如何实现一个无锁对象池？</strong></p>
+<p>思路：每个线程持有自己的 TLS（thread-local storage）对象链表，优先从 TLS 获取；TLS 空时才从全局池批量拉取（批量减少竞争）。类似 jemalloc 的 thread cache 设计。</p>
+<p><strong>Q8: 池的预热（Warm Up）为什么重要？</strong></p>
+<p>冷启动时池为空，首批请求需实时创建连接&#x2F;线程 → 延迟尖峰 → 可能触发超时重试雪崩。预热在服务注册到负载均衡前完成，避免”上线即故障”。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：连接池无健康检测 → 数据库重启后池中连接全部失效，请求持续失败。<strong>修复</strong>：<code>get()</code> 时做 <code>ping()</code> 检测。</p>
+</li>
+<li><p><strong>陷阱</strong>：线程池任务执行中抛异常未捕获 → 线程退出，池逐渐缩水。<strong>修复</strong>：任务执行包装 try-catch。</p>
+</li>
+<li><p><strong>陷阱</strong>：连接池设为无界 → 突发流量耗尽数据库连接数。<strong>修复</strong>：设 max_size + 获取超时。</p>
+</li>
+<li><p><strong>反问</strong>：「如果让你设计一个支持动态扩容的线程池，你会考虑哪些点？」希望听到：最小&#x2F;最大线程数、空闲线程回收策略、扩容&#x2F;缩容阈值、任务队列监控。</p>
+</li>
+<li><p><strong>反问</strong>：「池化和缓存（Cache）的根本区别是什么？」希望听到：池化复用的是<strong>资源本身</strong>（连接&#x2F;线程），缓存复用的是<strong>计算结果</strong>。池化的对象生命周期 &#x3D; 借出→使用→归还，缓存的对象生命周期 &#x3D; 写入→读取→过期。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>池化核心？</td>
+<td>预创建 + 复用，消除创建销毁开销</td>
+</tr>
+<tr>
+<td>连接池 vs 线程池？</td>
+<td>连接池管网络连接，线程池管计算线程</td>
+</tr>
+<tr>
+<td>池大小公式？</td>
+<td>并发数 × 单任务耗时，加 20% 缓冲</td>
+</tr>
+<tr>
+<td>连接泄漏？</td>
+<td>未归还&#x3D;泄漏，用 RAII guard 根除</td>
+</tr>
+<tr>
+<td>健康检测？</td>
+<td><code>get()</code> 中 ping 检测，坏连接自动替换</td>
+</tr>
+<tr>
+<td>拒绝策略？</td>
+<td>队列满时 Abort&#x2F;CallerRuns&#x2F;Discard</td>
+</tr>
+<tr>
+<td>预热？</td>
+<td>启动时预创建，避免首个请求超时</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3/">https://weimo1.github.io/posts/%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E4%B8%8E%E9%AB%98%E5%B9%B6%E5%8F%91%E6%9E%B6%E6%9E%84/" title="消息队列与高并发架构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">消息队列与高并发架构</div></div><div class="info-2"><div class="info-item-1">消息队列与高并发架构 适用范围：消息队列在分布式系统中的四大作用（解耦、削峰、顺序、线程安全）、高并发架构设计（异步非阻塞、资源池化、水平扩展、微服务与分布式的区别）。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码...</div></div></div></a><a class="pagination-related" href="/posts/%E6%B6%88%E6%81%AF%E5%8D%8F%E8%AE%AE%E8%AE%BE%E8%AE%A1/" title="消息协议设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">消息协议设计</div></div><div class="info-2"><div class="info-item-1">消息协议设计 适用范围：IM 即时通讯系统的通信协议层设计，涵盖消息编码、消息类型定义、上行&#x2F;转发&#x2F;下行流程。  一、核心概念 定义：IM 消息协议是客户端与服务端之间通信的”语言规范”，定义了消息的编码格式、类型语义、字段结构和传输流程。它决定了系统各组件如何理解彼此发送的二进制数据流。 关键词：Protobuf 序列化、CMD&#x2F;ACK&#x2F;NOTIFY 消息类型、上行消息、消息转发、下行消息、协议版本兼容 适用场景&#x2F;边界： 适用于分布式 IM 系统中客户端到网关、网关到逻辑层、逻辑层到存储层之间的所有消息通信 边界：关注消息格式和传输语义...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3"><span class="toc-number">1.</span> <span class="toc-text">池化思想</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3-1"><span class="toc-number">2.</span> <span class="toc-text">池化思想</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%EF%BC%9A%E8%83%8C%E6%99%AF%E4%BB%8B%E7%BB%8D"><span class="toc-number">2.1.</span> <span class="toc-text">一：背景介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%EF%BC%9A%E4%BB%80%E4%B9%88%E6%98%AF%E6%B1%A0%E5%8C%96%E6%80%9D%E6%83%B3"><span class="toc-number">2.2.</span> <span class="toc-text">二：什么是池化思想</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%EF%BC%9A%E6%B1%A0%E5%8C%96%E7%9A%84%E4%BC%98%E5%8A%BF%E5%88%A9%E5%BC%8A"><span class="toc-number">2.3.</span> <span class="toc-text">三：池化的优势利弊</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BC%98%E7%82%B9"><span class="toc-number">2.3.1.</span> <span class="toc-text">3.1 优点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%BC%BA%E7%82%B9"><span class="toc-number">2.3.2.</span> <span class="toc-text">3.2 缺点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF%EF%BC%9A"><span class="toc-number">2.4.</span> <span class="toc-text">实现思路：</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0%E7%9A%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E7%94%9F%E4%BA%A7%E8%80%85%E5%92%8C%E6%B6%88%E8%B4%B9%E8%80%85%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E7%B1%BB%E4%BC%BC"><span class="toc-number">2.5.</span> <span class="toc-text">线程池的设计与生产者和消费者的设计模式类似</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#IOContext-Pool"><span class="toc-number">2.6.</span> <span class="toc-text">IOContext Pool</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RPConPool"><span class="toc-number">2.7.</span> <span class="toc-text">RPConPool</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.8.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.8.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E6%B1%A0-get-return-back-%E7%9A%84-RAII-%E8%87%AA%E5%8A%A8%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">2.8.1.1.</span> <span class="toc-text">连接池 get&#x2F;return_back 的 RAII 自动回收机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9D%A1%E4%BB%B6%E5%8F%98%E9%87%8F%E7%9A%84%E7%AD%89%E5%BE%85%E8%B6%85%E6%97%B6%E8%AE%BE%E8%AE%A1"><span class="toc-number">2.8.1.2.</span> <span class="toc-text">条件变量的等待超时设计</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E5%81%A5%E5%BA%B7%E6%A3%80%E6%B5%8B%EF%BC%88ping-%E7%A9%BA%E9%97%B2%E8%B6%85%E6%97%B6%EF%BC%89"><span class="toc-number">2.8.1.3.</span> <span class="toc-text">连接健康检测（ping + 空闲超时）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.8.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">2.9.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">2.9.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">2.9.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

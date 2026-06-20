@@ -1,0 +1,329 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Vulkan Bindless渲染系统 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Vulkan Bindless 渲染系统 适用范围：Bindless 纹理&#x2F;采样器&#x2F;StorageBuffer 数组、全局描述符集、动态索引访问  一、一句话结论Bindless 渲染系统 &#x3D; 全局描述符大数组 + 索引分配器 + 着色器动态索引用。一次绑定、持续绘制，把传统”每材质切 DescriptorSet”变成”每 draw call 传一个 int 索引”，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vulkan Bindless渲染系统">
+<meta property="og:url" content="https://weimo1.github.io/posts/Vulkan-Bindless%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Vulkan Bindless 渲染系统 适用范围：Bindless 纹理&#x2F;采样器&#x2F;StorageBuffer 数组、全局描述符集、动态索引访问  一、一句话结论Bindless 渲染系统 &#x3D; 全局描述符大数组 + 索引分配器 + 着色器动态索引用。一次绑定、持续绘制，把传统”每材质切 DescriptorSet”变成”每 draw call 传一个 int 索引”，">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.554Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Vulkan Bindless渲染系统",
+  "url": "https://weimo1.github.io/posts/Vulkan-Bindless%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.554Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Vulkan-Bindless%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Vulkan Bindless渲染系统',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Vulkan Bindless渲染系统</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Vulkan Bindless渲染系统</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.554Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/Vulkan/">Vulkan</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>5分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Vulkan-Bindless-渲染系统"><a href="#Vulkan-Bindless-渲染系统" class="headerlink" title="Vulkan Bindless 渲染系统"></a>Vulkan Bindless 渲染系统</h1><blockquote>
+<p>适用范围：Bindless 纹理&#x2F;采样器&#x2F;StorageBuffer 数组、全局描述符集、动态索引访问</p>
+</blockquote>
+<h2 id="一、一句话结论"><a href="#一、一句话结论" class="headerlink" title="一、一句话结论"></a>一、一句话结论</h2><p>Bindless 渲染系统 &#x3D; <strong>全局描述符大数组 + 索引分配器 + 着色器动态索引用</strong>。一次绑定、持续绘制，把传统”每材质切 DescriptorSet”变成”每 draw call 传一个 int 索引”，批处理能力拉满。</p>
+<hr>
+<h2 id="二、核心概念解析（≥200字）"><a href="#二、核心概念解析（≥200字）" class="headerlink" title="二、核心概念解析（≥200字）"></a>二、核心概念解析（≥200字）</h2><h3 id="2-1-Traditional-vs-Bindless"><a href="#2-1-Traditional-vs-Bindless" class="headerlink" title="2.1 Traditional vs Bindless"></a>2.1 Traditional vs Bindless</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">传统渲染（绑定时）:</span><br><span class="line">  vkCmdBindDescriptorSets(materialA_set) → draw A</span><br><span class="line">  vkCmdBindDescriptorSets(materialB_set) → draw B</span><br><span class="line">  // 每次切换材质都打断批处理</span><br><span class="line"></span><br><span class="line">Bindless 渲染（索引时）:</span><br><span class="line">  vkCmdBindDescriptorSets(globalBindlessSet)  // 全帧只绑一次</span><br><span class="line">  pushConstants(textureIndex=0) → draw A</span><br><span class="line">  pushConstants(textureIndex=1) → draw B</span><br><span class="line">  // 连续绘制，无中断</span><br></pre></td></tr></table></figure>
+
+<p><strong>核心理念</strong>：分离”绑定操作”和”资源访问”。绑定只做一次（全局大数组），访问靠整数索引。</p>
+<h3 id="2-2-比喻：图书馆借阅系统"><a href="#2-2-比喻：图书馆借阅系统" class="headerlink" title="2.2 比喻：图书馆借阅系统"></a>2.2 比喻：图书馆借阅系统</h3><ul>
+<li><strong>传统</strong>：每个读者（材质）有自己的小书柜（DescriptorSet），换读者就换书柜</li>
+<li><strong>Bindless</strong>：全市只有一个超级图书馆（全局 Set），读者只需知道书号（索引）就能借任何书</li>
+</ul>
+<h3 id="2-3-类层次结构"><a href="#2-3-类层次结构" class="headerlink" title="2.3 类层次结构"></a>2.3 类层次结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">BindlessBase（抽象基类）</span><br><span class="line">├── BindlessSampler      → 采样器数组</span><br><span class="line">├── BindlessTexture      → 纹理数组（最常见）</span><br><span class="line">└── BindlessStorageBuffer → StorageBuffer 数组</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="三、源码解析与实践感悟（≥1000字）"><a href="#三、源码解析与实践感悟（≥1000字）" class="headerlink" title="三、源码解析与实践感悟（≥1000字）"></a>三、源码解析与实践感悟（≥1000字）</h2><h3 id="3-1-核心数据结构"><a href="#3-1-核心数据结构" class="headerlink" title="3.1 核心数据结构"></a>3.1 核心数据结构</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">BindlessTextureDescriptorHeap</span> &#123;</span><br><span class="line">    VkDescriptorSetLayout setLayout;                 <span class="comment">// 布局</span></span><br><span class="line">    VkDescriptorPool descriptorPool;                 <span class="comment">// 描述符池</span></span><br><span class="line">    VkDescriptorSet descriptorSetUpdateAfterBind;    <span class="comment">// 支持 AFTER_BIND 的 Set</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-索引管理（锁-空闲列表）"><a href="#3-2-索引管理（锁-空闲列表）" class="headerlink" title="3.2 索引管理（锁+空闲列表）"></a>3.2 索引管理（锁+空闲列表）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint32_t</span> m_bindlessElementCount = <span class="number">0</span>;     <span class="comment">// 当前已分配数量</span></span><br><span class="line">std::set&lt;<span class="type">uint32_t</span>&gt; m_freeIndex;          <span class="comment">// 空闲索引池（有序集合）</span></span><br><span class="line">std::mutex m_bindlessElementCountLock;   <span class="comment">// 线程安全锁</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">uint32_t</span> <span class="title">BindlessBase::getCountAndAndOne</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">std::lock_guard <span class="title">lock</span><span class="params">(m_bindlessElementCountLock)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (m_freeIndex.<span class="built_in">size</span>() &lt; m_maxCountConfig / <span class="number">4</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> m_bindlessElementCount++;  <span class="comment">// 无空闲，分配新索引</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="type">uint32_t</span> index = *m_freeIndex.<span class="built_in">begin</span>();  <span class="comment">// 有空闲，复用</span></span><br><span class="line">        m_freeIndex.<span class="built_in">erase</span>(m_freeIndex.<span class="built_in">begin</span>());</span><br><span class="line">        <span class="keyword">return</span> index;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>阈值设计</strong>：空闲索引 &lt; 总数 1&#x2F;4 时才分配新的。避免回收后立刻又分配造成索引碎片。</p>
+<h3 id="3-3-初始化——四个关键-Flags"><a href="#3-3-初始化——四个关键-Flags" class="headerlink" title="3.3 初始化——四个关键 Flags"></a>3.3 初始化——四个关键 Flags</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">VkDescriptorBindingFlagsEXT flags =</span><br><span class="line">    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT |    <span class="comment">// 可变数量</span></span><br><span class="line">    VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |              <span class="comment">// 部分绑定</span></span><br><span class="line">    VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |            <span class="comment">// 绑定后可更新</span></span><br><span class="line">    VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT;   <span class="comment">// pending 时更新未使用项</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>UPDATE_AFTER_BIND</strong> 是最关键的：传统描述符必须在 Bind 前更新，而 Bindless 允许运行时动态添加纹理到已绑定的 Set 中。</p>
+<h3 id="3-4-纹理注册"><a href="#3-4-纹理注册" class="headerlink" title="3.4 纹理注册"></a>3.4 纹理注册</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">uint32_t</span> <span class="title">BindlessTexture::updateTextureToBindlessDescriptorSet</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    VkImageView view, </span></span></span><br><span class="line"><span class="params"><span class="function">    VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)</span> </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    VkDescriptorImageInfo imageInfo&#123;&#125;;</span><br><span class="line">    imageInfo.imageView = view;</span><br><span class="line">    imageInfo.imageLayout = layout;</span><br><span class="line"></span><br><span class="line">    VkWriteDescriptorSet write&#123;&#125;;</span><br><span class="line">    write.dstArrayElement = <span class="built_in">getCountAndAndOne</span>();  <span class="comment">// 获取空闲索引</span></span><br><span class="line">    write.pImageInfo = &amp;imageInfo;</span><br><span class="line">    <span class="built_in">vkUpdateDescriptorSets</span>(device, <span class="number">1</span>, &amp;write, <span class="number">0</span>, <span class="literal">nullptr</span>);</span><br><span class="line">    <span class="keyword">return</span> write.dstArrayElement;  <span class="comment">// 返回索引号</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>返回的 uint32_t 就是”这本书在图书馆里的编号”。</p>
+<h3 id="3-5-索引回收（Fallback-机制）"><a href="#3-5-索引回收（Fallback-机制）" class="headerlink" title="3.5 索引回收（Fallback 机制）"></a>3.5 索引回收（Fallback 机制）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">BindlessTexture::freeBindlessImpl</span><span class="params">(<span class="type">uint32_t</span> index, VulkanImage* fallback)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (fallback) &#123;</span><br><span class="line">        VkDescriptorImageInfo imageInfo&#123;&#125;;</span><br><span class="line">        imageInfo.imageView = fallback-&gt;<span class="built_in">getOrCreateView</span>().view;</span><br><span class="line">        VkWriteDescriptorSet write&#123;&#125;;</span><br><span class="line">        write.dstArrayElement = index;  <span class="comment">// 用 fallback 填充空洞</span></span><br><span class="line">        <span class="built_in">vkUpdateDescriptorSets</span>(device, <span class="number">1</span>, &amp;write, <span class="number">0</span>, <span class="literal">nullptr</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    BindlessBase::<span class="built_in">freeBindless</span>(index);  <span class="comment">// 回收索引</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么需要 fallback</strong>：Vulkan 验证层会警告”访问未绑定的描述符”，用一个 1x1 白色纹理填充已释放的槽位，避免警告和未定义行为。</p>
+<h3 id="3-6-着色器端（GLSL）"><a href="#3-6-着色器端（GLSL）" class="headerlink" title="3.6 着色器端（GLSL）"></a>3.6 着色器端（GLSL）</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#version 460</span></span><br><span class="line"><span class="meta">#extension GL_EXT_nonuniform_qualifier : require</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">binding</span> = <span class="number">0</span>) <span class="keyword">uniform</span> <span class="built_in">texture2D</span> textures[];       <span class="comment">// 纹理大数组</span></span><br><span class="line"><span class="keyword">layout</span>(<span class="keyword">binding</span> = <span class="number">1</span>) <span class="keyword">uniform</span> sampler samplers[];          <span class="comment">// 采样器大数组</span></span><br><span class="line"></span><br><span class="line"><span class="type">vec4</span> sampleTexture(<span class="type">uint</span> texIdx, <span class="type">uint</span> sampIdx, <span class="type">vec2</span> uv) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">texture</span>(<span class="type">sampler2D</span>(textures[texIdx], samplers[sampIdx]), uv);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>GL_EXT_nonuniform_qualifier</code></strong> 是 Bindless 必须的扩展，允许在 warp&#x2F;wave 内不同线程访问不同纹理（NonUniformResourceIndex）。</p>
+<h3 id="3-7-性能对比"><a href="#3-7-性能对比" class="headerlink" title="3.7 性能对比"></a>3.7 性能对比</h3><p>传统方式 1000 个材质 &#x3D; 1000 次 <code>vkCmdBindDescriptorSets</code>，Bindless &#x3D; 1 次绑定 + 1000 次 PushConstants（整数）。</p>
+<hr>
+<h2 id="四、面试准备"><a href="#四、面试准备" class="headerlink" title="四、面试准备"></a>四、面试准备</h2><h3 id="高频问法（≥8个）"><a href="#高频问法（≥8个）" class="headerlink" title="高频问法（≥8个）"></a>高频问法（≥8个）</h3><ol>
+<li><strong>什么是 Bindless 渲染？与传统描述符绑定有什么本质区别？</strong> → 全局大数组替代每材质独立 Set；分离”绑定”和”访问”，绑定一次通过索引动态访问</li>
+<li><strong>UPDATE_AFTER_BIND_BIT 的作用？</strong> → 允许描述符集在被绑定到 CommandBuffer 之后继续更新，是 Bindless 运行时动态添加资源的基石</li>
+<li><strong>Bindless 如何保证线程安全？</strong> → <code>std::mutex</code> 保护索引分配，<code>std::set</code> 管理空闲索引</li>
+<li><strong>索引回收时为什么需要 Fallback 纹理？</strong> → 避免验证层警告和着色器访问未绑定的描述符</li>
+<li><strong>VARIABLE_DESCRIPTOR_COUNT 有什么意义？</strong> → 允许绑定时指定实际使用的描述符数量而非全部声明数量，减少内存浪费</li>
+<li><strong>GLSL 中 NonUniformResourceIndex 的作用？</strong> → 允许同一 warp&#x2F;wave 内不同线程通过不同索引访问纹理，GPUs 原生支持</li>
+<li><strong>Bindless 和 PushDescriptor 的区别？</strong> → Bindless 用于大量静态资源；PushDescriptor 用于每帧变化的小数据</li>
+<li><strong>CVar 如何控制 Bindless 最大数量？</strong> → <code>r.RHI.BindlessTextureMaxCount</code>，ReadOnly 标志表示启动时确定</li>
+<li><strong>Bindless 的硬件限制有哪些？</strong> → <code>maxDescriptorSetUpdateAfterBindSampledImages</code>、<code>maxDescriptorSetUpdateAfterBindSamplers</code> 等</li>
+</ol>
+<h3 id="反问点（≥5个）"><a href="#反问点（≥5个）" class="headerlink" title="反问点（≥5个）"></a>反问点（≥5个）</h3><ul>
+<li>如果 Bindless 索引用完了（达到 maxCount）怎么办？</li>
+<li><code>m_freeIndex.size() &lt; m_maxCountConfig / 4</code> 这个阈值怎么定的？</li>
+<li>Bindless 和 DescriptorFactory 如何协同工作？</li>
+<li>为什么 Sampler 和 Texture 要分开成两个 Bindless 数组？</li>
+<li>多线程同时调用 <code>updateTextureToBindlessDescriptorSet</code> 会导致什么问题？</li>
+</ul>
+<h3 id="一句话答案（≥5个）"><a href="#一句话答案（≥5个）" class="headerlink" title="一句话答案（≥5个）"></a>一句话答案（≥5个）</h3><ul>
+<li>Bindless &#x3D; 图书馆借书，传书号不传书</li>
+<li>UPDATE_AFTER_BIND &#x3D; 绑定了还能往里加东西</li>
+<li>Fallback 纹理 &#x3D; 退书后用白纸占位，不空着</li>
+<li>NonUniformResourceIndex &#x3D; Wave 内不同线程访不同纹理</li>
+<li>一次绑定全帧 &#x3D; 1 vs 1000 次驱动调用</li>
+</ul>
+<hr>
+<h2 id="附录（原内容完整保留）"><a href="#附录（原内容完整保留）" class="headerlink" title="附录（原内容完整保留）"></a>附录（原内容完整保留）</h2><h3 id="原：传统方式-vs-Bindless-方式"><a href="#原：传统方式-vs-Bindless-方式" class="headerlink" title="原：传统方式 vs Bindless 方式"></a>原：传统方式 vs Bindless 方式</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 传统：每个材质独立 Set</span></span><br><span class="line"><span class="built_in">vkCmdBindDescriptorSets</span>(材质A描述符集) → 绘制<span class="function">A</span></span><br><span class="line"><span class="function"><span class="title">vkCmdBindDescriptorSets</span><span class="params">(材质B描述符集)</span> → 绘制B</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// Bindless：全局 Set + 索引</span></span></span><br><span class="line"><span class="function"><span class="title">vkCmdBindDescriptorSets</span><span class="params">(全局Bindless描述符集)</span>  <span class="comment">// 一次</span></span></span><br><span class="line"><span class="function"><span class="title">vkCmdPushConstants</span><span class="params">(索引<span class="number">0</span>)</span> → 绘制A</span></span><br><span class="line"><span class="function"><span class="title">vkCmdPushConstants</span><span class="params">(索引<span class="number">1</span>)</span> → 绘制B</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="原：渲染循环"><a href="#原：渲染循环" class="headerlink" title="原：渲染循环"></a>原：渲染循环</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">renderFrame</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    VkDescriptorSet bindlessSets[] = &#123;</span><br><span class="line">        bindlessTextures-&gt;<span class="built_in">getSet</span>(),</span><br><span class="line">        bindlessSamplers-&gt;<span class="built_in">getSet</span>(),</span><br><span class="line">        bindlessBuffers-&gt;<span class="built_in">getSet</span>()</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="built_in">vkCmdBindDescriptorSets</span>(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,</span><br><span class="line">        pipelineLayout, <span class="number">0</span>, <span class="number">3</span>, bindlessSets, <span class="number">0</span>, <span class="literal">nullptr</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; material : materials) &#123;</span><br><span class="line">        <span class="type">uint32_t</span> pushConstants[<span class="number">4</span>];</span><br><span class="line">        material.<span class="built_in">bind</span>(pushConstants);</span><br><span class="line">        <span class="built_in">vkCmdPushConstants</span>(commandBuffer, pipelineLayout, </span><br><span class="line">            VK_SHADER_STAGE_ALL, <span class="number">0</span>, <span class="built_in">sizeof</span>(pushConstants), pushConstants);</span><br><span class="line">        <span class="built_in">vkCmdDrawIndexed</span>(commandBuffer, ...);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：HLSL-等价代码"><a href="#原：HLSL-等价代码" class="headerlink" title="原：HLSL 等价代码"></a>原：HLSL 等价代码</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Texture2D textures[] : register(t0, space0);</span><br><span class="line">SamplerState samplers[] : register(s0, space0);</span><br><span class="line">RWStructuredBuffer&lt;float&gt; storageBuffers[] : register(u0, space0);</span><br><span class="line"></span><br><span class="line">float4 sampleTexture(uint texIdx, uint sampIdx, float2 uv) &#123;</span><br><span class="line">    return textures[NonUniformResourceIndex(texIdx)].Sample(</span><br><span class="line">        samplers[NonUniformResourceIndex(sampIdx)], uv);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：CVar-配置"><a href="#原：CVar-配置" class="headerlink" title="原：CVar 配置"></a>原：CVar 配置</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">static</span> AutoCVarInt32 <span class="title">cVarRHIBindlessTextureMaxCount</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="string">&quot;r.RHI.BindlessTextureMaxCount&quot;</span>,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="string">&quot;Bindless texture set max count.&quot;</span>,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="string">&quot;RHI&quot;</span>,</span></span></span><br><span class="line"><span class="params"><span class="function">    <span class="number">20000</span>,</span></span></span><br><span class="line"><span class="params"><span class="function">    CVarFlags::ReadOnly</span></span></span><br><span class="line"><span class="params"><span class="function">)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：性能对比表"><a href="#原：性能对比表" class="headerlink" title="原：性能对比表"></a>原：性能对比表</h3><table>
+<thead>
+<tr>
+<th>方面</th>
+<th>传统渲染</th>
+<th>Bindless 渲染</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>API调用</td>
+<td>每个材质多次绑定</td>
+<td>一次绑定</td>
+</tr>
+<tr>
+<td>资源管理</td>
+<td>静态预分配</td>
+<td>动态运行时分配</td>
+</tr>
+<tr>
+<td>灵活性</td>
+<td>有限</td>
+<td>随时添加</td>
+</tr>
+<tr>
+<td>批处理</td>
+<td>材质切换打断</td>
+<td>连续批处理</td>
+</tr>
+<tr>
+<td>内存使用</td>
+<td>多个描述符集</td>
+<td>共享描述符集</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Vulkan-Bindless%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F/">https://weimo1.github.io/posts/Vulkan-Bindless%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Vulkan-Context/" title="Vulkan Context"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Vulkan Context</div></div><div class="info-2"><div class="info-item-1">Vulkan Context 适用范围：VulkanContext——自研 Vulkan 渲染引擎的核心中枢，负责 Instance&#x2F;Device&#x2F;队列&#x2F;VMA&#x2F;描述符等全局资源生命周期管理。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要点。 代码块必须标注语言。  一、核心概念 定义：VulkanContext...</div></div></div></a><a class="pagination-related" href="/posts/Version/" title="Version"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Version</div></div><div class="info-2"><div class="info-item-1">Version 适用范围：LevelDB 版本管理系统——LSM-Tree 的元数据大脑  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 代码块必须标注语言：C++ 代码用 c++。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：Version 是 LevelDB 的版本管理系统，记录当前数据库状态的快照——包括每一层有哪些 SSTable 文件、文件的 key 范围。VersionSet 是版本的集合管理器，Manifest 是版本的持久化日志。三者构成 LSM-Tr...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Vulkan-Bindless-%E6%B8%B2%E6%9F%93%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.</span> <span class="toc-text">Vulkan Bindless 渲染系统</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%BB%93%E8%AE%BA"><span class="toc-number">1.1.</span> <span class="toc-text">一、一句话结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心概念解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-Traditional-vs-Bindless"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 Traditional vs Bindless</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%AF%94%E5%96%BB%EF%BC%9A%E5%9B%BE%E4%B9%A6%E9%A6%86%E5%80%9F%E9%98%85%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 比喻：图书馆借阅系统</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E7%B1%BB%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 类层次结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码解析与实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%A0%B8%E5%BF%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 核心数据结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E7%B4%A2%E5%BC%95%E7%AE%A1%E7%90%86%EF%BC%88%E9%94%81-%E7%A9%BA%E9%97%B2%E5%88%97%E8%A1%A8%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 索引管理（锁+空闲列表）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%88%9D%E5%A7%8B%E5%8C%96%E2%80%94%E2%80%94%E5%9B%9B%E4%B8%AA%E5%85%B3%E9%94%AE-Flags"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 初始化——四个关键 Flags</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E7%BA%B9%E7%90%86%E6%B3%A8%E5%86%8C"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 纹理注册</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E7%B4%A2%E5%BC%95%E5%9B%9E%E6%94%B6%EF%BC%88Fallback-%E6%9C%BA%E5%88%B6%EF%BC%89"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 索引回收（Fallback 机制）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%9D%80%E8%89%B2%E5%99%A8%E7%AB%AF%EF%BC%88GLSL%EF%BC%89"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 着色器端（GLSL）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">1.3.7.</span> <span class="toc-text">3.7 性能对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.4.</span> <span class="toc-text">四、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8D%E9%97%AE%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">反问点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E5%AE%8C%E6%95%B4%E4%BF%9D%E7%95%99%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">附录（原内容完整保留）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E4%BC%A0%E7%BB%9F%E6%96%B9%E5%BC%8F-vs-Bindless-%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">原：传统方式 vs Bindless 方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E6%B8%B2%E6%9F%93%E5%BE%AA%E7%8E%AF"><span class="toc-number">1.5.2.</span> <span class="toc-text">原：渲染循环</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AHLSL-%E7%AD%89%E4%BB%B7%E4%BB%A3%E7%A0%81"><span class="toc-number">1.5.3.</span> <span class="toc-text">原：HLSL 等价代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9ACVar-%E9%85%8D%E7%BD%AE"><span class="toc-number">1.5.4.</span> <span class="toc-text">原：CVar 配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94%E8%A1%A8"><span class="toc-number">1.5.5.</span> <span class="toc-text">原：性能对比表</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

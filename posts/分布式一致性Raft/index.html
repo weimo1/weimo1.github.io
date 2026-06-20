@@ -1,0 +1,460 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>分布式一致性Raft | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="分布式一致性：Raft 共识算法 适用范围：分布式共识算法——Raft 领导选举、日志复制、安全性、与 Paxos 对比、CAP&#x2F;BASE 理论。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式一致性Raft">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="分布式一致性：Raft 共识算法 适用范围：分布式共识算法——Raft 领导选举、日志复制、安全性、与 Paxos 对比、CAP&#x2F;BASE 理论。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.565Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "分布式一致性Raft",
+  "url": "https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.565Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '分布式一致性Raft',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">分布式一致性Raft</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">分布式一致性Raft</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.565Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E4%B8%8E%E6%9E%B6%E6%9E%84/">性能优化与架构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>13分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="分布式一致性：Raft-共识算法"><a href="#分布式一致性：Raft-共识算法" class="headerlink" title="分布式一致性：Raft 共识算法"></a>分布式一致性：Raft 共识算法</h1><blockquote>
+<p>适用范围：分布式共识算法——Raft 领导选举、日志复制、安全性、与 Paxos 对比、CAP&#x2F;BASE 理论。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥10个且带回答，反问点和一句话答案各≥5个。</li>
+<li><strong>代码块必须标注语言</strong>：Go 用 <code>go</code>，Python 用 <code>python</code>，Shell 用 <code>bash</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Raft 是斯坦福学者提出的分布式共识算法，将共识问题分解为领导选举（Leader Election）、日志复制（Log Replication）和安全性（Safety）三个子问题，以可理解性和易实现性为目标，实际工程中已广泛替代 Paxos。</li>
+<li><strong>关键词</strong>：共识算法、领导选举、日志复制、任期 Term、心跳机制、脑裂、CAP 定理、BASE 理论</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>分布式元数据管理（etcd、ZooKeeper、Consul 均使用 Raft）</li>
+<li>分布式数据库副本同步（TiKV、CockroachDB）</li>
+<li>消息队列元数据协调（RocketMQ DLedger）</li>
+<li>不适合：对延迟极敏感的实时系统、单机场景</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1836319">分布式一致性算法 Raft - 腾讯云</a></p>
+</blockquote>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：节点角色与状态转换</strong></p>
+<p>Raft 集群中每个节点只能处于三种状态之一：</p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>角色说明</th>
+<th>状态转换触发</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Follower</strong></td>
+<td>默认初始状态，被动接收 Leader 心跳和日志</td>
+<td>心跳超时 → Candidate；收到更高任期请求 → 保持 Follower</td>
+</tr>
+<tr>
+<td><strong>Candidate</strong></td>
+<td>竞选者，向其他节点拉票</td>
+<td>获得超半数票 → Leader；选举超时 → 重新选举；收到更高任期请求 → Follower</td>
+</tr>
+<tr>
+<td><strong>Leader</strong></td>
+<td>唯一主节点，处理客户端请求，负责日志同步</td>
+<td>收到更高任期请求 → 降级为 Follower（并投票）</td>
+</tr>
+</tbody></table>
+<p>Leader 周期性发送心跳维持地位。Follower 心跳超时后，随机等待 150-300ms 发起选举。</p>
+<p><strong>第二层：Term（任期）机制</strong></p>
+<p>Raft 将时间划分为连续的任期 Term，每个 Term 有单调递增的唯一编号。每个 Term 以选举开始：</p>
+<ul>
+<li>选举成功 → 进入正常运行阶段（Leader 处理请求）</li>
+<li>选举失败（票数分散）→ TermId + 1 → 重新选举</li>
+</ul>
+<p>Term 是整个算法的逻辑时钟，所有通信都携带当前 Term，遇到更高 Term 时自动降级。</p>
+<p><strong>第三层：日志复制与提交</strong></p>
+<p>Leader 将客户端请求转化为日志命令，向所有 Follower 复制。每个日志条目包含：状态机命令、任期号、前一日志的索引和任期号。超过半数节点复制成功后，日志被提交（committed），Leader 随后通知所有节点将日志应用到状态机。</p>
+<p>提交机制类似两阶段提交（2PC），但关键区别：Raft 只要超过半数节点同意即可提交，2PC 需要所有节点同意。</p>
+<h3 id="安全性机制（Safety）"><a href="#安全性机制（Safety）" class="headerlink" title="安全性机制（Safety）"></a>安全性机制（Safety）</h3><ol>
+<li><strong>选举限制</strong>：Candidate 必须拥有比投票者更新的日志（最后日志的任期号和索引比较），才能获得投票</li>
+<li><strong>提交限制</strong>：Leader 只能提交当前任期的日志（Leader Completeness Property），不能提交之前任期的日志</li>
+<li><strong>日志匹配</strong>：如果两个日志条目有相同的索引和任期号，则它们之前的所有条目完全一致</li>
+</ol>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-etcd-使用-Raft-的典型配置"><a href="#3-1-etcd-使用-Raft-的典型配置" class="headerlink" title="3.1 etcd 使用 Raft 的典型配置"></a>3.1 etcd 使用 Raft 的典型配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># etcd 集群配置（3节点 Raft 组）</span></span><br><span class="line">etcd --name infra0 \</span><br><span class="line">  --initial-advertise-peer-urls http://10.0.1.10:2380 \</span><br><span class="line">  --listen-peer-urls http://10.0.1.10:2380 \</span><br><span class="line">  --listen-client-urls http://10.0.1.10:2379 \</span><br><span class="line">  --advertise-client-urls http://10.0.1.10:2379 \</span><br><span class="line">  --initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \</span><br><span class="line">  --initial-cluster-state new</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-Raft-算法核心流程（伪代码）"><a href="#3-2-Raft-算法核心流程（伪代码）" class="headerlink" title="3.2 Raft 算法核心流程（伪代码）"></a>3.2 Raft 算法核心流程（伪代码）</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Raft 核心流程：</span><br><span class="line"></span><br><span class="line">1. Leader 选举：</span><br><span class="line">   - Follower 心跳超时 → 转为 Candidate, Term++</span><br><span class="line">   - Candidate 向所有节点发送 RequestVote RPC</span><br><span class="line">   - 获得超过半数投票 → 转为 Leader，发送心跳</span><br><span class="line"></span><br><span class="line">2. 日志复制：</span><br><span class="line">   - Leader 接收客户端请求 → 添加日志条目</span><br><span class="line">   - 发送 AppendEntries RPC 给所有 Follower</span><br><span class="line">   - 超过半数确认 → 提交日志 → 应用到状态机 → 返回客户端</span><br><span class="line"></span><br><span class="line">3. 安全性：</span><br><span class="line">   - Candidate 日志必须 ≥ 投票者最新日志</span><br><span class="line">   - Leader 只能提交当前任期日志</span><br><span class="line">   - 已提交的日志永远不会被覆盖</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2603310">Raft 算法详解 - 腾讯云</a></p>
+</blockquote>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="Raft-vs-Paxos：为什么-Raft-更流行"><a href="#Raft-vs-Paxos：为什么-Raft-更流行" class="headerlink" title="Raft vs Paxos：为什么 Raft 更流行"></a>Raft vs Paxos：为什么 Raft 更流行</h3><table>
+<thead>
+<tr>
+<th>对比维度</th>
+<th>Paxos</th>
+<th>Raft</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>可理解性</strong></td>
+<td>难理解，论文晦涩</td>
+<td>易理解，设计目标就是简化</td>
+</tr>
+<tr>
+<td><strong>实现难度</strong></td>
+<td>极高，工程落地困难</td>
+<td>较低，有成熟开源实现</td>
+</tr>
+<tr>
+<td><strong>领导者</strong></td>
+<td>可多提议者（Multi-Paxos 优化后有 Leader）</td>
+<td>强领导者模型</td>
+</tr>
+<tr>
+<td><strong>日志提交</strong></td>
+<td>日志可乱序提交（并行处理）</td>
+<td>日志必须严格顺序提交</td>
+</tr>
+<tr>
+<td><strong>主流实现</strong></td>
+<td>Google Chubby（闭源）</td>
+<td>etcd、TiKV、Consul、RocketMQ</td>
+</tr>
+</tbody></table>
+<p>Paxos 假设多条日志可以乱序提交、并行处理。Raft 约束日志必须顺序提交，减少了状态空间，使理解和实现更简单。Raft 也是 Multi-Paxos 的工程简化版，通过更强的假设换来更简单的实现。</p>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/163271175">从 Paxos 到 Raft 再到 EPaxos - 知乎</a></p>
+</blockquote>
+<h3 id="CAP-定理"><a href="#CAP-定理" class="headerlink" title="CAP 定理"></a>CAP 定理</h3><ul>
+<li><strong>C（Consistency）一致性</strong>：所有节点在同一时间看到相同的数据</li>
+<li><strong>A（Availability）可用性</strong>：每个请求都能获得非错误的响应</li>
+<li><strong>P（Partition Tolerance）分区容错</strong>：网络分区发生时系统仍能正常工作</li>
+</ul>
+<p>分布式系统中 P 是必须保证的，因此实际需要在 C 和 A 之间取舍：</p>
+<ul>
+<li>CP 系统（Raft 属于此类）：分区时牺牲可用性，保证一致性。如 etcd、ZooKeeper</li>
+<li>AP 系统：分区时牺牲强一致性，保证可用性。如 Cassandra、DynamoDB</li>
+</ul>
+<h3 id="BASE-理论"><a href="#BASE-理论" class="headerlink" title="BASE 理论"></a>BASE 理论</h3><p>BASE 是 CAP 中 AP 方案的延伸：</p>
+<ul>
+<li><strong>BA（Basically Available）</strong> 基本可用：允许部分功能降级</li>
+<li><strong>S（Soft State）</strong> 软状态：系统状态可以存在中间态</li>
+<li><strong>E（Eventually Consistent）</strong> 最终一致性：经过一段时间后所有副本达成一致</li>
+</ul>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://interview.javaguide.cn/distributed-system/distributed-system.html">分布式系统面试总结 - JavaGuide</a></p>
+</blockquote>
+<h3 id="共识算法的演进"><a href="#共识算法的演进" class="headerlink" title="共识算法的演进"></a>共识算法的演进</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Paxos（1998）→ Multi-Paxos（优化）→ Raft（2013，简化）→ EPaxos（2017，高并发）</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="选举超时随机化——解决脑裂的核心"><a href="#选举超时随机化——解决脑裂的核心" class="headerlink" title="选举超时随机化——解决脑裂的核心"></a>选举超时随机化——解决脑裂的核心</h3><p>Raft 最精巧的设计之一是随机选举超时。如果没有随机化，多个 Follower 同时超时同时发起选举，票数分散导致无限循环。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 伪代码：随机选举超时</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(rf *Raft)</span></span> resetElectionTimer() &#123;</span><br><span class="line">    <span class="comment">// 150-300ms 随机超时</span></span><br><span class="line">    rf.electionTimeout = time.Duration(<span class="number">150</span> + rand.Intn(<span class="number">150</span>)) * time.Millisecond</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每个 Follower 随机等待 150-300ms 才发起选举。由于随机性，几乎总会有一个 Follower 先超时，获得其他节点投票从而赢得选举。</p>
+<h3 id="日志复制的一致性保障"><a href="#日志复制的一致性保障" class="headerlink" title="日志复制的一致性保障"></a>日志复制的一致性保障</h3><p>Leader 发送 <code>AppendEntries</code> RPC 时，附带前一个日志条目的 <code>(prevLogIndex, prevLogTerm)</code>。Follower 对比本地日志：</p>
+<ul>
+<li>匹配：追加新日志</li>
+<li>不匹配：拒绝 → Leader 回溯（递减 prevLogIndex）→ 直到找到匹配点 → 从该点开始复制后续日志</li>
+</ul>
+<p>这种”回溯对齐”机制保证了即使在 Leader 崩溃恢复后，日志也能逐步恢复一致。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><strong>脑裂（Split Brain）</strong></li>
+</ol>
+<p>在同一任期选出两个 Leader 的情况。Raft 通过以下机制防止：</p>
+<ul>
+<li>获得超过半数投票才能成为 Leader</li>
+<li>每个节点一个任期只投一票</li>
+<li>旧 Leader 发现更高任期时立即降级</li>
+</ul>
+<ol start="2">
+<li><strong>网络分区下的可用性</strong></li>
+</ol>
+<p>3 节点集群中 1 个节点网络分区：</p>
+<ul>
+<li>分区中的节点发起选举，只有 1 票（自己），无法成为 Leader</li>
+<li>主分区有 2 个节点，可以选出 Leader 并正常工作</li>
+<li>5 节点容忍 2 节点故障，7 节点容忍 3 节点故障</li>
+</ul>
+<ol start="3">
+<li><strong>Leader 提交之前任期的日志</strong></li>
+</ol>
+<p>Leader 不能通过计数副本直接提交之前任期的日志（如图中的 “commit 之前任期的日志” 问题）。必须等当前任期有日志被提交后，之前任期的日志才安全提交。这是安全性中最重要的约束。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Raft 安全性：只提交当前任期的日志</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(rf *Raft)</span></span> canCommit(idx <span class="type">int</span>) <span class="type">bool</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> rf.log[idx].Term != rf.currentTerm &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>  <span class="comment">// 不能直接提交之前任期的日志</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> rf.matchIndexCount(idx) &gt; <span class="built_in">len</span>(rf.peers)/<span class="number">2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>Raft 的成功在于”可理解性”</strong>：正确性优先于性能，简单的算法才有信心做工程优化。</li>
+<li><strong>奇数节点是黄金法则</strong>：3、5、7 节点，容忍故障数 &#x3D; (n-1)&#x2F;2。</li>
+<li><strong>生产级 Raft 实现</strong>通常增加：PreVote（防止网络分区恢复后的无效选举）、Leader Lease（读请求无需走 Raft 日志）、Batch 和 Pipeline 优化。</li>
+<li><strong>2PC vs Raft</strong>：2PC 要求所有节点同意（单点瓶颈），Raft 只需要多数派（高可用）。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：什么是 Raft 算法？它的设计目标是什么？</p>
+<p>A：Raft 是分布式共识算法，将问题分解为领导选举、日志复制和安全性三个子问题。设计目标是替代 Paxos，提高可理解性和实现容易度，让工程师能真正落地。</p>
+<p>Q2：Raft 的三种节点角色是什么？</p>
+<p>A：Leader（唯一主节点，处理请求+日志同步）、Follower（默认状态，被动接收日志）、Candidate（竞选者，发起投票竞选 Leader）。</p>
+<p>Q3：什么是 Term（任期）？它有什么作用？</p>
+<p>A：Term 是 Raft 的逻辑时钟，全局唯一且单调递增。每个 Term 以选举开始。它是判断”新旧”的依据：遇到更高 Term 的请求时，节点自动降级，防止旧 Leader 继续工作。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：Raft 如何保证一个任期最多只有一个 Leader？</p>
+<p>A：1) 一个 Candidate 必须获得超过半数投票才能成为 Leader；2) 一个节点一个任期只投一票（先来先得）；3) 不同 Candidate 的随机超时使投票分散的可能性极低。</p>
+<p>Q5：Raft 如何保证已提交的日志不会被覆盖？</p>
+<p>A：1) 选举时 Candidate 必须拥有 ≥ 投票者的最新日志才能赢得投票；2) Leader 只能提交当前任期的日志；3) Leader 永远不会删除或覆盖自己的日志条目。</p>
+<p>Q6：什么是 Raft 的日志复制机制？</p>
+<p>A：Leader 接收客户端请求 → 转为日志条目 → 通过 AppendEntries RPC 发送给所有 Follower → 超过半数确认 → 日志 committed → Leader 通知所有节点 apply 到状态机。不一致时 Leader 回溯到共同点重新同步。</p>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：Raft 和 Paxos 的核心区别是什么？</p>
+<p>A：1) Paxos 难以理解，Raft 以易理解为核心设计目标；2) Paxos 日志可乱序提交，Raft 必须顺序提交；3) Raft 强 Leader 模型，Paxos 允许多提议者；4) Raft 有成熟开源实现（etcd&#x2F;Consul），Paxos 工程落地困难。</p>
+<p>Q8：3 节点的 Raft 集群最多容忍几个节点故障？为什么？</p>
+<p>A：最多容忍 1 个。Raft 要求 (n&#x2F;2)+1 个节点存活才能正常工作。3 节点时，允许 1 个故障（2 个存活≥ 半数 1.5）。容忍故障数 &#x3D; floor((n-1)&#x2F;2)。</p>
+<p>Q9：CAP 定理是什么？Raft 属于哪一类？</p>
+<p>A：CAP 定理：分布式系统无法同时满足强一致性（C）、可用性（A）、分区容错（P），最多同时满足两个。Raft 是 CP 系统（保证分区一致性，可能牺牲可用性），因为选举和提交都需要多数派确认。</p>
+<p>Q10：Raft 如何处理网络分区后的”脑裂”恢复？</p>
+<p>A：分区中的少数节点心跳超时后发起选举，但无法获得多数票，一直停留在 Candidate 状态。分区恢复后，旧 Leader 收到新 Leader 的心跳（更高 Term），自动降级为 Follower。旧 Leader 未提交的日志会被新 Leader 覆盖（因为没有达到多数派提交）。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>常见的陷阱问题：</p>
+<ul>
+<li><p><strong>陷阱问题1</strong>：Raft 能保证强一致性吗？和 Paxos 比谁更强？ → Raft 保证的是线性一致性（Linearizability），与 Multi-Paxos 等价。两者安全性等价，区别在于可理解性和实现复杂度。Raft 通过 Log Matching Property 和 Leader Completeness Property 证明了安全性。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：Leader 宕机后，已经提交但未 apply 到状态机的日志怎么办？ → 已提交（committed）的日志永远不会丢失——这是 Raft 的核心安全性保证。新 Leader 选举时，拥有所有 committed 日志的节点才能当选（日志完整性检查）。新 Leader 会继续 apply 这些 committed 日志。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：Raft 的 Read 操作需要走 Raft 日志吗？ → 传统实现（etcd v2）需要，保证线性一致性读。优化方案（Raft Learner &#x2F; Lease Read &#x2F; Read Index）：Leader 通过心跳确认自己仍是 Leader 后直接返回本地数据，避免日志开销。</p>
+</li>
+<li><p><strong>陷阱问题4</strong>：2PC 和 Raft 的区别是什么？ → 2PC 要求所有参与者同意（all-or-nothing），单点故障导致阻塞（协调者宕机后参与者不确定是否提交）。Raft 只需要多数派同意，协调者（Leader）故障后可自动选举新 Leader，不会无限期阻塞。</p>
+</li>
+<li><p><strong>陷阱问题5</strong>：Paxos 的”难”到底难在哪？ → 1) 单次 Paxos（Basic Paxos）只决定一个值，Multi-Paxos 需要自己设计选主和日志空洞填充；2) 允许多提议者和乱序提交导致状态空间爆炸；3) 论文只给出算法框架，没有生产级细节（如成员变更、日志压缩）。Raft 把这些都明确了。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>Raft 的核心是<strong>三子问题拆解：领导选举 + 日志复制 + 安全性</strong></li>
+<li>选举成功的关键是<strong>随机超时 + 半数以上投票 + 日志完整性检查</strong></li>
+<li>Raft 比 Paxos 流行的根本原因是<strong>易理解、易实现</strong></li>
+<li>2N+1 节点容忍 N 台故障，3 节点是生产最小部署单位</li>
+<li>防止脑裂的核心是<strong>每个任期只投一票 + 多数派原则</strong></li>
+</ul>
+<p>情景模拟答案：</p>
+<ul>
+<li><p>当被问到”为什么用 Raft 而不是 Paxos”时，回答：”Raft 的设计目标就是让工程师能理解和实现。它将复杂的一致性问题分解为三个相对独立的子模块，每个模块都有清晰的接口和状态变化。大部分开源项目（etcd、TiKV）使用 Raft 而非 Paxos，降低了维护成本。”</p>
+</li>
+<li><p>当被问到”BASE 和 ACID 有什么区别”时，回答：”ACID 是传统关系数据库的事务保证（原子性、一致性、隔离性、持久性），追求强一致性。BASE 是分布式系统的理论指导（基本可用、软状态、最终一致性），接受短暂的不一致，追求最终收敛。它俩不是对立的关系，而是不同场景的设计取舍。”</p>
+</li>
+<li><p>当被问到”什么是分布式的 CAP 定理”时，回答：”CAP 定理指出分布式系统在网络分区（P）必然发生的前提下，只能在一致性（C）和可用性（A）之间做取舍。实际系统中 P 是必须保证的，所以核心是选 CP（强一致）还是 AP（高可用）。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1836319">分布式一致性算法 Raft - 腾讯云开发者社区</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2603310">Raft 算法详解 - 腾讯云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://interview.javaguide.cn/distributed-system/distributed-system.html">分布式系统面试总结 - JavaGuide</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/163271175">从 Paxos 到 Raft 再到 EPaxos - 知乎</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/608596041">面渣逆袭：分布式十二问 - 知乎</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/">https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&amp;%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/" title="分布式化（高可用&amp;水平拓展）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">分布式化（高可用&水平拓展）</div></div><div class="info-2"><div class="info-item-1">分布式化（高可用 &amp; 水平拓展） IM 系统从单机走向分布式时面临的核心挑战：连接的唯一标识、有状态服务的分布式改造、Gateway 与 State Server 的路由交互。通过雪花算法生成唯一 connID、Redis 持久化连接状态、Router SDK 实现分布式路由。  一、核心概念 定义：IM 接入层的分布式化是指在多机器、多数据中心环境下，实现长连接网关的水平扩展和高可用，同时保证连接状态的正确路由和恢复。 关键词：分布式化、雪花算法、connID、连接状态持久化、Router SDK、Gateway-State 路由、有状态服务 适用场景&#x2F;边界： 单机连...</div></div></div></a><a class="pagination-related" href="/posts/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/" title="内存管理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">内存管理</div></div><div class="info-2"><div class="info-item-1">内存管理 C++ 内存管理涵盖程序的虚拟地址空间布局、堆栈分配机制、malloc&#x2F;new 底层实现、内存碎片处理以及现代 C++ 的 RAII 资源管理范式。本文从内核视角到应用层，系统梳理内存管理的核心原理与工程实践。  一、核心概念 定义：C++ 内存管理是程序对计算机内存资源的分配、使用和释放的全过程控制。不同于 Java&#x2F;Go 的自动 GC，C++ 赋予开发者对内存生命周期的完全掌控，这也是其高性能的根源。 关键词：虚拟地址空间、堆（Heap）、栈（Stack）、BSS、Data Segment、ptmalloc2、brk&#x2F;mmap、内存碎片、RAI...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%EF%BC%9ARaft-%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95"><span class="toc-number">1.</span> <span class="toc-text">分布式一致性：Raft 共识算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E5%85%A8%E6%80%A7%E6%9C%BA%E5%88%B6%EF%BC%88Safety%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">安全性机制（Safety）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-etcd-%E4%BD%BF%E7%94%A8-Raft-%E7%9A%84%E5%85%B8%E5%9E%8B%E9%85%8D%E7%BD%AE"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 etcd 使用 Raft 的典型配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-Raft-%E7%AE%97%E6%B3%95%E6%A0%B8%E5%BF%83%E6%B5%81%E7%A8%8B%EF%BC%88%E4%BC%AA%E4%BB%A3%E7%A0%81%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 Raft 算法核心流程（伪代码）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Raft-vs-Paxos%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88-Raft-%E6%9B%B4%E6%B5%81%E8%A1%8C"><span class="toc-number">1.5.1.</span> <span class="toc-text">Raft vs Paxos：为什么 Raft 更流行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CAP-%E5%AE%9A%E7%90%86"><span class="toc-number">1.5.2.</span> <span class="toc-text">CAP 定理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BASE-%E7%90%86%E8%AE%BA"><span class="toc-number">1.5.3.</span> <span class="toc-text">BASE 理论</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B1%E8%AF%86%E7%AE%97%E6%B3%95%E7%9A%84%E6%BC%94%E8%BF%9B"><span class="toc-number">1.5.4.</span> <span class="toc-text">共识算法的演进</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%89%E4%B8%BE%E8%B6%85%E6%97%B6%E9%9A%8F%E6%9C%BA%E5%8C%96%E2%80%94%E2%80%94%E8%A7%A3%E5%86%B3%E8%84%91%E8%A3%82%E7%9A%84%E6%A0%B8%E5%BF%83"><span class="toc-number">1.6.1.</span> <span class="toc-text">选举超时随机化——解决脑裂的核心</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%A5%E5%BF%97%E5%A4%8D%E5%88%B6%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7%E4%BF%9D%E9%9A%9C"><span class="toc-number">1.6.2.</span> <span class="toc-text">日志复制的一致性保障</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.3.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.4.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">参考链接</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

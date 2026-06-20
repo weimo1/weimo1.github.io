@@ -1,0 +1,349 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>mmap | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="mmap 适用范围：mmap 内存映射的底层原理、文件映射与匿名映射、页表与缺页异常、共享内存实现、64 位虚拟地址空间  参考链接：  https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;1935077455699384086 https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;656876044 https:&#x2F;&#x2F;www.cnblogs.com&#x2F;vinozly&#x2F;p&#x2F;5489138.h">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mmap">
+<meta property="og:url" content="https://weimo1.github.io/posts/mmap/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="mmap 适用范围：mmap 内存映射的底层原理、文件映射与匿名映射、页表与缺页异常、共享内存实现、64 位虚拟地址空间  参考链接：  https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;1935077455699384086 https:&#x2F;&#x2F;zhuanlan.zhihu.com&#x2F;p&#x2F;656876044 https:&#x2F;&#x2F;www.cnblogs.com&#x2F;vinozly&#x2F;p&#x2F;5489138.h">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.559Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "mmap",
+  "url": "https://weimo1.github.io/posts/mmap/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.559Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/mmap/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'mmap',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">mmap</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">mmap</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.559Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">内存模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>12分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="mmap"><a href="#mmap" class="headerlink" title="mmap"></a>mmap</h1><blockquote>
+<p>适用范围：mmap 内存映射的底层原理、文件映射与匿名映射、页表与缺页异常、共享内存实现、64 位虚拟地址空间</p>
+</blockquote>
+<p>参考链接：</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/1935077455699384086">https://zhuanlan.zhihu.com/p/1935077455699384086</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/656876044">https://zhuanlan.zhihu.com/p/656876044</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/vinozly/p/5489138.html">https://www.cnblogs.com/vinozly/p/5489138.html</a></li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：mmap 是一种内存映射文件的方法，将一个文件或其他对象映射到进程的地址空间，实现文件磁盘地址和进程虚拟地址空间中一段虚拟地址的一一映射关系。进程可以像访问内存一样访问文件。</li>
+<li><strong>关键词</strong>：mmap、内存映射、文件映射、匿名映射、缺页异常、页表、VMA、共享内存、memfd_create、MSYNC</li>
+<li><strong>适用场景&#x2F;边界</strong>：大文件读写（零拷贝）、进程间共享内存、内存分配器的底层实现（malloc 用 mmap 分配大块）、数据库的持久化存储映射；不适用频繁小 I&#x2F;O（read&#x2F;write 更高效）、需要细粒度锁控制的并发写入。</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="第一层：mmap-内存映射的三个阶段"><a href="#第一层：mmap-内存映射的三个阶段" class="headerlink" title="第一层：mmap 内存映射的三个阶段"></a>第一层：mmap 内存映射的三个阶段</h3><p><strong>阶段一：进程启动映射，在虚拟地址空间中创建虚拟映射区域</strong></p>
+<ol>
+<li>进程调用 <code>void* mmap(void* start, size_t length, int prot, int flags, int fd, off_t offset)</code></li>
+<li>在当前进程虚拟地址空间中，寻找一段空闲的满足要求的连续虚拟地址</li>
+<li>为此虚拟区分配一个 <code>vm_area_struct</code> 结构并初始化</li>
+<li>将新建的虚拟区结构插入进程的虚拟地址区域链表或树中</li>
+</ol>
+<p><strong>阶段二：内核建立文件物理地址与进程虚拟地址的映射</strong></p>
+<ol start="5">
+<li>通过文件描述符找到对应的文件结构体</li>
+<li>链接到 <code>file_operations</code> 模块，调用内核函数 <code>int mmap(struct file* filp, struct vm_area_struct* vma)</code></li>
+<li>通过虚拟文件系统 inode 模块定位到文件磁盘物理地址</li>
+<li>通过 <code>remap_pfn_range</code> 函数建立页表——此时虚拟地址还没有任何数据关联到主存</li>
+</ol>
+<p><strong>阶段三：缺页异常触发文件内容拷贝到物理内存</strong></p>
+<ol start="9">
+<li>进程的读写操作访问映射地址段，查询页表发现该地址不在物理页面中，引发缺页异常</li>
+<li>缺页异常进行一系列判断后，内核发起调页请求</li>
+<li>调页过程先在交换缓存空间中寻找，没有则调用 <code>nopage</code> 函数把所缺的页从磁盘装入主存</li>
+<li>进程即可对这片主存进行读写操作。如果写操作改变了内容，系统自动回写脏页面到对应的磁盘地址（可调用 <code>msync()</code> 强制同步）</li>
+</ol>
+<h3 id="第二层：64-位虚拟地址空间"><a href="#第二层：64-位虚拟地址空间" class="headerlink" title="第二层：64 位虚拟地址空间"></a>第二层：64 位虚拟地址空间</h3><p>64 位 CPU 地址空间可分为三个部分：128T 用户空间、128T 内核空间、其他保留空间。x86_64 架构的规范地址要求高 16 位全为 <code>0</code>（用户空间）或全为 <code>1</code>（内核空间），否则触发 #GP 异常。实际使用 48 位，256T 刚好覆盖。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">63                47                 0</span><br><span class="line">┌──────────────────┬──────────────────┐</span><br><span class="line">│ 高16位           │ 实际使用的48位    │</span><br><span class="line">└──────────────────┴──────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>48 位虚拟地址由五部分组成：pgd 表偏移（9位）、pud 表偏移（9位）、pmd 表偏移（9位）、ptl 表偏移（9位）、物理页偏移（12位）。每级 9 位是因为一个物理页（4KB）能存储 512 个表项（4KB &#x2F; 8B &#x3D; 512 &#x3D; 2^9）；物理页偏移 12 位是因为 4KB &#x3D; 2^12。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_5babcfe1df60.png"></p>
+<h3 id="第三层：文件映射与匿名映射"><a href="#第三层：文件映射与匿名映射" class="headerlink" title="第三层：文件映射与匿名映射"></a>第三层：文件映射与匿名映射</h3><ul>
+<li><strong>文件映射</strong>：将文件内容映射到虚拟地址空间，修改内存即修改文件（MAP_SHARED），或私有的 Copy-on-Write（MAP_PRIVATE）</li>
+<li><strong>匿名映射</strong>：不关联文件（fd &#x3D; -1），用于分配进程私有内存或共享内存。<code>malloc</code> 对大块内存（&gt;128KB）使用 <code>mmap(MAP_ANONYMOUS)</code> 而非 <code>brk()</code></li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="文件映射示例"><a href="#文件映射示例" class="headerlink" title="文件映射示例"></a>文件映射示例</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* filepath = <span class="string">&quot;test.txt&quot;</span>;</span><br><span class="line">    <span class="type">int</span> fd = <span class="built_in">open</span>(filepath, O_RDWR | O_CREAT, <span class="number">0644</span>);</span><br><span class="line">    <span class="built_in">ftruncate</span>(fd, <span class="number">4096</span>);  <span class="comment">// 扩展文件到 4KB</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 将文件映射到进程地址空间</span></span><br><span class="line">    <span class="type">char</span>* mapped = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(</span><br><span class="line">        <span class="built_in">mmap</span>(<span class="literal">nullptr</span>, <span class="number">4096</span>, PROT_READ | PROT_WRITE, MAP_SHARED, fd, <span class="number">0</span>)</span><br><span class="line">    );</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (mapped == MAP_FAILED) &#123;</span><br><span class="line">        <span class="built_in">perror</span>(<span class="string">&quot;mmap failed&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 像操作普通内存一样写入文件</span></span><br><span class="line">    <span class="built_in">strcpy</span>(mapped, <span class="string">&quot;Hello, mmap!&quot;</span>);</span><br><span class="line">    <span class="built_in">msync</span>(mapped, <span class="number">4096</span>, MS_SYNC);  <span class="comment">// 强制同步到磁盘</span></span><br><span class="line">    </span><br><span class="line">    <span class="built_in">munmap</span>(mapped, <span class="number">4096</span>);</span><br><span class="line">    <span class="built_in">close</span>(fd);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="共享内存：memfd-create-mmap-Unix-Domain-Socket"><a href="#共享内存：memfd-create-mmap-Unix-Domain-Socket" class="headerlink" title="共享内存：memfd_create + mmap + Unix Domain Socket"></a>共享内存：memfd_create + mmap + Unix Domain Socket</h3><p>发送方进程：</p>
+<ol>
+<li><code>memfd_create</code> 创建内存文件（调用 <code>shmem_file_setup</code> 创建共享内存文件）</li>
+<li><code>mmap(..., MAP_SHARED, ...)</code> 申请跨进程可共享的物理内存</li>
+<li>通过 Unix Domain Socket 的 <code>sendmsg</code> 将文件句柄发送出去——内核将 <code>struct file</code> 指针封装到 skb 数据包中</li>
+</ol>
+<p>接收方进程：<code>recvmsg</code> 系统调用取出 <code>struct file</code> 指针，在当前进程下申请新文件句柄。本质是共享内核对象 <code>struct file</code>，通过不同进程使用同一个 <code>struct file</code> 实现共享，同时 VMA 需带 <code>VM_SHARED</code> 标记。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_2628f15c035d.jpeg"></p>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-malloc-与-mmap-的关系"><a href="#4-1-malloc-与-mmap-的关系" class="headerlink" title="4.1 malloc 与 mmap 的关系"></a>4.1 malloc 与 mmap 的关系</h3><p>malloc 分配内存时，会分配一块元数据，元数据包含：内存块大小、内存块状态、指向下一&#x2F;上一内存块的指针、对齐信息、调试信息。对于大块分配（&gt;128KB），<code>malloc</code> 直接调用 <code>mmap</code> 而非 <code>brk()</code>——因为 mmap 分配的內存放在独立的映射区，<code>free</code> 时可以直接 <code>munmap</code> 归还给 OS，避免堆顶空洞无法收缩的问题。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_52579bcf7b60.jpeg"></p>
+<h3 id="4-2-msync-与数据一致性"><a href="#4-2-msync-与数据一致性" class="headerlink" title="4.2 msync 与数据一致性"></a>4.2 msync 与数据一致性</h3><p>修改过的脏页面并不会立即更新回文件，而是有一段时间延迟。可调用 <code>msync(addr, length, MS_SYNC)</code> 强制同步，确保写入立即保存到文件。对于需要持久化保证的场景（如数据库 WAL），<code>msync</code> 是关键操作。</p>
+<h3 id="4-3-mmap-的优缺点"><a href="#4-3-mmap-的优缺点" class="headerlink" title="4.3 mmap 的优缺点"></a>4.3 mmap 的优缺点</h3><p><strong>优点</strong>：</p>
+<ul>
+<li>零拷贝：数据直接从磁盘页缓存到用户空间，无需内核→用户缓冲区拷贝</li>
+<li>懒加载：只有实际访问的页面才会触发缺页异常调入内存（Demand Paging）</li>
+<li>进程共享：MAP_SHARED 使多个进程可共享同一物理页</li>
+</ul>
+<p><strong>缺点</strong>：</p>
+<ul>
+<li>无法处理变长文件扩展：mmap 需要固定大小，扩展需 <code>ftruncate</code> + 重新映射</li>
+<li>缺页异常开销：首次访问的每一页都触发 page fault，随机访问大文件时大量 page fault 抵消零拷贝优势</li>
+<li>地址空间碎片：大量小文件 mmap 导致虚拟地址空间碎片化（32 位系统尤其严重）</li>
+</ul>
+<h3 id="4-4-mmap-的适用场景"><a href="#4-4-mmap-的适用场景" class="headerlink" title="4.4 mmap 的适用场景"></a>4.4 mmap 的适用场景</h3><ul>
+<li><strong>RocksDB&#x2F;LevelDB</strong>：用 mmap 读取 SST 文件，利用 OS 页缓存管理冷热数据</li>
+<li><strong>MongoDB</strong>（早期版本）：用 mmap 映射数据文件，依赖 OS 管理内存</li>
+<li><strong>共享内存 IPC</strong>：<code>memfd_create</code> + <code>mmap</code> + Unix Domain Socket 是现代 Linux 共享内存的标准方案</li>
+<li><strong>零拷贝文件传输</strong>：<code>sendfile</code> 内部依赖页缓存映射，与 mmap 原理相通</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-mmap-的缺页异常处理链路"><a href="#5-1-mmap-的缺页异常处理链路" class="headerlink" title="5.1 mmap 的缺页异常处理链路"></a>5.1 mmap 的缺页异常处理链路</h3><p>mmap 的核心哲学是”延迟加载”（Demand Paging）——映射时只建立虚拟地址到文件的页表映射，不分配物理内存。首次访问时才触发缺页异常，内核从磁盘读取数据到物理页。这比 <code>read()</code> 的优势在于：①只有实际访问的页才占用物理内存；②OS 可以智能地根据内存压力回收干净页（clean page）。</p>
+<h3 id="5-2-memset-对-mmap-性能的影响"><a href="#5-2-memset-对-mmap-性能的影响" class="headerlink" title="5.2 memset 对 mmap 性能的影响"></a>5.2 memset 对 mmap 性能的影响</h3><p>mmap 配合 <code>MAP_POPULATE</code> 可以预填充页表（在 mmap 调用时立即触发所有缺页异常），避免后续访问的 page fault 开销。但 <code>MAP_POPULATE</code> 将延迟从随机位置移动到 mmap 调用处——对于确实需要全部数据的场景（如数据库加载），这是一次性成本换后续零开销；对于稀疏访问场景，浪费了物理内存。</p>
+<h3 id="5-3-malloc-元数据的开销"><a href="#5-3-malloc-元数据的开销" class="headerlink" title="5.3 malloc 元数据的开销"></a>5.3 malloc 元数据的开销</h3><p>每次 <code>malloc</code> 不只是分配用户请求的内存——还有额外的元数据：内存块大小（8B）、内存块状态标志（4B）、前后指针（各 8B）、对齐填充（不定）。对于小对象（如 8B 的 int），元数据开销可能超过实际数据大小。这正是内存池存在的理由——批量分配大块避免逐次元数据开销。</p>
+<h3 id="5-4-难点与易错点"><a href="#5-4-难点与易错点" class="headerlink" title="5.4 难点与易错点"></a>5.4 难点与易错点</h3><ol>
+<li><strong>mmap 失败不一定是内存不足</strong>：<code>MAP_FIXED</code> 标志会覆盖已有映射——除非确定地址范围空闲，否则不要用</li>
+<li><strong>munmap 时机错误</strong>：释放后继续访问映射地址会导致 SIGSEGV——所有引用该地址的指针必须失效</li>
+<li><strong>文件大小与映射长度不匹配</strong>：映射长度超过文件大小 → SIGBUS；文件扩展后旧映射看不到新数据 → 需重新映射</li>
+<li><strong>MAP_SHARED 的并发写入</strong>：多进程同时写同一页无同步保证——需要额外的进程间同步机制</li>
+<li><strong>fork 后的 mmap 继承</strong>：子进程继承父进程的 mmap 映射——MAP_SHARED 映射父子共享物理页（修改互相可见），MAP_PRIVATE 映射 fork 后触发 COW</li>
+</ol>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li><strong>mmap 不是银弹</strong>：对于顺序读取一次的大文件，<code>read</code> 通常比 mmap 更快——避免缺页异常的开销和 TLB 压力</li>
+<li><strong>适合随机访问模式</strong>：数据库的随机读场景，mmap + OS 页缓存比自定义缓存更简单可靠</li>
+<li><strong>共享内存是现代 IPC 的基石</strong>：<code>memfd_create</code> + mmap + Unix Domain Socket 的句柄传递模式是高效的共享内存方案</li>
+<li><strong>malloc 对大内存用 mmap</strong>：&gt;128KB 的分配走 mmap 而非 brk——<code>free</code> 时 <code>munmap</code> 归还给 OS，避免堆顶空洞问题</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>Q1：mmap 是什么？和 read&#x2F;write 的区别？</strong><br>A：mmap 将文件映射到进程虚拟地址空间，访问像内存一样。read&#x2F;write 需要内核→用户缓冲区拷贝，mmap 零拷贝（直接访问页缓存）。mmap 适合随机访问，read 适合顺序访问一次的场景。</p>
+<p><strong>Q2：mmap 的三个阶段是什么？</strong><br>A：①进程创建 VMA（虚拟内存区域）并插入地址空间；②内核建立页表映射（文件物理地址→虚拟地址）；③首次访问触发缺页异常，将磁盘数据加载到物理内存。</p>
+<p><strong>Q3：MAP_SHARED 和 MAP_PRIVATE 的区别？</strong><br>A：MAP_SHARED——多个进程共享同一物理页，修改互相可见且回写文件；MAP_PRIVATE——进程间 Copy-on-Write，修改不影响到其他进程也不回写文件。</p>
+<p><strong>Q4：什么是缺页异常（Page Fault）？mmap 中如何工作？</strong><br>A：虚拟地址访问时对应物理页不存在（页表条目无效）时触发的中断。mmap 的首次访问触发 minor&#x2F;major page fault，内核将磁盘数据读入物理内存并更新页表。</p>
+<p><strong>Q5：malloc 如何利用 mmap？</strong><br>A：大块内存（&gt;128KB）分配时，malloc 调用 <code>mmap(NULL, size, ..., MAP_ANONYMOUS|MAP_PRIVATE, -1, 0)</code> 而非 brk()。free 时直接 munmap 归还给 OS，避免堆顶空洞。</p>
+<p><strong>Q6：mmap 的内存何时归还给 OS？</strong><br>A：匿名映射通过 <code>munmap</code> 归还；文件映射的干净页（未修改）可以被 OS 随时回收（因为磁盘上有副本），脏页需要先写回磁盘。</p>
+<p><strong>Q7：64 位虚拟地址中的页表层级结构？</strong><br>A：48 位虚拟地址分五层：PGD（9位）→ PUD（9位）→ PMD（9位）→ PTE（9位）→ 页内偏移（12位）。每级 9 位对应 512 个表项，12 位页内偏移对应 4KB 页面。</p>
+<p><strong>Q8：memfd_create + mmap 实现共享内存的流程？</strong><br>A：①<code>memfd_create</code> 创建匿名文件获取 fd；②<code>ftruncate</code> 设置大小；③<code>mmap</code> 映射到进程地址空间；④通过 Unix Domain Socket 的 <code>sendmsg</code>&#x2F;<code>recvmsg</code> 传递 fd 给其他进程；⑤其他进程同样 mmap 该 fd。</p>
+<p><strong>Q9：msync 的作用是什么？</strong><br>A：强制将 mmap 写入的脏页刷新到磁盘。<code>MS_SYNC</code> 同步等待完成，<code>MS_ASYNC</code> 异步刷新，<code>MS_INVALIDATE</code> 使缓存失效（下次访问重新从磁盘读取）。</p>
+<p><strong>Q10：为什么 mmap 比 read 大文件写入可能更慢？</strong><br>A：小写入会触发大量 page fault 和 TLB miss。每次写入一个页都需要建立映射、触发缺页。顺序大块写入使用 <code>write</code> 更高效（内核批量处理）。</p>
+<p><strong>Q11：MAP_POPULATE 标志有什么作用？</strong><br>A：在 mmap 时预填充所有页表，一次性触发所有缺页异常。对于需要全部数据的场景，避免了后续访问的随机 page fault 开销。代价是 mmap 调用本身变慢且占用更多物理内存。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ol>
+<li><strong>mmap 的零拷贝是否真的是零？</strong>——只免去了内核→用户缓冲区的一次拷贝。数据从磁盘到页缓存仍是必须的（DMA 传输）。相比 <code>read</code> 少一次 CPU 拷贝，但不是零 IO。</li>
+<li><strong>mmap 后文件被其他进程 truncate 会怎样？</strong>——SIGBUS 信号！映射范围内的页变为无效，访问即崩溃。处理 SIGBUS 或使用文件锁避免。</li>
+<li><strong>fork 后 mmap 的行为？</strong>——子进程继承父进程的 mmap。MAP_SHARED 父子共享同一物理页，MAP_PRIVATE fork 后标记 COW。<code>fork + exec</code> 中 MAP_PRIVATE 并无额外开销（因为 exec 会替换整个地址空间）。</li>
+<li><strong>为什么 32 位系统很少用 mmap 大文件？</strong>——32 位虚拟地址空间只有 4GB（用户空间通常 3GB），无法映射超过 3GB 的文件。64 位系统 256TB 用户空间消除此限制。</li>
+<li><strong>mmap 的 MAP_SHARED 可以替代进程间锁吗？</strong>——不能。MAP_SHARED 只保证同一物理页的可见性，不提供原子性。多进程并发写同一页仍会数据竞争，需要额外的同步机制。</li>
+<li><strong>malloc 用 mmap 代替 brk 分配小块可以吗？</strong>——不行。每个 mmap 映射最小 4KB（一个页面），对于 8B 的小分配浪费 99.8% 内存。这就是为什么 malloc 大块用 mmap、小块用 brk。</li>
+</ol>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>mmap 的本质：<strong>虚拟地址到文件物理地址的映射——零拷贝访问文件数据</strong>。</li>
+<li>mmap 的三段论：<strong>创建 VMA → 建立页表映射 → 缺页异常加载数据</strong>。</li>
+<li>MAP_SHARED vs MAP_PRIVATE：<strong>前者共享物理页修改可见，后者 COW 隔离</strong>。</li>
+<li>malloc 用 mmap：<strong>分配 &gt;128KB 时用 mmap 替代 brk——free 可立即归还 OS</strong>。</li>
+<li>64 位页表结构：<strong>PGD→PUD→PMD→PTE→页内偏移，每级 9 位索引 512 表项</strong>。</li>
+<li>共享内存 &#x3D; <strong>memfd_create + mmap + sendmsg 传 fd——共享的是 <code>struct file</code></strong>。</li>
+<li>msync &#x3D; <strong>强制脏页刷盘：MS_SYNC 同步等待，MS_ASYNC 异步，MS_INVALIDATE 废弃缓存</strong>。</li>
+</ul>
+<h2 id="附录（原内容收纳）"><a href="#附录（原内容收纳）" class="headerlink" title="附录（原内容收纳）"></a>附录（原内容收纳）</h2><blockquote>
+<p>本文原有 mmap 三阶段详解、64 位虚拟地址空间分析、页表层级结构、共享内存实现原理等内容已在各节中整合覆盖。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/mmap/">https://weimo1.github.io/posts/mmap/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/map-set/" title="map  set"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">map  set</div></div><div class="info-2"><div class="info-item-1">map  sethttps://cloud.tencent.com/developer/article/2525871 https://cloud.tencent.com/developer/article/2531544?policyId=1003 https://cloud.tencent.com/developer/article/2525448 https://www.cnblogs.com/bluettt/p/15776765.html#autoid-h2-3-0-0 红黑树概念及性质1. 概念红黑树，是一种二叉搜索树，但在每个结点上增加一个存储位表示结点的颜色，可以是 Red...</div></div></div></a><a class="pagination-related" href="/posts/lambda/" title="lambda"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">lambda</div></div><div class="info-2"><div class="info-item-1">Lambda 表达式 适用范围：C++ Lambda 表达式（C++11 核心特性），保持可复用、可检索。来源: 原笔记整合 + 网页补充  一、核心概念 定义：Lambda 表达式是 C++11 引入的匿名函数机制，可以在函数体内就地定义并使用函数逻辑，同时具备捕获外部变量的能力。它在编译期被转换为一个匿名仿函数类（闭包对象）。 关键词：闭包(Closure)、匿名函数、捕获列表(capture list)、仿函数(functor)、可调用对象(callable)、语法糖 适用场景&#x2F;边界： STL 算法回调（std::for_each、std::sort 等） 一次性局部逻辑...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#mmap"><span class="toc-number">1.</span> <span class="toc-text">mmap</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9Ammap-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E7%9A%84%E4%B8%89%E4%B8%AA%E9%98%B6%E6%AE%B5"><span class="toc-number">1.2.1.</span> <span class="toc-text">第一层：mmap 内存映射的三个阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A64-%E4%BD%8D%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="toc-number">1.2.2.</span> <span class="toc-text">第二层：64 位虚拟地址空间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84%E4%B8%8E%E5%8C%BF%E5%90%8D%E6%98%A0%E5%B0%84"><span class="toc-number">1.2.3.</span> <span class="toc-text">第三层：文件映射与匿名映射</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E6%98%A0%E5%B0%84%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.1.</span> <span class="toc-text">文件映射示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%EF%BC%9Amemfd-create-mmap-Unix-Domain-Socket"><span class="toc-number">1.3.2.</span> <span class="toc-text">共享内存：memfd_create + mmap + Unix Domain Socket</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-malloc-%E4%B8%8E-mmap-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 malloc 与 mmap 的关系</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-msync-%E4%B8%8E%E6%95%B0%E6%8D%AE%E4%B8%80%E8%87%B4%E6%80%A7"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 msync 与数据一致性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-mmap-%E7%9A%84%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 mmap 的优缺点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-mmap-%E7%9A%84%E9%80%82%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 mmap 的适用场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-mmap-%E7%9A%84%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E9%93%BE%E8%B7%AF"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 mmap 的缺页异常处理链路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-memset-%E5%AF%B9-mmap-%E6%80%A7%E8%83%BD%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 memset 对 mmap 性能的影响</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-malloc-%E5%85%83%E6%95%B0%E6%8D%AE%E7%9A%84%E5%BC%80%E9%94%80"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 malloc 元数据的开销</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.4.</span> <span class="toc-text">5.4 难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.5.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

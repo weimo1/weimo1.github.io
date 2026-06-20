@@ -1,0 +1,325 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>服务器架构设计 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="服务器架构设计服务器架构设计1）asio底层通信前面的asio底层通信过程如下图所示  1）首先，在应用层调用async_read时，相当于在io_context中注册了一个读事件，表示程序希望在指定socket上进行异步读取操作，并提供一个读回调函数以在读取完成后做相应的处理； 2）io_context用于管理所有异步操作和相应的回调函数，且当async_read被调用时，asio会将该sock">
+<meta property="og:type" content="article">
+<meta property="og:title" content="服务器架构设计">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1_1/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="服务器架构设计服务器架构设计1）asio底层通信前面的asio底层通信过程如下图所示  1）首先，在应用层调用async_read时，相当于在io_context中注册了一个读事件，表示程序希望在指定socket上进行异步读取操作，并提供一个读回调函数以在读取完成后做相应的处理； 2）io_context用于管理所有异步操作和相应的回调函数，且当async_read被调用时，asio会将该sock">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.573Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "服务器架构设计",
+  "url": "https://weimo1.github.io/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1_1/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.573Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1_1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '服务器架构设计',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">服务器架构设计</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">服务器架构设计</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.573Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/boost-asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">boost-asio  网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="服务器架构设计"><a href="#服务器架构设计" class="headerlink" title="服务器架构设计"></a>服务器架构设计</h1><h1 id="服务器架构设计-1"><a href="#服务器架构设计-1" class="headerlink" title="服务器架构设计"></a>服务器架构设计</h1><h2 id="1）asio底层通信"><a href="#1）asio底层通信" class="headerlink" title="1）asio底层通信"></a>1）<a target="_blank" rel="noopener external nofollow noreferrer" href="https://so.csdn.net/so/search?q=asio&spm=1001.2101.3001.7020">asio</a>底层通信</h2><p>前面的asio底层通信过程如下图所示</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img-blog.csdnimg.cn/img_convert/4d0a6f4d4e0edd8c10ff7ecf39ad3d0d.png" title="null"></p>
+<p>1）首先，在应用层调用async_read时，相当于在io_context中注册了一个读事件，表示程序希望在指定socket上进行异步读取操作，并提供一个读回调函数以在读取完成后做相应的处理；</p>
+<p>2）io_context用于管理所有异步操作和相应的回调函数，且当async_read被调用时，asio会将该socket、相应的读事件和回调函数注册到系统内部的模型中（数据结构）；当io_context启动时，即io_context.run时，asio根据系统使用对应的模型管理这些事件（windows是iocp，linux是epoll）；</p>
+<p>3）模型进入一个死循环，会监听所有注册的socket，并监测其状态（可读？可写？），如果socket的状态发生变化（事件被触发），模型将该事件放入<strong>就绪事件队列</strong>中；</p>
+<p>3）模型进入一个死循环，会监听所有注册的socket，并监测其状态（可读？可写？），如果socket的状态发生变化（事件被触发），模型将该事件放入<strong>就绪事件队列</strong>中；</p>
+<h2 id="2）逻辑层结构"><a href="#2）逻辑层结构" class="headerlink" title="2）逻辑层结构"></a>2）逻辑层结构</h2><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img-blog.csdnimg.cn/img_convert/0d9826406f0c9e47b4c259809767440e.png" title="null"></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：服务器架构设计的核心是<strong>三层分离</strong>——网络层（Asio 底层通信）、逻辑层（业务处理）、数据层。网络层通过 Reactor 模式监听 I&#x2F;O 事件，将数据投递到逻辑层的消息队列，逻辑线程异步处理业务</li>
+<li><strong>关键词</strong>：三层分离、asio 底层通信、Reactor 模式、<code>epoll_wait</code> 事件循环、消息投递（<code>post</code>）、逻辑队列</li>
+<li><strong>适用场景&#x2F;边界</strong>：所有中型以上网络服务器。小服务可以合并网络层+逻辑层，大服务必须分离以避免 I&#x2F;O 线程阻塞</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——Asio 底层通信（网络层）</strong>：<code>async_read</code> 调用链路：应用层 → <code>io_context</code> 注册事件 → <code>epoll_ctl(EPOLL_CTL_ADD, fd, EPOLLIN)</code> → <code>io_context.run()</code> 中 <code>epoll_wait</code> 监听到 EPOLLIN → 取出 <code>operation</code> → 调用回调。就绪事件先进入就绪事件队列，再逐一回调</li>
+<li><strong>第二层——逻辑层结构</strong>：网络回调中不直接处理业务，而是将数据封装为消息投递到逻辑队列。逻辑线程独立于 I&#x2F;O 线程，从队列取消息、查找回调映射表、执行业务逻辑。关键：逻辑线程阻塞不影响网络层继续接收数据</li>
+<li><strong>第三层——Reactor 模式的死循环</strong>：<code>epoll_reactor::run()</code> 中 <code>while(running_) { int n = epoll_wait(epfd_, events, MAX, -1); for(each event) complete_read/write/error(); }</code>。每个就绪事件调用 <code>op-&gt;complete_xxx()</code>，触发应用层回调</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>epoll_event</code> 含 <code>events</code>（EPOLLIN&#x2F;OUT&#x2F;ERR）+ <code>data.ptr</code>（指向 <code>operation</code> 对象）；<code>io_context</code> 封装 reactor + 回调调度；逻辑层消息队列解耦 I&#x2F;O 与业务</li>
+<li><strong>关键公式</strong>：网络延迟 &#x3D; <code>epoll_wait</code> 返回延迟 + 回调执行时间；吞吐 &#x3D; min(网络带宽, I&#x2F;O 处理速率, 业务处理速率)</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;boost/asio.hpp&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;queue&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;mutex&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> boost::asio;</span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> boost::asio::ip;</span><br><span class="line"></span><br><span class="line">io_context ioc;</span><br><span class="line">std::queue&lt;std::string&gt; logic_queue;</span><br><span class="line">std::mutex q_mtx;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 网络层回调：投递到逻辑队列</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">on_recv</span><span class="params">(std::string data)</span> </span>&#123;</span><br><span class="line">    &#123; <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">lk</span><span class="params">(q_mtx)</span></span>; logic_queue.<span class="built_in">push</span>(data); &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 逻辑线程：独立消费</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">logic_worker</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">        std::string msg;</span><br><span class="line">        &#123; <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">lk</span><span class="params">(q_mtx)</span></span>;</span><br><span class="line">          <span class="keyword">if</span> (!logic_queue.<span class="built_in">empty</span>()) &#123; msg = logic_queue.<span class="built_in">front</span>(); logic_queue.<span class="built_in">pop</span>(); &#125; &#125;</span><br><span class="line">        <span class="keyword">if</span> (!msg.<span class="built_in">empty</span>()) <span class="built_in">process</span>(msg);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">std::thread <span class="title">logic</span><span class="params">(logic_worker)</span></span>;</span><br><span class="line">    <span class="comment">// 网络层启动...</span></span><br><span class="line">    ioc.<span class="built_in">run</span>();</span><br><span class="line">    logic.<span class="built_in">join</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="网络层→逻辑层的投递方式"><a href="#网络层→逻辑层的投递方式" class="headerlink" title="网络层→逻辑层的投递方式"></a>网络层→逻辑层的投递方式</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 方式 1：直接推入队列（简单，需加锁）</span></span><br><span class="line">logic_system.<span class="built_in">PostMsgToQue</span>(msg);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方式 2：通过 io_context::post 投递（线程安全）</span></span><br><span class="line"><span class="built_in">post</span>(logic_ioc, [msg]&#123; logic_system.<span class="built_in">Handle</span>(msg); &#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方式 3：无锁队列（高性能）</span></span><br><span class="line">lockfree_queue.<span class="built_in">push</span>(msg);</span><br></pre></td></tr></table></figure>
+
+<h3 id="优雅停机的层次顺序"><a href="#优雅停机的层次顺序" class="headerlink" title="优雅停机的层次顺序"></a>优雅停机的层次顺序</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">1. 停止 acceptor（不再接受新连接）</span><br><span class="line">2. 等待现有连接处理完毕</span><br><span class="line">3. 停止网络层 io_context</span><br><span class="line">4. 清空逻辑队列（处理完积压消息）</span><br><span class="line">5. 停止逻辑线程</span><br><span class="line">6. 释放资源</span><br></pre></td></tr></table></figure>
+
+<h3 id="架构选型决策表"><a href="#架构选型决策表" class="headerlink" title="架构选型决策表"></a>架构选型决策表</h3><table>
+<thead>
+<tr>
+<th>并发量</th>
+<th>架构</th>
+<th>io_context 数</th>
+<th>线程数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&lt; 100</td>
+<td>单线程</td>
+<td>1</td>
+<td>1(网络+逻辑)</td>
+</tr>
+<tr>
+<td>100-1000</td>
+<td>网络+逻辑分离</td>
+<td>1</td>
+<td>1(I&#x2F;O)+1(逻辑)</td>
+</tr>
+<tr>
+<td>1000-10000</td>
+<td>多 Reactor</td>
+<td>N</td>
+<td>N(I&#x2F;O)+M(逻辑)</td>
+</tr>
+<tr>
+<td>10000+</td>
+<td>Reactor + 协程</td>
+<td>N</td>
+<td>N</td>
+</tr>
+</tbody></table>
+<p><strong>工程经验</strong>：(1) 三层分离是服务器设计的铁律——混合 I&#x2F;O 和业务是性能杀手；(2) 逻辑线程数通常 ≤ CPU 核数；(3) <code>epoll_wait</code> 超时设为 -1 无限阻塞，<code>epoll_wait(..., 0)</code> 立即返回用于优雅退出。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="异步事件注册的内部链路"><a href="#异步事件注册的内部链路" class="headerlink" title="异步事件注册的内部链路"></a>异步事件注册的内部链路</h4><p><code>async_read</code> 调用链：<code>socket.async_read_some(buffer, handler)</code> → <code>io_context</code> 的 <code>scheduler</code> → 平台 <code>reactor::start_op()</code> → <code>epoll_ctl(EPOLL_CTL_ADD, fd, {EPOLLIN, ptr_to_op})</code>。回调函数被封装为 <code>operation</code> 子类，通过 <code>epoll_event.data.ptr</code> 关联。</p>
+<h4 id="Reactor-模式的核心循环伪代码"><a href="#Reactor-模式的核心循环伪代码" class="headerlink" title="Reactor 模式的核心循环伪代码"></a>Reactor 模式的核心循环伪代码</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">epoll_reactor</span> &#123;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        epoll_event events[MAX_EVENTS];</span><br><span class="line">        <span class="keyword">while</span> (running_) &#123;</span><br><span class="line">            <span class="type">int</span> n = <span class="built_in">epoll_wait</span>(epfd_, events, MAX_EVENTS, <span class="number">-1</span>);</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; n; ++i) &#123;</span><br><span class="line">                <span class="keyword">auto</span>* op = <span class="built_in">static_cast</span>&lt;operation*&gt;(events[i].data.ptr);</span><br><span class="line">                <span class="keyword">if</span> (events[i].events &amp; EPOLLIN)  op-&gt;<span class="built_in">complete_read</span>();</span><br><span class="line">                <span class="keyword">if</span> (events[i].events &amp; EPOLLOUT) op-&gt;<span class="built_in">complete_write</span>();</span><br><span class="line">                <span class="keyword">if</span> (events[i].events &amp; (EPOLLERR|EPOLLHUP)) op-&gt;<span class="built_in">complete_error</span>();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li>逻辑层和网络层必须分离——回调中直接做业务逻辑会阻塞事件循环</li>
+<li>逻辑层通过消息队列与网络层通信，实现解耦和异步处理</li>
+<li><code>io_context</code> 的选择决定整体架构：单 <code>io_context</code> 简单但瓶颈明显，多 <code>io_context</code> pool 利用多核</li>
+<li>逻辑层线程独立于 I&#x2F;O 线程，通过 <code>post/dispatch</code> 交互</li>
+<li>服务器架构设计时先明确”连接-读写-业务处理”三层分离</li>
+</ol>
+<h2 id="相关笔记"><a href="#相关笔记" class="headerlink" title="相关笔记"></a>相关笔记</h2><ul>
+<li><a href="/posts/%E9%80%BB%E8%BE%91%E5%B1%82/">逻辑层</a> — 消息队列驱动的业务层</li>
+<li><a href="/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E5%AE%A2%E6%88%B7%E7%AB%AF/">服务器和客户端</a> — Asio 同步&#x2F;异步 socket</li>
+<li><a href="/posts/io_context/">io_context</a> — io_context 事件循环</li>
+<li><a href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">Asio 网络编程</a> — Asio Proactor 模式全景</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：async_read 的调用链是什么？</strong></p>
+<p>A：<code>socket.async_read_some()</code> → <code>io_context::scheduler</code> → 平台相关 <code>reactor::start_op()</code> → <code>epoll_ctl(EPOLL_CTL_ADD)</code> 注册读事件 → epoll_wait 就绪时通过 <code>epoll_event.data.ptr</code> 找回 <code>operation</code> 并执行回调。</p>
+<p><strong>Q2：为什么网络层和逻辑层要分离？</strong></p>
+<p>A：网络层处理 I&#x2F;O 事件（高频、阻塞少），逻辑层处理业务计算（可能耗时、涉及数据库等）。不分离会导致耗时业务阻塞 <code>io_context::run()</code>，影响其他连接。</p>
+<p><strong>Q3：Reactor 和 Proactor 的区别？</strong></p>
+<p>A：Reactor：被动等待 I&#x2F;O 就绪 → 用户线程主动读写；Proactor：主动发起异步 I&#x2F;O → OS 完成后通知。Asio 模拟了 Proactor，在 Linux 上实际用 Reactor(epoll) 实现。</p>
+<p><strong>Q4：事件就绪队列的作用？</strong></p>
+<p>A：解耦事件检测和事件处理——epoll_wait 将就绪事件批量取出放入队列，<code>io_context::run()</code> 逐个处理，避免在处理一个事件时阻塞其他事件的检测。</p>
+<p><strong>Q5：如何保证消息可靠到达逻辑层？</strong></p>
+<p>A：使用线程安全的消息队列 + 条件变量通知，失败重试机制，连接断开时清理待投递消息。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：在回调中执行耗时操作（如文件写入）→ 阻塞事件循环<br><strong>陷阱2</strong>：逻辑层队列无限增长→ 内存泄漏<br><strong>陷阱3</strong>：忘记在连接关闭时通知逻辑层清理 → 悬空指针<br><strong>陷阱4</strong>：<code>epoll</code> 边缘触发(ET)模式下必须循环读取直到 EAGAIN，否则丢事件</p>
+<p><strong>反问</strong>：为什么 Asio 在 Linux 上要用 Reactor 模拟 Proactor？<br><em>答案：Linux 原生异步 I&#x2F;O (AIO) 对 socket 支持不完善，epoll+非阻塞 I&#x2F;O 是更可靠的选择。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>async_read 注册链路</strong>：socket → scheduler → reactor → epoll_ctl</li>
+<li><strong>网络层&#x2F;逻辑层分离</strong>：I&#x2F;O 线程只负责收发，业务线程处理逻辑，消息队列通信</li>
+<li><strong>Proactor 模拟</strong>：Linux 上用 epoll + 非阻塞 I&#x2F;O 模拟 Windows IOCP 的 Proactor 语义</li>
+<li><strong>事件就绪队列</strong>：epoll_wait 批量提取，<code>run()</code> 逐个回调</li>
+<li><strong>逻辑队列</strong>：线程安全的消息中转，解耦网络层和逻辑层</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1_1/">https://weimo1.github.io/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1_1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%9C%AA%E5%AE%9A%E4%B9%89%E8%A1%8C%E4%B8%BA%EF%BC%88UB%EF%BC%89/" title="未定义行为（UB）"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">未定义行为（UB）</div></div><div class="info-2"><div class="info-item-1">未定义行为（UB） 适用范围：单一主题（一个概念&#x2F;机制&#x2F;模块），保持可复用、可检索。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且...</div></div></div></a><a class="pagination-related" href="/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1/" title="服务器架构设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">服务器架构设计</div></div><div class="info-2"><div class="info-item-1">服务器架构设计服务器架构设计1）asio底层通信前面的asio底层通信过程如下图所示  1）首先，在应用层调用async_read时，相当于在io_context中注册了一个读事件，表示程序希望在指定socket上进行异步读取操作，并提供一个读回调函数以在读取完成后做相应的处理； 2）io_context用于管理所有异步操作和相应的回调函数，且当async_read被调用时，asio会将该socket、相应的读事件和回调函数注册到系统内部的模型中（数据结构）；当io_context启动时，即io_context.run时，asio根据系统使用对应的模型管理这些事件（windows是ioc...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.</span> <span class="toc-text">服务器架构设计</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1-1"><span class="toc-number">2.</span> <span class="toc-text">服务器架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1%EF%BC%89asio%E5%BA%95%E5%B1%82%E9%80%9A%E4%BF%A1"><span class="toc-number">2.1.</span> <span class="toc-text">1）asio底层通信</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%EF%BC%89%E9%80%BB%E8%BE%91%E5%B1%82%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">2）逻辑层结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">2.3.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">2.4.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">2.5.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">2.6.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E5%B1%82%E2%86%92%E9%80%BB%E8%BE%91%E5%B1%82%E7%9A%84%E6%8A%95%E9%80%92%E6%96%B9%E5%BC%8F"><span class="toc-number">2.6.1.</span> <span class="toc-text">网络层→逻辑层的投递方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BC%98%E9%9B%85%E5%81%9C%E6%9C%BA%E7%9A%84%E5%B1%82%E6%AC%A1%E9%A1%BA%E5%BA%8F"><span class="toc-number">2.6.2.</span> <span class="toc-text">优雅停机的层次顺序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84%E9%80%89%E5%9E%8B%E5%86%B3%E7%AD%96%E8%A1%A8"><span class="toc-number">2.6.3.</span> <span class="toc-text">架构选型决策表</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.7.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.7.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%82%E6%AD%A5%E4%BA%8B%E4%BB%B6%E6%B3%A8%E5%86%8C%E7%9A%84%E5%86%85%E9%83%A8%E9%93%BE%E8%B7%AF"><span class="toc-number">2.7.1.1.</span> <span class="toc-text">异步事件注册的内部链路</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Reactor-%E6%A8%A1%E5%BC%8F%E7%9A%84%E6%A0%B8%E5%BF%83%E5%BE%AA%E7%8E%AF%E4%BC%AA%E4%BB%A3%E7%A0%81"><span class="toc-number">2.7.1.2.</span> <span class="toc-text">Reactor 模式的核心循环伪代码</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.7.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0"><span class="toc-number">2.8.</span> <span class="toc-text">相关笔记</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">2.9.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">2.9.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">2.9.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

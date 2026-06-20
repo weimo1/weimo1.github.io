@@ -1,0 +1,374 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>String View | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="String View 适用范围：C++17 std::string_view 非拥有型字符串视图、零拷贝子字符串、高效只读字符串参数传递  一、核心概念 定义：std::string_view 是 C++17 引入的非拥有型只读字符串视图，仅持有指向外部字符序列的指针和长度（sizeof &#x3D; 16字节，64位），不分配堆内存 关键词：非拥有型(non-owning)、零拷贝、subst">
+<meta property="og:type" content="article">
+<meta property="og:title" content="String View">
+<meta property="og:url" content="https://weimo1.github.io/posts/String-View/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="String View 适用范围：C++17 std::string_view 非拥有型字符串视图、零拷贝子字符串、高效只读字符串参数传递  一、核心概念 定义：std::string_view 是 C++17 引入的非拥有型只读字符串视图，仅持有指向外部字符序列的指针和长度（sizeof &#x3D; 16字节，64位），不分配堆内存 关键词：非拥有型(non-owning)、零拷贝、subst">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.552Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "String View",
+  "url": "https://weimo1.github.io/posts/String-View/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.552Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/String-View/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'String View',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">String View</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">String View</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.552Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>15分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="String-View"><a href="#String-View" class="headerlink" title="String View"></a>String View</h1><blockquote>
+<p>适用范围：C++17 std::string_view 非拥有型字符串视图、零拷贝子字符串、高效只读字符串参数传递</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::string_view</code> 是 C++17 引入的非拥有型只读字符串视图，仅持有指向外部字符序列的指针和长度（sizeof &#x3D; 16字节，64位），不分配堆内存</li>
+<li><strong>关键词</strong>：非拥有型(non-owning)、零拷贝、substr O(1)、悬空引用、from_chars、sv字面量</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>只读字符串参数传递（替代 <code>const std::string&amp;</code>）</li>
+<li>子字符串解析与处理（零拷贝切片）</li>
+<li>字符串字面量传参（避免临时 string 构造的堆分配）</li>
+<li>边界：不能用于需要修改字符串、需要空字符终止（C API）、需要持有所有权的场景</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-基本工作原理（三层递进）"><a href="#2-1-基本工作原理（三层递进）" class="headerlink" title="2.1 基本工作原理（三层递进）"></a>2.1 基本工作原理（三层递进）</h3><p><strong>第一层：视图模式</strong>。<code>string_view</code> 不拥有底层字符数据，只是”观察”外部已存在的字符序列。内部仅存储 <code>const CharT* data_</code> 和 <code>size_t size_</code> 两个成员，sizeof &#x3D; 16字节（64位），值传递成本与传引用相当。</p>
+<p><strong>第二层：零拷贝操作</strong>。<code>string_view::substr(pos, count)</code> 仅创建新的 <code>string_view</code> 对象，将内部指针偏移 <code>pos</code>、缩小长度到 <code>count</code>，完全不涉及内存分配或数据复制。这与 <code>string::substr</code> 的 O(n) 分配+复制形成本质区别。</p>
+<p><strong>第三层：生命周期陷阱</strong>。正因为不拥有数据，<code>string_view</code> 的生命周期必须严格短于被引用对象。<code>string_view sv = string(&quot;hello&quot;) + &quot; world&quot;;</code> 是典型的未定义行为：临时 <code>string</code> 在表达式结束后析构，sv 内部指针变为悬空。</p>
+<h3 id="2-2-核心特点"><a href="#2-2-核心特点" class="headerlink" title="2.2 核心特点"></a>2.2 核心特点</h3><p>和<code>std::string</code>相比，<code>std::string_view</code>对象有以下特点：</p>
+<ul>
+<li>底层的字符序列是只读的。没有操作可以修改底层的字符。你只能赋予一个新值、 交换值、把视图缩小为字符序列的子序列。</li>
+<li>字符序列不保证有空字符终止。因此，字符串视图并不是一个 <em>空字符终止的字节流(NTBS)</em> 。</li>
+<li><code>data()</code>返回的值可能是<code>nullptr</code>。例如，当用默认构造函数初始化一个 字符串视图之后，调用<code>data()</code>将返回<code>nullptr</code>。</li>
+<li>没有分配器支持。</li>
+</ul>
+<p>因为可能返回<code>nullptr</code>，并且可能不以空字符结尾， 所以在使用<code>operator[]</code>或<code>data()</code>之前应该 总是使用<code>size()</code>获取长度 （除非你已经知道了长度）。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/535124502">C++17 字符串视图(String Views)</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/166359481">C++17剖析：string_view的实现，以及性能</a></p>
+<h3 id="3-1-字符串视图概述"><a href="#3-1-字符串视图概述" class="headerlink" title="3.1 字符串视图概述"></a>3.1 字符串视图概述</h3><p>在C++17中，C++标准库引入了一个特殊的字符串类：<code>std::string_view</code>， 它能让我们像处理字符串一样处理字符序列，而不需要为它们分配内存空间。 也就是说，<code>std::string_view</code>类型的对象只是引用一个外部的字符序列， 而不需要持有它们。因此，一个字符串视图对象可以被看作字符串序列的 <em>引用</em> 。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_f167c5cb931c.png"></p>
+<p>使用字符串视图的开销很小，速度却很快（以值传递一个<code>string_view</code>的开销总是很小）。 然而，它也有一些潜在的危险，就和原生指针一样，在使用<code>string_view</code>时也必须 由程序员自己来保证引用的字符串序列是有效的。  </p>
+<p>和<code>std::string</code>相比，<code>std::string_view</code>对象有以下特点：</p>
+<ul>
+<li>底层的字符序列是只读的。没有操作可以修改底层的字符。你只能赋予一个新值、 交换值、把视图缩小为字符序列的子序列。</li>
+<li>字符序列不保证有空字符终止。因此，字符串视图并不是一个 <em>空字符终止的字节流(NTBS)</em> 。</li>
+<li><code>data()</code>返回的值可能是<code>nullptr</code>。例如，当用默认构造函数初始化一个 字符串视图之后，调用<code>data()</code>将返回<code>nullptr</code>。</li>
+<li>没有分配器支持。</li>
+</ul>
+<p>因为可能返回<code>nullptr</code>，并且可能不以空字符结尾， 所以在使用<code>operator[]</code>或<code>data()</code>之前应该 总是使用<code>size()</code>获取长度 （除非你已经知道了长度）。</p>
+<h3 id="3-2-使用字符串视图作为参数"><a href="#3-2-使用字符串视图作为参数" class="headerlink" title="3.2 使用字符串视图作为参数"></a>3.2 使用字符串视图作为参数</h3><p>下面是使用字符串视图作为只读字符串的第一个例子， 这个例子定义了一个函数将传入的字符串视图作为前缀，之后打印一个集合中的元素：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;string_view&gt;</span><br><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">void printElems(const T&amp; coll, std::string_view prefix = &#123;&#125;)</span><br><span class="line">&#123;</span><br><span class="line">    for (const auto&amp; elem : coll) &#123;</span><br><span class="line">        if (prefix.data()) &#123;    // 排除nullptr</span><br><span class="line">            std::cout &lt;&lt; prefix &lt;&lt; &#x27; &#x27;;</span><br><span class="line">        &#125;</span><br><span class="line">        std::cout &lt;&lt; elem &lt;&lt; &#x27;\n&#x27;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里，把函数参数声明为<code>std::string_view</code>，与声明为<code>std::string</code>比较起来， 可能会减少一次分配堆内存的调用。具体的情况依赖于是否传递的是短字符串和是否使用了短字符串优化(SSO)。 例如，如果我们像下面这么声明：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt;typename T&gt;</span><br><span class="line">void printElems(const T&amp; coll, const std::string&amp; prefix = &#123;&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>然后传递了一个字符串字面量，那么这个调用会创建一个临时的string，这将会在堆上分配一次内存， 除非使用了短字符串优化。 通过使用字符串视图，将不会分配内存，因为字符串视图只 <em>指向</em> 字符串字面量。</p>
+<p>注意在使用值未知的字符串视图前应该检查<code>data()</code>来排除<code>nullptr</code>。 这里为了避免写入额外的空格分隔符，必须检查<code>nullptr</code>。 值为<code>nullptr</code>的字符串视图写入到输出流时不应该写入任何字符。</p>
+<p>另一个例子是使用字符串视图作为只读的字符串来改进<code>std::optional&lt;&gt;</code>章节的<code>asInt()</code>示例， 改进的方法就是把参数声明为字符串视图：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;optional&gt;</span><br><span class="line">#include &lt;string_view&gt;</span><br><span class="line">#include &lt;charconv&gt; // for from_chars()</span><br><span class="line">#include &lt;iostream&gt;</span><br><span class="line"></span><br><span class="line">// 尝试将string转换为int：</span><br><span class="line">std::optional&lt;int&gt; asInt(std::string_view sv)</span><br><span class="line">&#123;</span><br><span class="line">    int val;</span><br><span class="line">    // 把字符序列读入int：</span><br><span class="line">    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), val);</span><br><span class="line">    // 如果有错误码，就返回空值：</span><br><span class="line">    if (ec != std::errc&#123;&#125;) &#123;</span><br><span class="line">        return std::nullopt;</span><br><span class="line">    &#125;</span><br><span class="line">    return val;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    for (auto s : &#123;&quot;42&quot;, &quot;  077&quot;, &quot;hello&quot;, &quot;0x33&quot;&#125;) &#123;</span><br><span class="line">        // 尝试把s转换为int，并打印结果：</span><br><span class="line">        std::optional&lt;int&gt; oi = asInt(s);</span><br><span class="line">        if (oi) &#123;</span><br><span class="line">            std::cout &lt;&lt; &quot;convert &#x27;&quot; &lt;&lt; s &lt;&lt; &quot;&#x27; to int: &quot; &lt;&lt; *oi &lt;&lt; &quot;\n&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">        else &#123;</span><br><span class="line">            std::cout &lt;&lt; &quot;can&#x27;t convert &#x27;&quot; &lt;&lt; s &lt;&lt; &quot;&#x27; to int\n&quot;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_48323a1cac32.png"></p>
+<p>将<code>asInt()</code>的参数改为字符串视图之后需要进行很多修改。 首先，没有必要再使用<code>std::stoi()</code>来转换为整数，因为<code>stoi()</code>的参数是string， 而根据string view创建string的开销相对较高。</p>
+<p>作为代替，我们向新的标准库函数<code>std::from_chars()</code>传递了字符范围。 这个函数需要两个字符指针为参数，分别代表字符序列的起点和终点，并进行转换。 注意这意味着我们可以避免单独处理空字符串视图，这种情况下<code>data()</code>返回<code>nullptr</code>， <code>size()</code>返回0，因为从<code>nullptr</code>到<code>nullptr+0</code>是一个有效的空范围 （任何指针类型都支持与0相加，并且不会有任何效果）。</p>
+<p><code>std::from_chars()</code>返回一个<code>std::from_chars_result</code>类型的结构体， 它有两个成员：一个指针<code>ptr</code>指向未被处理的第一个字符， 另一个成员<code>ec</code>的类型是<code>std:errc</code>，<code>std::errc{}</code>代表没有错误。 因此，使用返回值中的<code>ec</code>成员初始化<code>ec</code>之后（使用了结构化绑定）， 下面的检查将在转换失败时返回<code>nullopt</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">if (ec != std::errc&#123;&#125;) &#123;</span><br><span class="line">    return std::nullopt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用字符串视图还可以显著提升子字符串排序的性能。</p>
+<h3 id="3-3-安全使用字符串视图的总结"><a href="#3-3-安全使用字符串视图的总结" class="headerlink" title="3.3 安全使用字符串视图的总结"></a>3.3 安全使用字符串视图的总结</h3><p>总结起来就是 <strong>小心地使用</strong><code>std::string_view</code> ， 也就是说你应该按下面这样调整你的编码风格：</p>
+<ul>
+<li>不要在那些会把参数传递给string的API中使用string view。</li>
+<li>不要用string view形参来初始化string成员。</li>
+<li>不要把string设为string view调用链的终点。</li>
+<li>不要返回string view。</li>
+<li>除非它只是转发输入的参数，或者你可以标记它很危险，例如，通过命名来体现危险性。</li>
+<li><strong>函数模板</strong> 永远不应该返回泛型参数的类型 <strong>T</strong> 。</li>
+<li>作为替代，返回<code>auto</code>类型。</li>
+<li>永远不要用返回值来初始化string view。</li>
+<li><strong>不要</strong> 把返回泛型类型的函数模板的返回值赋给 <code>auto</code> 。</li>
+<li>这意味着AAA( <em>总是auto(Almost Always Auto)</em> )原则不适用于string view。</li>
+</ul>
+<p>如果因为这些规则太过复杂或者太困难而不能遵守，那就完全不要 使用<code>std::string_view</code>（除非你知道自己在做什么）。</p>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-性能优势深度分析"><a href="#4-1-性能优势深度分析" class="headerlink" title="4.1 性能优势深度分析"></a>4.1 性能优势深度分析</h3><p><strong>零分配构造</strong>：传递字符串字面量时，<code>string_view</code> 仅存储指针+长度（O(1)从字面量），而 <code>const string&amp;</code> 需构造临时 <code>string</code> 对象（至少一次堆分配，除非 SSO 命中）。在频繁调用场景下差异显著。</p>
+<p><strong>子字符串排序</strong>：<code>string_view::substr</code> 零拷贝特性使得子字符串排序完全避免内存分配。例如对 1GB 文本的百万级子串切片排序，<code>string_view</code> 解决方案内存占用恒定（仅视图数组），而 <code>string</code> 方案会指数级复制数据。</p>
+<h3 id="4-2-string-view-安全使用规则"><a href="#4-2-string-view-安全使用规则" class="headerlink" title="4.2 string_view 安全使用规则"></a>4.2 string_view 安全使用规则</h3><ul>
+<li>不要在那些会把参数传递给string的API中使用string view</li>
+<li>不要用string view形参来初始化string成员</li>
+<li>不要把string设为string view调用链的终点</li>
+<li>不要返回string view（除非只是转发输入参数，或通过命名体现危险性）</li>
+<li><strong>函数模板</strong> 永远不应该返回泛型参数的类型 <strong>T</strong> ，作为替代返回<code>auto</code>类型</li>
+<li>永远不要用返回值来初始化string view</li>
+<li><strong>不要</strong> 把返回泛型类型的函数模板的返回值赋给 <code>auto</code></li>
+<li>这意味着AAA( <em>总是auto(Almost Always Auto)</em> )原则不适用于string view</li>
+</ul>
+<p>如果因为这些规则太过复杂或者太困难而不能遵守，那就完全不要 使用<code>std::string_view</code>（除非你知道自己在做什么）。</p>
+<h3 id="4-3-与其他主题的关联"><a href="#4-3-与其他主题的关联" class="headerlink" title="4.3 与其他主题的关联"></a>4.3 与其他主题的关联</h3><ul>
+<li><strong>span (C++20)</strong>：<code>std::span&lt;T&gt;</code> 是 <code>string_view</code> 的泛化版本，适用于任意连续内存范围的只读&#x2F;可读写视图</li>
+<li><strong>from_chars (C++17)</strong>：<code>std::from_chars(sv.data(), sv.data() + sv.size(), val)</code> 是 C++17 最高效的字符串转数字 API，与 string_view 天然搭配</li>
+<li><strong>SSO (短字符串优化)</strong>：短字符串（通常 ≤15 字符）在 <code>std::string</code> 内部栈缓冲中存储，不触发堆分配，此时 string_view 的免分配优势不明显</li>
+<li><strong>string_view_literals</strong>：<code>using namespace std::string_view_literals;</code> 后可用 <code>&quot;hello&quot;sv</code> 在编译期确定长度，避免运行时 strlen 的 O(n) 开销</li>
+</ul>
+<h3 id="4-4-工程中的最佳实践"><a href="#4-4-工程中的最佳实践" class="headerlink" title="4.4 工程中的最佳实践"></a>4.4 工程中的最佳实践</h3><ul>
+<li><strong>只读参数首选</strong>：<code>void f(std::string_view sv)</code> 统一接收 <code>const char*</code>、<code>string</code>、<code>string_view</code>、字面量</li>
+<li><strong>避免作为成员</strong>：类成员不要用 <code>string_view</code>——对象生命周期难以保证长于被引用源</li>
+<li><strong>配合 from_chars</strong>：解析数字&#x2F;日期等场景，string_view + from_chars 是无分配方案</li>
+<li><strong>优先 sv 字面量</strong>：<code>&quot;hello&quot;sv</code> 而非 <code>&quot;hello&quot;</code> 构造 string_view，避免不必要的 strlen 调用</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="std-string-view-的底层结构"><a href="#std-string-view-的底层结构" class="headerlink" title="std::string_view 的底层结构"></a>std::string_view 的底层结构</h4><p><code>string_view</code> 本质上是一个<strong>非拥有型字符串引用</strong>，仅包含两个成员：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">class</span> <span class="title class_">CharT</span>, <span class="keyword">class</span> <span class="title class_">Traits</span> = std::char_traits&lt;CharT&gt;&gt;</span><br><span class="line"><span class="keyword">class</span> basic_string_view &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">using</span> const_pointer   = <span class="type">const</span> CharT*;</span><br><span class="line">    <span class="keyword">using</span> size_type       = std::<span class="type">size_t</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    const_pointer data_;   <span class="comment">// 指向外部字符序列（不拥有）</span></span><br><span class="line">    size_type     size_;   <span class="comment">// 序列长度</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键设计</strong>：sizeof(string_view) &#x3D; 16 字节（64位），只存一个指针 + 一个长度，无堆分配、无引用计数。值传递成本极低（复制 16 字节），与传递 <code>const string&amp;</code> 等价。</p>
+<h4 id="substr-的零拷贝实现"><a href="#substr-的零拷贝实现" class="headerlink" title="substr 的零拷贝实现"></a>substr 的零拷贝实现</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">constexpr</span> basic_string_view <span class="title">substr</span><span class="params">(size_type pos = <span class="number">0</span>, size_type count = npos)</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">basic_string_view</span>(data_ + pos, std::<span class="built_in">min</span>(count, size_ - pos));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>与 <code>std::string::substr</code>（需要分配新内存并复制）不同，<code>string_view::substr</code> 只是偏移指针、缩小长度，<strong>零拷贝、零分配</strong>。这就是子字符串排序等场景性能大幅提升的根源。</p>
+<h4 id="字符串字面量构造路径"><a href="#字符串字面量构造路径" class="headerlink" title="字符串字面量构造路径"></a>字符串字面量构造路径</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 从 const char* 构造</span></span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> <span class="title">basic_string_view</span><span class="params">(<span class="type">const</span> CharT* s)</span> </span></span><br><span class="line"><span class="function">    : data_(s), size_(Traits::length(s)) &#123;</span>&#125;  <span class="comment">// 调 strlen，O(n)</span></span><br></pre></td></tr></table></figure>
+
+<p>注意：从 <code>const char*</code> 构造会调用 <code>strlen</code> 确定长度（O(n)），但从 <code>const string&amp;</code> 或一对指针构造则是 O(1)。如果已经知道长度，优先使用 <code>string_view(ptr, len)</code> 或直接从 <code>string</code> 构造。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>首选参数类型</strong>：只读字符串参数优先用 <code>string_view</code> 替代 <code>const string&amp;</code>——避免不必要的 <code>string</code> 临时对象构造和堆分配，尤其是传递字符串字面量时</li>
+<li><strong>NULL 终止不是保证</strong>：<code>string_view::data()</code> 不保证末尾有 <code>&#39;\0&#39;</code>，传给 C API（如 <code>printf</code>）前必须手动追加或转成 <code>string</code></li>
+<li><strong>生命周期陷阱</strong>：<code>string_view</code> 不拥有数据，引用临时 <code>string</code> 时极容易悬空：<code>string_view sv = string(&quot;hello&quot;) + &quot; world&quot;;</code> 是未定义行为</li>
+<li><strong>substr 链式优化</strong>：多次 <code>substr</code> 只在原始视图上不断缩小窗口，不会产生内存碎片</li>
+<li><strong>与 from_chars 配合</strong>：<code>std::from_chars(sv.data(), sv.data() + sv.size(), val)</code> 是 C++17 最高效的字符串转数字方式</li>
+<li><strong>不在 API 边界返回</strong>：作为函数返回值返回 <code>string_view</code> 极易导致悬空引用，除非明确是转发输入参数</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：<code>std::string_view</code> 和 <code>std::string</code> 的关系是什么？</strong></p>
+<p>A：<code>string_view</code> 是 <code>string</code> 的<strong>非拥有型视图</strong>（类似 <code>span</code> 之于数组）。<code>string</code> 拥有并管理字符缓冲区，<code>string_view</code> 只持有指向外部字符序列的指针和长度。<code>string</code> 可以隐式转换为 <code>string_view</code>，反之需要显式构造。</p>
+<p><strong>Q2：为什么 <code>string_view::data()</code> 不保证末尾有空字符？</strong></p>
+<p>A：因为 <code>string_view</code> 可以指向任意字符序列的子区间（通过 <code>substr</code>），原始序列末尾的空字符可能不在视图范围内。如果保证末尾空字符，就需要复制一份数据，违背了零开销的设计目标。</p>
+<p><strong>Q3：<code>string_view::substr</code> 为什么是 O(1)？</strong></p>
+<p>A：它只是返回一个指向同一缓冲区的新 <code>string_view</code>，调整起始指针偏移和长度，不涉及任何内存分配或数据复制。与 <code>string::substr</code> 的 O(n)（分配+复制）形成鲜明对比。</p>
+<p><strong>Q4：什么场景下不能用 <code>string_view</code>？</strong></p>
+<p>A：(1) 需要修改字符串内容时（只读视图）；(2) 需要将字符串传递给需要空字符结尾的 C API 时；(3) 需要存储字符串所有权时（如类成员）；(4) 作为函数返回值返回局部字符串的视图（悬空风险）。</p>
+<p><strong>Q5：<code>string_view</code> 作为函数参数有什么优势？</strong></p>
+<p>A：统一接口——一个参数可接收 <code>const char*</code>、<code>string</code>、<code>string_view</code>、字符串字面量等，避免为每种类型写重载，且无需在传递字面量时构造临时 <code>string</code>（免堆分配）。</p>
+<p><strong>Q6：如何安全地从 <code>string_view</code> 获取 C 风格字符串？</strong></p>
+<p>A：先构造 <code>std::string(sv)</code>（会复制并追加 <code>&#39;\0&#39;</code>），然后调用 <code>.c_str()</code>。不能直接使用 <code>sv.data()</code> 作为 C 字符串。</p>
+<p><strong>Q7：<code>string_view</code> 的 sizeof 是多少？为什么？</strong></p>
+<p>A：通常 16 字节（64位系统）：一个指针（8字节）+ 一个 size_t（8字节）。只有两个成员，且没有虚函数、没有分配器。</p>
+<p><strong>Q8：写出一个 <code>string_view</code> 悬空的典型错误示例。</strong></p>
+<p>A：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">std::string_view sv = std::<span class="built_in">string</span>(<span class="string">&quot;hello&quot;</span>) + <span class="string">&quot; world&quot;</span>;  <span class="comment">// 临时 string 被析构</span></span><br><span class="line">std::cout &lt;&lt; sv;  <span class="comment">// 未定义行为！</span></span><br></pre></td></tr></table></figure>
+<p>临时 <code>string</code> 在表达式结束即析构，<code>sv</code> 内部指针变为悬空。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：<code>string_view sv = &quot;hello&quot;</code> 调用 <code>strlen</code> 确定长度（O(n)），在热路径中可用编译期确定长度的 <code>&quot;hello&quot;sv</code>（C++17 字面量）</p>
+<p><strong>陷阱2</strong>：<code>sv.data()[sv.size()]</code> 访问越界——<code>size()</code> 返回的是长度，最后一个有效字符在 <code>data()[size()-1]</code></p>
+<p><strong>陷阱3</strong>：作为类成员时，必须保证引用源的生命周期长于对象本身——这是最常见的 <code>string_view</code> bug</p>
+<p><strong>陷阱4</strong>：<code>auto x = &quot;hello&quot;</code> 推导为 <code>const char*</code>，不是 <code>string_view</code>；需要 <code>using namespace std::string_view_literals</code> 并用 <code>&quot;hello&quot;sv</code></p>
+<p><strong>陷阱5</strong>：<code>for (auto c : sv)</code> 遍历的是字符值，不是引用——如果期望修改，需要使用 <code>string</code></p>
+<p><strong>反问</strong>：<code>string_view</code> 的设计为什么不能替代 <code>const string&amp;</code> 的所有使用场景？</p>
+<p><em>答案要点：因为 <code>string_view</code> 不保证空字符终止（C API 不兼容）、不拥有数据（不能作为返回值或长期存储）、不能作为 <code>string</code> 的”终极替换”——它只是视图，需要被引用对象存活。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>string_view</strong>：C++17 非拥有型只读字符串视图，存指针+长度，16字节</li>
+<li><strong>substr</strong>：O(1) 零拷贝子串视图，只偏移指针不复制数据</li>
+<li><strong>data() vs c_str()</strong>：<code>data()</code> 不保证空字符终止，<code>c_str()</code> 保证（只有 <code>string</code> 有）</li>
+<li><strong>生命周期</strong>：<code>string_view</code> 不拥有数据，引用源销毁后悬空</li>
+<li><strong>构造开销</strong>：从 <code>const char*</code> 构造 O(n)（需 strlen），从 string 或 (ptr,len) 构造 O(1)</li>
+<li><strong>from_chars</strong>：C++17 高效字符串转数字，与 <code>string_view</code> 天然配合</li>
+<li><strong>字面量后缀 sv</strong>：<code>&quot;hello&quot;sv</code> 在编译期确定长度，避免运行时 strlen</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/String-View/">https://weimo1.github.io/posts/String-View/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Statr-Server/" title="Statr Server"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Statr Server</div></div><div class="info-2"><div class="info-item-1">State Server State Server 是 IM 系统中负责维护长连接状态、保证消息可靠性和时序一致性的核心组件。它管理着连接的生命周期（登录&#x2F;心跳&#x2F;重连），并保证上行和下行消息的端到端可靠送达。  一、核心概念 定义：State Server 是 IM 接入层的状态管理服务，维护每个长连接的 session 状态（心跳定时器、重连定时器、消息定时器、消息 ID 等），是连接可靠性和消息可靠性的中枢。 关键词：连接状态管理、心跳、重连、消息可靠性（不重不漏有序及时）、clientID、seqID、msgID、推拉结合、端到端可靠性 适用场景&#x2F;边界...</div></div></div></a><a class="pagination-related" href="/posts/StaticMeshPass/" title="StaticMeshPass"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">StaticMeshPass</div></div><div class="info-2"><div class="info-item-1">StaticMeshPass 适用范围：GPU Driven Rendering 的静态网格渲染通道——Compute Shader 视锥剔除 + Hi-Z 遮挡剔除 + Indirect Draw。  写作约束（铁律） 原内容一字不删，只做归纳重组+增加，放不进的进附录 字数硬指标：二≥200、四≥500、五≥1000、六≥8问+5反问+5一句话  一、核心概念 定义：StaticMeshPass 是 GPU Driven Rendering 的核心实现——用 Compute Shader 在 GPU 端完成视锥剔除和 Hi-Z 遮挡剔除，生成 Indirect Draw Comman...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#String-View"><span class="toc-number">1.</span> <span class="toc-text">String View</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%9F%BA%E6%9C%AC%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 基本工作原理（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E6%A0%B8%E5%BF%83%E7%89%B9%E7%82%B9"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 核心特点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%86%E5%9B%BE%E6%A6%82%E8%BF%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 字符串视图概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%BD%BF%E7%94%A8%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%86%E5%9B%BE%E4%BD%9C%E4%B8%BA%E5%8F%82%E6%95%B0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 使用字符串视图作为参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%AE%89%E5%85%A8%E4%BD%BF%E7%94%A8%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%86%E5%9B%BE%E7%9A%84%E6%80%BB%E7%BB%93"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 安全使用字符串视图的总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8A%BF%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 性能优势深度分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-string-view-%E5%AE%89%E5%85%A8%E4%BD%BF%E7%94%A8%E8%A7%84%E5%88%99"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 string_view 安全使用规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 工程中的最佳实践</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#std-string-view-%E7%9A%84%E5%BA%95%E5%B1%82%E7%BB%93%E6%9E%84"><span class="toc-number">1.5.1.1.</span> <span class="toc-text">std::string_view 的底层结构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#substr-%E7%9A%84%E9%9B%B6%E6%8B%B7%E8%B4%9D%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.1.2.</span> <span class="toc-text">substr 的零拷贝实现</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AD%97%E9%9D%A2%E9%87%8F%E6%9E%84%E9%80%A0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.5.1.3.</span> <span class="toc-text">字符串字面量构造路径</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,499 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>线程 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="线程线程的建立进程：一个进程是一个正在运行的程序的实例，拥有自己的地址空间、代码、数据和系统资源。一个进程可以包含一个或多个线程。进程也是程序的⼀次执⾏过程，是系统运⾏程序的基本单位；系统运⾏⼀个程序即是 ⼀个进程从创建、运⾏到消亡的过程。 线程：线程是进程中的⼀个执⾏单元，负责当前进程中程序的执⾏，⼀个进程中⾄少有⼀个线程。⼀个进程中是可以有多个线程的，这个应⽤程序也可以称之为多线程程序。 简⽽">
+<meta property="og:type" content="article">
+<meta property="og:title" content="线程">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E7%BA%BF%E7%A8%8B/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="线程线程的建立进程：一个进程是一个正在运行的程序的实例，拥有自己的地址空间、代码、数据和系统资源。一个进程可以包含一个或多个线程。进程也是程序的⼀次执⾏过程，是系统运⾏程序的基本单位；系统运⾏⼀个程序即是 ⼀个进程从创建、运⾏到消亡的过程。 线程：线程是进程中的⼀个执⾏单元，负责当前进程中程序的执⾏，⼀个进程中⾄少有⼀个线程。⼀个进程中是可以有多个线程的，这个应⽤程序也可以称之为多线程程序。 简⽽">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.576Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "线程",
+  "url": "https://weimo1.github.io/posts/%E7%BA%BF%E7%A8%8B/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.576Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E7%BA%BF%E7%A8%8B/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '线程',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">线程</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">线程</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.576Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/">并发编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">11.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>43分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h1><h1 id="线程的建立"><a href="#线程的建立" class="headerlink" title="线程的建立"></a>线程的建立</h1><p><strong>进程</strong>：一个进程是一个正在运行的程序的实例，拥有自己的地址空间、代码、数据和系统资源。一个进程可以包含一个或多个线程。进程也是程序的⼀次执⾏过程，是系统运⾏程序的基本单位；系统运⾏⼀个程序即是 ⼀个进程从创建、运⾏到消亡的过程。</p>
+<p><strong>线程</strong>：线程是进程中的⼀个执⾏单元，负责当前进程中程序的执⾏，⼀个进程中⾄少有⼀个线程。⼀个进程中是可以有多个线程的，这个应⽤程序也可以称之为多线程程序。</p>
+<p>简⽽⾔之：⼀<strong>个程序运⾏后⾄少有⼀个进程，⼀个进程中可以包含多个线程</strong></p>
+<h2 id="1-1-线程如何发起"><a href="#1-1-线程如何发起" class="headerlink" title="1.1 线程如何发起"></a>1.1 线程如何发起</h2><p>C++线程自C++11及以后的版本中被统一，在包含头文件之后，通过使用 std::thread 定义线程对象（该对象可以通过构造函数接受一个可调用对象，比如函数、仿函数、lambda函数等），该对象可以启动线程执行回调逻辑（执行传入的可调用对象），线程的发起是在创建对象的同时被启动。</p>
+<p><strong>std::thread() 的原型为：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class F, class... Args&gt;</span><br><span class="line">explicit thread(F&amp;&amp; f, Args&amp;&amp;... args);</span><br></pre></td></tr></table></figure>
+
+<p><strong>F：可调用对象的类型，可以是函数指针、函数对象、lambda 表达式等</strong>。<br><strong>Args：可变参数模板，表示传递给可调用对象的参数，比如参数列表中的形参。</strong></p>
+<h3 id="1-1-1-普通函数"><a href="#1-1-1-普通函数" class="headerlink" title="1.1.1 普通函数"></a>1.1.1 普通函数</h3><p>可以使用普通函数作为可调用对象传入给线程对象。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;thread&gt;</span><br><span class="line"></span><br><span class="line">void thread_hello(std::string str) &#123;</span><br><span class="line">    std::cout &lt;&lt; str &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">std::string str = &quot;hello world!&quot;;</span><br><span class="line">std::thread t(thread_hello, str); // 发起线程</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-1-2-仿函数"><a href="#1-1-2-仿函数" class="headerlink" title="1.1.2 仿函数"></a>1.1.2 仿函数</h3><p>可以使用仿函数作为可调用对象传入给线程对象。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">class background_task &#123;</span><br><span class="line">public:</span><br><span class="line">    void operator() &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;str is &quot; &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意，传入仿函数作为可调用对象时不能加 ‘()’</strong><br><strong>std::thread t2(background_task());</strong><br><strong>t2.join();</strong><br><strong>这样是错误的：</strong></p>
+<p><strong>1）background_task() 会被解释为一个函数声明，而不是对象的创建。因为编译器会将t2当成一个函数对象, 返回一个std::thread类型的值, 函数的参数为一个函数指针，该函数指针返回类型为background_task, 没有参数。导致编译器将原本应该是对象的构造解析为函数的声明。</strong></p>
+<p>可以理解为：</p>
+<p>“std::thread (<em>)(background_task (</em>)())”<br>这是因为C++中“最烦恼的解析”造成的，比如：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">class MyClass &#123;</span><br><span class="line">public:</span><br><span class="line">    MyClass() &#123;&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>&#x2F;&#x2F; 返回对象是MyClass ，函数名为obj，无参数<br>MyClass obj(); &#x2F;&#x2F; 这不是对象的声明，而是一个函数的声明<br>在上面的代码中，MyClass obj(); 被编译器解析为一个返回 MyClass 类型的函数 obj，而不是一个 MyClass 类型的对象。这种情况被称为“最烦恼的解析”,导致编译器将原本应该是对象的构造解析为函数的声明。原因：</p>
+<p><strong>语法规则：C++ 的语法规则允许使用类名后跟括号的形式来声明函数（仿函数）。如果没有其他上下文，编译器会选择这种解析方式。</strong><br><strong>上下文歧义：在某些情况下，编译器无法明确判断你是想要创建一个对象还是声明一个函数，因此选择最符合语法的解析方式。</strong><br>为了避免最烦恼的解析，可以使用如下方法：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">// 1. 使用花括号</span><br><span class="line">MyClass obj&#123;&#125;; // 这明确表示对象的构造</span><br><span class="line">// 2. 使用额外的括号</span><br><span class="line">MyClass obj((1)); // 使用额外的括号，避免解析为函数声明</span><br><span class="line">// 3. 使用指针</span><br><span class="line">MyClass* obj = new MyClass(); // 使用指针来创建对象</span><br><span class="line">所以我们如果使用仿函数作为可调用对象传入时，可以这样做：</span><br><span class="line"></span><br><span class="line">// 1.创建对象</span><br><span class="line">background_task task; // 创建对象</span><br><span class="line">std::thread t2(task); // 传入对象和参数</span><br><span class="line">// 2. 使用花括号</span><br><span class="line">std::thread t2&#123; background_task() &#125;; // 使用花括号初始化对象</span><br><span class="line">// 3. 使用指针</span><br><span class="line">background_task* task = new background_task(); // 创建对象并使用指针</span><br><span class="line">std::thread t2(*task);</span><br><span class="line">// 4. 使用临时对象</span><br><span class="line">std::thread t2((background_task())); // 使用额外的括号</span><br><span class="line">但如果仿函数中有参数，那么就不会造成&quot;最烦恼的解析”，因为上下文有解释，我是要调用仿函数（因为传入的参数和仿函数对应，构造函数与其不对应），比如：</span><br><span class="line"></span><br><span class="line">class background_task &#123;</span><br><span class="line">public:</span><br><span class="line">    void operator()(std::string str) &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;str is &quot; &lt;&lt; str &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">std::string str = &quot;hello world!&quot;;</span><br><span class="line">// 不会发生报错</span><br><span class="line">std::thread t2(background_task(), str);</span><br><span class="line">t2.join();</span><br></pre></td></tr></table></figure>
+
+<p>“最烦恼的解析”一般在无传入参数的情况下发生。<br>2）这样并没有创建一个可调用对象。因为 background_task() 并没有创建对象（这样是在调用仿函数，而不是把仿函数作为对象），t2 线程实际上没有被正确初始化。</p>
+<h3 id="1-1-3-lambda函数"><a href="#1-1-3-lambda函数" class="headerlink" title="1.1.3 lambda函数"></a>1.1.3 lambda函数</h3><p><strong>可以使用lambda函数作为可调用对象传入给线程对象。</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">std::thread t4([](std::string  str) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;str is &quot; &lt;&lt; str &lt;&lt; std::endl;</span><br><span class="line">&#125;,  hellostr);</span><br><span class="line">t4.join();</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-1-4-类的成员函数"><a href="#1-1-4-类的成员函数" class="headerlink" title="1.1.4 类的成员函数"></a>1.1.4 类的成员函数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">class X</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    void do_lengthy_work() &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;do_lengthy_work &quot; &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line">void bind_class_oops() &#123;</span><br><span class="line">    X my_x;</span><br><span class="line">    // 还得传入类的指针，因为类的成员函数会调用类的成员变量</span><br><span class="line">    std::thread t(&amp;X::do_lengthy_work, &amp;my_x);</span><br><span class="line">    t.join();</span><br><span class="line">&#125;</span><br><span class="line">注意：如果 thread 绑定的回调函数是普通函数，可以在函数前加&amp;或者不加&amp;，因为编译器默认将普通函数名作为函数地址，如下两种写法都正确。</span><br><span class="line"></span><br><span class="line">void thead_work1(std::string str) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;str is &quot; &lt;&lt; str &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line">std::string hellostr = &quot;hello world!&quot;;</span><br><span class="line">//两种方式都正确</span><br><span class="line">std::thread t1(thead_work1, hellostr);</span><br><span class="line">std::thread t2(&amp;thead_work1, hellostr);</span><br></pre></td></tr></table></figure>
+
+<p><strong>但是如果是绑定类的成员函数，必须添加&amp; （还得传入类的指针，因为类的成员函数会调用类的成员变量）</strong></p>
+<h3 id="1-1-5-move"><a href="#1-1-5-move" class="headerlink" title="1.1.5 move"></a>1.1.5 move</h3><p><strong>若传递给线程的参数是独占的，也就是不支持拷贝赋值和构造，但我们可以通过 std::move 的方式将参数的所有权转移给线程，如下</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">void deal_unique(std::unique_ptr&lt;int&gt; p) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;unique ptr data is &quot; &lt;&lt; *p &lt;&lt; std::endl;</span><br><span class="line">    (*p)++;</span><br><span class="line">    std::cout &lt;&lt; &quot;after unique ptr data is &quot; &lt;&lt; *p &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line">void move_oops() &#123;</span><br><span class="line">    // p是独占有权的，不能被复制、赋值，但可以转移所有权</span><br><span class="line">    auto p = std::make_unique&lt;int&gt;(100);</span><br><span class="line">    std::thread  t(deal_unique, std::move(p));</span><br><span class="line">    t.join();</span><br><span class="line">    //不能再使用p了，p已经被move废弃</span><br><span class="line">   // std::cout &lt;&lt; &quot;after unique ptr data is &quot; &lt;&lt; *p &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>注意，若参数的占有权被转移，那么该参数就不能管理之前保存的值，丧失了对该值的占有权</strong></p>
+<h2 id="1-2-子线程需要被等待"><a href="#1-2-子线程需要被等待" class="headerlink" title="1.2 子线程需要被等待"></a>1.2 子线程需要被等待</h2><p>虽然使用 std::thread 创建的线程在结束时会自动释放其资源，但在主线程（或创建线程的线程）中仍需要等待其子线程结束。 我们需要在主线程中显示调用**join()**函数等待子线程的结束，子线程结束后主线程才会继续运行。<br>原因如下：</p>
+<p>如果创建的子线程在其执行过程中没有被主线程等待，那么当主线程结束或被销毁时，操作系统将会终止这个子线程，这可能导致子线程的资源（如内存、文件句柄等）不会被释放，产生资源泄漏。<br>如果不调用 join()，主线程在没有等待子线程结束的情况下继续执行，可能会导致程序在子线程完成之前就结束，从而未能正确处理子线程的结果（子线程的结果可能不会被主线程处理）。<br>如果主线程需要依赖于子线程完成某些任务（例如数据处理或文件写入），需要通过 join() 确保子线程在主线程继续执行之前完成，可以避免因数据未更新而导致的不一致性。<br><strong>线程的回收通过线程的析构函数来完成，即执行terminate操作</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">// 1.发起线程</span><br><span class="line">std::string str = &quot;hello world!&quot;;</span><br><span class="line">std::thread t1(thread_hello, str); </span><br><span class="line">// 让主线程暂停执行 1 秒钟，确保子线程能够执行完毕</span><br><span class="line">std::this_thread::sleep_for(std::chrono::seconds(1));</span><br><span class="line">// 2.主线程等待子线程结束</span><br><span class="line">t1.join();</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-3-detach"><a href="#1-3-detach" class="headerlink" title="1.3 detach"></a>1.3 detach</h2><p>可以使用detach允许<strong>子线程采用分离的方式在后台独自运</strong>行，不受主线程影响。主线程和子线程执行各自的任务，使用各自的资源。</p>
+<p>注意：<strong>当一个线程被分离后，主线程将无法直接管理它，也无法使用join()等待被分离的线程结束。处理日志记录或监控任务这些线程一般会让其在后台持续运行，使用detach。</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">struct func &#123;</span><br><span class="line">    int&amp; _i;</span><br><span class="line">    func(int &amp; i): _i(i)&#123;&#125;</span><br><span class="line">    void operator()() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 3; i++) &#123;</span><br><span class="line">            _i = i;</span><br><span class="line">            std::cout &lt;&lt; &quot;_i is &quot; &lt;&lt; _i &lt;&lt; std::endl;</span><br><span class="line">            std::this_thread::sleep_for(std::chrono::seconds(1));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line">void oops() &#123;</span><br><span class="line">        int some_local_state = 0;</span><br><span class="line">        func myfunc(some_local_state);</span><br><span class="line">        std::thread functhread(myfunc);</span><br><span class="line">        //隐患，访问局部变量，局部变量可能会随着&#125;结束而回收或随着主线程退出而回收</span><br><span class="line">        functhread.detach();    </span><br><span class="line">&#125;</span><br><span class="line">// detach 注意事项</span><br><span class="line">oops();</span><br><span class="line">//防止主线程退出过快，需要停顿一下，让子线程跑起来detach</span><br><span class="line">std::this_thread::sleep_for(std::chrono::seconds(1));</span><br></pre></td></tr></table></figure>
+
+<p>detach使用时有一些风险，比如上述代码。</p>
+<p>当主线程调用oops时，会创建一个线程执行myfunc的重载()运算符，然后将主线程将oops创建的一个线程分离。但注意，当oops执行到 ‘}’ 时，局部变量 some_local_state 会被释放，但引用（这里是引用传递而不是按值传递，按值传递不会引起该错误，因为线程中已经有一个自己的拷贝副本了）该局部资源的子线程 functhread 却仍然在后台运行，容易发生错误。</p>
+<p>我们可以采取一些措施解决该问题：</p>
+<p>1.<strong>通过智能指针传递局部变量</strong>，因为引用计数会随着赋值增加，可保证局部变量在使用期间不被释放，避免悬空指针的问题（网络编程中学习的伪闭包原理）。<br>2.按值传递，将局部变量的值作为参数传递而不是按引用传递，这么做需要局部变量有拷贝复制的功能，而且拷贝耗费空间和效率。<br>3.使用 <strong>join() 确保局部变量的生命周期</strong>，保证局部变量被释放前线程已经运行结束，但是可能会影响运行逻辑。</p>
+<h2 id="1-4-异常处理"><a href="#1-4-异常处理" class="headerlink" title="1.4. 异常处理"></a>1.4. 异常处理</h2><p>当启动一个子线程时，子线程和主线程是并发运行的。如果主线程由于某种原因崩溃（例如未捕获的异常），则整个进程将会终止（主线程崩溃或者结束时，主进程会回收所有线程的资源），这意味着所有正在运行的线程，包括子线程（不管有没有被detach）都会被强制结束，导致子线程未完成的操作（如数据库写入）被中断。这可能会导致子线程待写入的信息丢失。</p>
+<p>为了防止主线程崩溃导致子线程异常退出，可以在主线程中捕获可能抛出的异常，在捕获到异常后，可以选择在主线程中等待所有子线程完成。这样可以确保即使主线程遇到问题，子线程仍然能够完成其操作，并安全地结束。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">struct func &#123;</span><br><span class="line">    int&amp; _i;</span><br><span class="line">    func(int &amp; i): _i(i)&#123;&#125;</span><br><span class="line">    void operator()() &#123;</span><br><span class="line">        for (int i = 0; i &lt; 3; i++) &#123;</span><br><span class="line">            _i = i;</span><br><span class="line">            std::cout &lt;&lt; &quot;_i is &quot; &lt;&lt; _i &lt;&lt; std::endl;</span><br><span class="line">            std::this_thread::sleep_for(std::chrono::seconds(1));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">void catch_exception() &#123;</span><br><span class="line">    int some_local_state = 0;</span><br><span class="line">    func myfunc(some_local_state);</span><br><span class="line">    std::thread  functhread&#123; myfunc &#125;;</span><br><span class="line">    try &#123;</span><br><span class="line">        // 可能引发崩溃的程序</span><br><span class="line">        std::this_thread::sleep_for(std::chrono::seconds(1));</span><br><span class="line">    &#125;</span><br><span class="line">    catch (std::exception&amp; e) &#123;</span><br><span class="line">        functhread.join();</span><br><span class="line">        throw;</span><br><span class="line">    &#125;</span><br><span class="line">    functhread.join();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>但是这样太过于繁琐，我们还得捕获异常后将对应的线程进行join，但如果我们有多个线程和多个异常呢？难道还要一个个的组合，写异常处理？之前学习的通过协程实现异步服务器中设计了一个逻辑层，其中逻辑层中对逻辑队列消息的处理就是对上面代码的简化。逻辑层首先会创建一个线程处理逻辑队列的消息，并一直while循环（条件变量挂起，防止队列为空时仍然循环浪费资源），该线程仅有在逻辑层的析构函数被调用时才会结束。在逻辑层的析构函数中，首先将一个标志位置为true，表示逻辑队列的消息处理线程可以退出；然后使用条件变量的notify.one()函数唤醒该线程，如果队列有数据那么将所有数据都处理完；最后，析构函数会等待该线程的所有消息处理完才会析构完成。也就是RAII技术，如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">LogicSystem::~LogicSystem() &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;逻辑层成功析构&quot; &lt;&lt; std::endl;</span><br><span class="line">    _b_stop = true;</span><br><span class="line">    _consume.notify_one(); // 唤醒逻辑处理线程</span><br><span class="line">    _worker_thread.join(); // 等待逻辑消息线程处理完成</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>详细内容可参考：</p>
+<p><strong>那么，我们也可以使用相同的思维方法来对上面这段代码进行简化处理，即线程守卫</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">class thread_guard &#123;</span><br><span class="line">private:</span><br><span class="line">    std::thread&amp; _t;</span><br><span class="line">public:</span><br><span class="line">    explicit thread_guard(std::thread&amp; t):_t(t)&#123;&#125;</span><br><span class="line">    ~thread_guard() &#123;</span><br><span class="line">        //join只能调用一次</span><br><span class="line">        if (_t.joinable()) &#123;</span><br><span class="line">            _t.join();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    thread_guard(thread_guard const&amp;) = delete;</span><br><span class="line">    thread_guard&amp; operator=(thread_guard const&amp;) = delete;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>joinable() 是 std::thread 的一个成员函数，返回一个布尔值，指示线程是否可连接（即是否已创建且尚未调用 join() 或 detach()），如果_t是一个有效的线程对象且没有调用join() 或 detach()，那么调用join等待该线程结束。<br>我们可以将需要保护的线程（可能发生异常错误的线程）传递给thread_guard创建一个实例，如果主线程异常发生，保护子线程实例的析构函数会自动调用，确保主线程发生异常时，子线程也能被正确管理，防止资源泄漏</p>
+<h2 id="1-5-慎重使用隐式转换"><a href="#1-5-慎重使用隐式转换" class="headerlink" title="1.5 慎重使用隐式转换"></a>1.5 慎重使用隐式转换</h2><p>C++中经常可以看到一些隐式转换，比如short转换为int、char*转换为string等，但这些隐式转换在线程的调用上可能会造成崩溃问题。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">void print_str(int i, std::string const&amp; s) &#123;</span><br><span class="line">    std::cout &lt;&lt;&quot;i is &quot;&lt;&lt;i&lt;&lt;&quot; str is &quot; &lt;&lt; s &lt;&lt; std::endl; </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void danger_oops(int som_param) &#123;</span><br><span class="line">    char buffer[1024];</span><br><span class="line">    sprintf(buffer, &quot;%i&quot;, som_param);</span><br><span class="line">    //在线程内部将char const* 转化为std::string</span><br><span class="line">    //指向字符的常量指针  char * const  指针的地址是常量，即指针本身不能被修改（不能让它指向其他地方），但可以通过该指针修改它指向的字符数据。</span><br><span class="line">    //指向常量字符的指针  const char * 指向的内容不能变</span><br><span class="line">    // const char* 和 char const* 都表示的常量指针，即指针所指向的字符数据是常量，不能通过该指针修改。</span><br><span class="line">    std::thread t(print_str, 3, buffer);</span><br><span class="line">    t.detach();</span><br><span class="line">    std::cout &lt;&lt; &quot;danger oops finished &quot; &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>buffer 是一个局部变量，在线程 t 启动后，danger_oops 函数会继续执行并最终结束。当 danger_oops 函数返回后，buffer 会被销毁，导致线程在执行 print_str 时尝试访问一个无效的内存地址。因为当定义一个线程变量thread t 时，传递给线程 t 的参数buffer会被保存到thread的成员变量中。而在线程对象t内部启动并运行线程时，参数才会被传递给调用函数print_str，但此时danger_oops 函数可能已经返回，局部变量 buffer 被销毁，导致线程在执行 print_str 时尝试访问一个无效的内存地址（传入的是char，即字符串首地址，如果传入的不是地址，也不是按引用传递，而是按值传递，那么子线程会创建一个拷贝副本，即使局部变量被释放，子线程仍然可以继续工作），虽然我们确实是按值传递，接收的类型是string，而不是string&amp;和string，但因为传入的是char恰好可以通过隐式转换变为string，所以此时相当于传入的是string*，而形参类型也是string*。这部分内容可以参考上面1.3将的detach。</p>
+<p>所以我们只需将隐式转换变为显示转换即可，将char*字符串显示转换为string，那么传入的就是一个string对象，此时，子线程会创建一个拷贝对象，即使danger_oops函数返回，子线程也不会指向空的对象。</p>
+<p>void safe_oops(int some_param) {<br> char buffer[1024];<br> sprintf(buffer, “%i”, some_param);<br> std::thread t(print_str, 3, std::string(buffer));<br> t.detach();<br>}</p>
+<h2 id="1-6-如何在线程中使用引用"><a href="#1-6-如何在线程中使用引用" class="headerlink" title="1.6 如何在线程中使用引用"></a>1.6 如何在线程中使用引用</h2><p><strong>在创建线程时，使用 std::thread 来传递参数时， 参数是以拷贝的方式传递的。即使你传入的是一个左值（如一个变量），std::thread 会在内部创建该参数的拷贝。但是在main函数中，如果传入的实参是左值，形参类型是引用，那么函数 不会创建副本，而是直接对传入的值进行修改。</strong></p>
+<p><strong>主线程</strong>：当在主线程中调用函数时，参数是按值传递还是按引用传递取决于函数的参数声明。如果函数的参数是引用类型（如 int&amp;），那么传递的是对原始变量的引用，可以直接修改这个变量。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">void change_param(int&amp; param) &#123;</span><br><span class="line">    param++; // 修改引用的值</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    int value = 5;</span><br><span class="line">    change_param(value); // 这里传递的是 value 的引用</span><br><span class="line">    std::cout &lt;&lt; value; // 输出 6</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>子线程</strong>：当在子线程中调用函数时，即使参数在函数定义中是引用类型（如 int&amp;），如果在 std::thread 创建线程时直接传递一个变量（如 some_param），这个变量仍会被复制到线程中，子线程内部的修改不会影响主线程中的原始变量。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void change_param(int&amp; param) &#123;</span><br><span class="line">    param++; // 修改引用的值</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void ref_oops() &#123;</span><br><span class="line">    int some_param = 5;</span><br><span class="line">    std::thread t2(change_param, some_param); // 传递的是 some_param 的拷贝</span><br><span class="line">    t2.join();</span><br><span class="line">    // some_param 的值仍然是 5</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以以下代码会报错：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void change_param(int&amp; param) &#123;</span><br><span class="line">    param++;</span><br><span class="line">&#125;</span><br><span class="line">void ref_oops(int some_param) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;before change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">    //需使用引用显示转换</span><br><span class="line">    std::thread  t2(change_param, some_param);</span><br><span class="line">    t2.join();</span><br><span class="line">    std::cout &lt;&lt; &quot;after change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>即使函数 change_param 的参数为int&amp;类型，我们传递给t2的构造函数为some_param，也不会达到在change_param函数内部修改关联到外部some_param的效果。因为some_param是外部传给函数ref_oops实参的拷贝（右值），右值传递给一个左值引用会出问题，编译会报错。有两种方法可以修正：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">方法一：修改 some_param 为引用类型</span><br><span class="line">void ref_oops(int&amp; some_param) &#123; // 将 some_param 改为引用类型</span><br><span class="line">    std::cout &lt;&lt; &quot;before change, param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">    std::thread t2(change_param, std::ref(some_param)); // 使用 std::ref 显式传递引用</span><br><span class="line">    t2.join();</span><br><span class="line">    std::cout &lt;&lt; &quot;after change, param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line">方法二：传递 std::ref</span><br><span class="line">void ref_oops(int some_param) &#123;</span><br><span class="line">    std::cout &lt;&lt; &quot;before change, param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">    std::thread t2(change_param, std::ref(some_param)); // 使用 std::ref 显式传递引用</span><br><span class="line">    t2.join();</span><br><span class="line">    std::cout &lt;&lt; &quot;after change, param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line">那么如果我传递的是一个左值，而不是实参的拷贝呢，会不会还有问题？</span><br><span class="line">void change_param(int&amp; param) &#123;</span><br><span class="line">    param++;</span><br><span class="line">&#125;</span><br><span class="line">void ref_oops(） &#123;</span><br><span class="line">    int some_param = 5;</span><br><span class="line">    std::cout &lt;&lt; &quot;before change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">    //需使用引用显示转换</span><br><span class="line">    std::thread  t2(change_param, some_param);</span><br><span class="line">    t2.join();</span><br><span class="line">    std::cout &lt;&lt; &quot;after change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br><span class="line">该段函数中，我们传给线程调用对象change_param的参数是一个左值，而change_param形参的类型是引用，</span><br><span class="line">那么这样按理说应该是正确的，即线程内部对some_param的处理会影响到外部的some_param。</span><br><span class="line">但是，要注意线程无视引用，即使你传入的是左值，形参是引用，参数同样会被拷贝，</span><br><span class="line">除非你按引用传入（ref），或者传入的实参本来就是个引用。</span><br><span class="line">void ref_oops(） &#123;</span><br><span class="line">    int some_param = 5;</span><br><span class="line">    std::cout &lt;&lt; &quot;before change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">    //需使用引用显示转换</span><br><span class="line">    std::thread  t2(change_param, std::ref(some_param));</span><br><span class="line">    t2.join();</span><br><span class="line">    std::cout &lt;&lt; &quot;after change , param is &quot; &lt;&lt; some_param &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>。</p>
+<ol start="2">
+<li>thread参数传递和调用原理<br>thread参数传递涉及到引用折叠问题，即</li>
+</ol>
+<p><strong>左值引用+左值引用-&gt;左值引用</strong><br><strong>左值引用+右值引用-&gt;左值引用</strong><br><strong>右值引用+右值引用-&gt;右值引用</strong><br><strong>凡是折叠中出现左值引用，优先将其折叠为左值引用</strong><br>如果需要向子线程传递参数，直接向std::thread的构造函数传递参数即可。比如：</p>
+<p>void f(int i, std::string const&amp; s);<br>std::thread t(f, 3, “hello”);<br>不过请务必牢记，子线程具有内部存储空间，参数先默认地复制到该处，子线程才能直接访问这些参数。这些副本被当作临时变量，以右值的形式传递给子线程上的可调用对象（也就是如果不显式的将实参以引用ref的方式传入，那么即使子线程的可调用对象的形参是引用类型，可调用对象仍然使用的是传入参数的拷贝，因为子线程首先将传入值复制到子线程的内部存储空间，然后将副本右值的形式传递给子线程上的可调用对象）。</p>
+<p>在上述例子中，即使函数f有引用参数 std::string const&amp; s，参数仍然以复制的方式传递。</p>
+<p>请注意，尽管函数f的第二个形参为 std::string类型，但是”hello”仍然以指针char const *的形式传入到子线程的内存空间中，当指针被拷贝至子线程的内存以后， 才转换为std::string类型。</p>
+<p>2.1 数据成员</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">std::thread 只有一个私有数据成员_Thr：</span><br><span class="line">private:</span><br><span class="line">    _Thrd_t _Thr;</span><br><span class="line">_Thrd_t 是一个结构体，它有两个数据成员：</span><br><span class="line">using _Thrd_id_t = unsigned int;</span><br><span class="line">struct _Thrd_t &#123; // thread identifier for Win32</span><br><span class="line">    void* _Hnd; // Win32 HANDLE</span><br><span class="line">    _Thrd_id_t _Id;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这个结构体的 _Hnd 成员是指向线程的句柄，句柄允许 C++ 程序与底层操作系统线程进行交互，如等待线程结束、获取线程信息等；_Id 成员就是保有线程的 ID。</p>
+<p>在64 位操作系统，因为内存对齐（内存对齐要求通常是基于最大成员的对齐方式，这里必须保证结构体的大小是最大成员大小的倍数，这里最大成员是指针8，所以结构体的大小必须是8的倍数），指针 8 ，无符号 int 4，这个结构体 _Thrd_t 就是占据 16 个字节（尽管成员总共只占用12字节，但为了使整个结构体的大小为16字节，编译器会在结构体末尾添加4个字节的填充）。也就是说 sizeof(std::thread) 的结果应该为 16。</p>
+<p>2.2 构造函数<br>2.2.1 函数原型<br>std::thread有四个构造函数，分别是：</p>
+<p>1）默认构造函数，构造不关联线程的新 std::thread 对象。</p>
+<p>thread() noexcept : _Thr{} {}<br>值初始化了数据成员 _Thr ，这里的效果相当于给其成员_Hnd和_Id都进行零初始化。</p>
+<p>这里的默认构造函数不接受任何参数，并且被标记为 noexcept，这意味着它保证不抛出异常。它能创建但不立即执行任何线程的thread对象，这样的对象通常称为空线程对象。在C++中创建线程时，可以先声明一个空的线程对象，稍后再将其与实际的执行函数关联起来。</p>
+<p>2）移动构造函数，转移线程的所有权，将 _Other 的线程对象 _Thr 的所有权转移到新创建的线程对象中。此调用后 other 失去了其线程的所有权。</p>
+<p>thread(thread&amp;&amp; _Other) noexcept : _Thr(_STD exchange(_Other._Thr, {})) {}<br>_STD是一个宏，展开就是 ::std::，也就是 ::std::exchange ，将 _Other._Thr 赋为 {}（也就是置空，通常是一个无效的线程状态），返回_Other._Thr 的旧值用以初始化当前对象的数据成员 _Thr（转移所有权）。</p>
+<p>std::exchange 是C++14引入的一个实用函数，它用于交换两个值并返回被交换掉的旧值。</p>
+<p>#include  #include</p>
+<p>int main() {<br> int a &#x3D; 10;<br> int b &#x3D; 20;</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">int result = std::exchange(a, b);</span><br><span class="line">std::cout &lt;&lt; &quot;a: &quot; &lt;&lt; a &lt;&lt; &quot;, result: &quot; &lt;&lt; result &lt;&lt; std::endl;  // 输出 a: 20, result: 10</span><br><span class="line"> </span><br><span class="line">return 0;</span><br></pre></td></tr></table></figure>
+
+<p>}<br>输出结果：</p>
+<p>a: 20, result: 10<br>a的值和b的值进行交换，所以a的值为10，std::exchange(a, b);的返回结果是左操作数，即旧值。</p>
+<p>3）复制构造函数被定义为弃置的，std::thread 不可复制。两个 std::thread 不可表示一个线程，std::thread 对线程资源是独占所有权。</p>
+<p>thread(const thread&amp;) &#x3D; delete;<br>4）构造新的 std::thread 对象并将它与执行线程关联。表示新的执行线程开始执行。⭐ ⭐⭐⭐ ⭐（重要）</p>
+<p>template &lt;class _Fn, class… _Args, enable_if_t&lt;!is_same_v&lt;_Remove_cvref_t&lt;_Fn&gt;, thread&gt;, int&gt; &#x3D; 0&gt;<br> _NODISCARD_CTOR_THREAD explicit thread(_Fn&amp;&amp; _Fx, _Args&amp;&amp;… _Ax) {<br> _Start(_STD forward&lt;_Fn&gt;(_Fx), _STD forward&lt;_Args&gt;(_Ax)…);<br> }<br>该构造函数是最常使用的，同时也是最复杂的。</p>
+<p>_Fn：这是传递给线程的可调用对象类型。它可以是普通函数、lambda表达式、函数对象等。<br>_Args…：这是一个「参数包」，代表可变参数类型，包含传递给 _Fn 的参数，允许传入任意数量和类型的参数。<br>enable_if_t：这是一个 SFINAE（Substitution Failure Is Not An Error）技术，用于在模板实例化过程中进行条件编译。这里的条件 !is_same_v&lt;_Remove_cvref_t&lt;_Fn&gt;, thread&gt; 确保 _Fn 的类型在去除 const&#x2F;volatile 修饰和引用后，不是 std::thread 类型本身，从而避免将 std::thread 对象作为函数参数，进一步避免线程的拷贝。<br>2.2.2 关于第四个构造函数的一些疑问</p>
+<ol>
+<li>关于这个约束你可能有问题，因为 std::thread他并没有 operator()的重载，不是可调用类型，也就是说不能将 std::thread 作为可调用参数传入，那么这个 enable_if_t的意义是什么呢？<br>struct X{<br> X(X&amp;&amp; x)noexcept{} &#x2F;&#x2F; 移动构造函数<br> template &lt;class Fn, class… Args&gt;<br> X(Fn&amp;&amp; f,Args&amp;&amp;…args){} &#x2F;&#x2F; 模板构造函数<br> X(const X&amp;) &#x3D; delete;<br>};</li>
+</ol>
+<p>X x1{ [] {} };<br>X x2{ x }; &#x2F;&#x2F; 选择到了有参构造函数，不导致编译错误<br>在上段代码中，创建了一个 X 对象 x1，通过模板构造函数，传入了一个 Lambda 表达式（无参数的空函数）。模板构造函数匹配成功，因此 x1 被成功构造。</p>
+<p>当试图通过已有的 X 对象 x1 创建另一个 X 对象 x2 时，编译器会选择模板构造函数。这是因为 x1 是一个 X 类型的对象，而模板构造函数可以接受任意类型（包括 X），并且与参数类型的匹配规则使得它可以接受一个 X 对象。这个过程不会导致编译错误，因为模板构造函数并不依赖于传入的对象是否是可调用的（构造函数的选择是基于类型匹配和参数的匹配，而不是基于可调用性），尽管 x1 不是可调用类型，编译器选择了这个构造函数来匹配。</p>
+<p>以上这段代码可以正常的通过编译。这是重载决议的事情，但我们知道，std::thread是不可复制的，这种代码自然不应该让它通过编译，选择到我们的有参构造，所以我们添加一个约束让其不能选择到我们的有参构造：</p>
+<p>template &lt;class Fn, class… Args, std::enable_if_t&lt;!std::is_same_v&lt;std::remove_cvref_t, X&gt;, int&gt; &#x3D; 0&gt; 这样，这段代码就会正常的出现编译错误，信息如下：</p>
+<p>error C2280: “X::X(const X &amp;)”: 尝试引用已删除的函数<br>note: 参见“X::X”的声明<br>note: “X::X(const X &amp;)”: 已隐式删除函数</p>
+<ol start="2">
+<li>_NODISCARD_CTOR_THREAD是什么？<br>_NODISCARD_CTOR_THREAD 的实现：</li>
+</ol>
+<p>#define _NODISCARD_CTOR_THREAD<br>_NODISCARD_CTOR_MSG(“This temporary ‘std::thread’ is not joined or detached, “<br>“so ‘std::terminate’ will be called at the end of the statement.”)<br>_NODISCARD_CTOR_THREA是一个宏定义，防止线程在不适当的时候被销毁。也就是一段警告消息，用于提醒开发者，如果一个临时的 std::thread 对象在声明结束时既没有加入（joined）也没有分离（detached），程序将调用std::terminate终止执行。</p>
+<p>2.3 _Start<br>在第四个构造函数中，使用了_Start 函数 ，该函数用于将构造函数的参数全部完美转发，是第四个构造函数的核心。⭐ ⭐⭐⭐ ⭐</p>
+<p>{<br> _Start(_STD forward&lt;_Fn&gt;(_Fx), _STD forward&lt;_Args&gt;(_Ax)…);<br>}<br>_Start 函数的实现如下：</p>
+<p>template &lt;class _Fn, class… _Args&gt;<br>void _Start(_Fn&amp;&amp; _Fx, _Args&amp;&amp;… _Ax) {<br> using _Tuple &#x3D; tuple&lt;decay_t&lt;_Fn&gt;, decay_t&lt;_Args&gt;…&gt;;<br> auto _Decay_copied &#x3D; _STD make_unique&lt;_Tuple&gt;(_STD forward&lt;_Fn&gt;(_Fx), _STD forward&lt;_Args&gt;(_Ax)…);<br> constexpr auto _Invoker_proc &#x3D; _Get_invoke&lt;_Tuple&gt;(make_index_sequence&lt;1 + sizeof…(_Args)&gt;{});</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">_Thr._Hnd =</span><br><span class="line">    reinterpret_cast&lt;void*&gt;(_CSTD _beginthreadex(nullptr, 0, _Invoker_proc, _Decay_copied.get(), 0, &amp;_Thr._Id));</span><br><span class="line"> </span><br><span class="line">if (_Thr._Hnd) &#123; // ownership transferred to the thread</span><br><span class="line">    (void) _Decay_copied.release();</span><br><span class="line">&#125; else &#123; // failed to start thread</span><br><span class="line">    _Thr._Id = 0;</span><br><span class="line">    _Throw_Cpp_error(_RESOURCE_UNAVAILABLE_TRY_AGAIN);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>}</p>
+<p>2.3.1 定义元组来存储函数对象和函数的参数<br>using _Tuple &#x3D; tuple&lt;decay_t&lt;_Fn&gt;, decay_t&lt;_Args&gt;…&gt;;<br>std::decay_t 是一个类型特征，它用于将类型“衰变”，也就是说它可以用于</p>
+<p>移除引用（将引用类型转换为其基础类型）<br>移除 const 和 volatile 修饰符<br>移除数组和函数类型的修饰符（将数组和函数转换为指针类型）<br>_Tuple：表示存储用户可调用对象及其参数的元组类型。</p>
+<p>2.3.2 创建元组实例<br>auto _Decay_copied &#x3D; _STD make_unique&lt;_Tuple&gt;(_STD forward&lt;_Fn&gt;(_Fx), _STD forward&lt;_Args&gt;(_Ax)…);<br>std::forward 用于完美转发参数，可以确保传递给其他函数的参数保持其原有的类型；</p>
+<p>_STD forward&lt;_Fn&gt;(_Fx), _STD forward&lt;_Args&gt;(_Ax)…<br>上段代码将 _Fx 和 _Ax 参数转发到构造函数中，这里 _Fx 和 _Ax 是传入的参数，它们的类型分别对应 _Fn 和 _Args 。通过该实例，可以创建一个独占有权的unique_ptr保存一个Tuple对象，Tuple对象包含函数对象和函数的参数。也就是说，这行代码的目的是存储传入的可调用对象和形参的副本。</p>
+<p>可调用对象的类型没有发生改变，而传给可调用对象的参数其实是形参的副本，而不是形参<br>2.3.3 定义线程启动函数<br>constexpr auto _Invoker_proc &#x3D; _Get_invoke&lt;_Tuple&gt;(make_index_sequence&lt;1 + sizeof…(_Args)&gt;{})<br>调用_Get_invoke 函数，传入 _Tuple 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 _Invoke，它是线程实际执行的函数。</p>
+<p>其中 _Get_invoke 和 _Invoke 的实现：</p>
+<p>&#x2F;&#x2F; _Get_invoke 函数的实现<br>template &lt;class _Tuple, size_t… _Indices&gt;<br> _NODISCARD static constexpr auto _Get_invoke(index_sequence&lt;_Indices…&gt;) noexcept {<br> return &amp;_Invoke&lt;_Tuple, _Indices…&gt;;<br> }</p>
+<p>&#x2F;&#x2F; _Invoke 函数的实现<br>template &lt;class _Tuple, size_t… _Indices&gt;<br>static unsigned int __stdcall _Invoke(void* _RawVals) noexcept &#x2F;* terminates *&#x2F; {<br> &#x2F;&#x2F; adapt invoke of user’s callable object to _beginthreadex’s thread procedure<br> const unique_ptr&lt;_Tuple&gt; _FnVals(static_cast&lt;_Tuple*&gt;(_RawVals));<br> _Tuple&amp; _Tup &#x3D; *_FnVals.get(); &#x2F;&#x2F; avoid ADL, handle incomplete types<br> _STD invoke(_STD move(_STD get&lt;_Indices&gt;(_Tup))…);<br> _Cnd_do_broadcast_at_thread_exit(); &#x2F;&#x2F; TRANSITION, ABI<br> return 0;<br>}</p>
+<p>a. _Get_invoke</p>
+<p>&#x2F;&#x2F; _Get_invoke 函数的实现<br>template &lt;class _Tuple, size_t… _Indices&gt;<br> _NODISCARD static constexpr auto _Get_invoke(index_sequence&lt;_Indices…&gt;) noexcept {<br> &#x2F;&#x2F; 返回的是一个指向特定模板实例 _Invoke 的函数指针，并没有调用该函数<br> return &amp;_Invoke&lt;_Tuple, _Indices…&gt;;<br> }<br>_Get_invoke 函数很简单，就是接受一个元组类型，和形参包的索引，传递给 _Invoke 静态成员函数模板，实例化，获取它的函数指针。</p>
+<p>注意：return&amp;_Invoke&lt;_Tuple, _Indices…&gt;; 实际上没有直接给 _Invoke 函数提供参数，这是因为它是在返回一个实例化后的函数指针，而不是调用这个函数。返回的函数指针在线程启动时会被调用，并传递一个参数（void* _RawVals），在 _Invoke 中进行处理。<br>_Get_invoke 中没有调用_Invoke函数，_Invoke函数只在线程启动时会被调用<br>std::index_sequence 是一个类型，表示一个由一系列整数（索引）构成的序列，常用于参数包展开，让我们能够在模板中以索引方式访问和操作参数。std::index_sequence 经常和 std::make_index_sequence 和 std::index_sequence_for&lt;Ts…&gt;一起配套使用，前者用于生成一个 std::index_sequence，其中包含从 0 到 N-1 的索引，后者用于生成一个 std::index_sequence，其大小与类型参数包 Ts 相同，并且索引顺序与类型参数的顺序相同，比如：</p>
+<p>&#x2F;&#x2F; std::make_index_sequence&lt;3&gt; 生成的类型为：<br>std::index_sequence&lt;0, 1, 2&gt;<br>&#x2F;&#x2F; std::index_sequence_for&lt;int, double, char&gt; 生成的类型为：<br>std::index_sequence&lt;0, 1, 2&gt;<br>举例：</p>
+<p>&#x2F;&#x2F; 通过索引展开参数包的函数<br>template &lt;typename… Args, std::size_t… Is&gt;<br>void printArgs(std::index_sequence&lt;Is…&gt;, Args&amp;&amp;… args) {<br> &#x2F;&#x2F; C++17 的折叠表达式，用于依次输出每个参数的值和索引<br> ((std::cout &lt;&lt; “Argument “ &lt;&lt; Is &lt;&lt; “: “ &lt;&lt; args &lt;&lt; std::endl), …);<br>}</p>
+<p>&#x2F;&#x2F; 接口函数，生成索引序列<br>template &lt;typename… Args&gt;<br>void print(Args&amp;&amp;… args) {<br> &#x2F;&#x2F; 首先完美转发，然后生成一个序列std::index_sequence&lt;0, 1, 2, 3&gt;，最后传给printArgs函数<br> printArgs(std::index_sequence_for&lt;Args…&gt;(), std::forward(args)…); }</p>
+<p>int main() {<br> print(10, 3.14, “Hello”, ‘A’);<br> return 0;<br>}</p>
+<p>输出为：</p>
+<p>Argument 0: 10<br>Argument 1: 3.14<br>Argument 2: Hello<br>Argument 3: A<br>b. _Invoke</p>
+<p>当线程启动时，_Invoke 会被调用；而在_Get_invoke函数中，只会获得一个实例化的_Invoke 指针，并没有调用该_Invoke 函数。</p>
+<p>&#x2F;&#x2F; _Invoke 函数的实现<br>template &lt;class _Tuple, size_t… _Indices&gt;<br>static unsigned int __stdcall _Invoke(void* _RawVals) noexcept &#x2F;* terminates <em>&#x2F; {</em> <em>&#x2F;&#x2F; adapt invoke of user’s callable object to _beginthreadex’s thread procedure</em> <em>const unique_ptr&lt;_Tuple&gt; _FnVals(static_cast&lt;_Tuple*&gt;(_RawVals));</em> <em>_Tuple&amp; _Tup &#x3D;</em> <em>_FnVals.get(); &#x2F;&#x2F; avoid ADL, handle incomplete types</em> <em>_STD invoke(_STD move(_STD get&lt;_Indices&gt;(_Tup))…);</em> <em>_Cnd_do_broadcast_at_thread_exit(); &#x2F;&#x2F; TRANSITION, ABI</em> <em>return 0;<strong>}</strong>_Invoke 是重中之重，它是线程实际执行的函数。当线程启动时，_Invoke 函数被调用并传入一个_Tuple对象，包含了可调用对象及其参数。如你所见它的形参类型是 void</em> <em>，这是必须的，要符合 _beginthreadex 执行函数的类型要求。虽然是 void</em>，但是我可以将它转换为 _Tuple* 类型，构造一个独占智能指针指向包含可调用对象及其参数的元组，然后调用 get() 成员函数获取底层指针，解引用指针，得到元组的引用初始化_Tup 。此时，我们就可以调用可调用对象（用户传给thread的可调用对象）</p>
+<p>_STD invoke(_STD move(_STD get&lt;_Indices&gt;(_Tup))…);<br>使用 std::invoke 调用存储在 _Tup 中的可调用对象。std::get&lt;_Indices&gt;(_Tup) 提取元组中的元素，_STD move 确保将元素以右值形式传递，避免不必要的复制。</p>
+<p>这里有一个形参包展开，_STD get&lt;_Indices&gt;(_Tup))…，_Tup 就是 std::tuple 的引用，我们使用 std::get&lt;&gt; 获取元组存储的数据，需要传入一个索引，这里就用到了 _Indices。展开之后，就等于 invoke 就接受了我们构造 std::thread 传入的可调用对象，调用可调用对象的参数，invoke 就可以执行了。</p>
+<p>所以，传给可调用对象的实参并不是用户传给thread的参数，而是线程内部会将传入的参数先进行delay（解除cv和引用）并保存到_Decay_copied （tuple）实例中，然后在_Invoke 函数调用可调用对象时，使用 std::move 将其以 右值的方式传递至可调用对象。也就是说， 传给可调用对象的参数是二手(经过一系列处理)的，并不是传给thread的参数。<br>2.3.4 启动线程<br>_Thr._Hnd &#x3D; reinterpret_cast&lt;void*&gt;(_CSTD _beginthreadex(nullptr, 0, _Invoker_proc, _Decay_copied.get(), 0, &amp;_Thr._Id))<br>调用 _beginthreadex 函数来启动一个线程，并将线程句柄存储到 _Thr._Hnd 中。传递给线程的参数为 _Invoker_proc（之前通过 _Get_invoke 生成的一个函数指针，指向用于执行用户可调用对象的 _Invoke 函数）和 _Decay_copied.get()（存储了函数对象和参数的副本的指针）。</p>
+<p>这行代码的整体作用是使用 _beginthreadex 创建一个新线程，执行 _Invoker_proc 函数，并将相关的参数传递给它，新线程的句柄被存储在 _Thr._Hnd 中，以便后续对线程进行管理。<br>2.3.5 其他<br>if (_Thr._Hnd) { &#x2F;&#x2F; ownership transferred to the thread<br> (void) _Decay_copied.release();<br> } else { &#x2F;&#x2F; failed to start thread<br> _Thr._Id &#x3D; 0;<br> _Throw_Cpp_error(_RESOURCE_UNAVAILABLE_TRY_AGAIN);<br> }<br>如果线程句柄_Thr._Hnd不为空，则表示线程已成功启动，将独占指针的所有权转移给线程<br>释放独占指针的所有权，因为已经将参数传递给了线程（原本的一手数据已经二手传递给了可调用对象）<br>如果线程启动失败，则进入这个分支<br>将线程ID设置为0<br>抛出一个 C++ 错误，表示资源不可用，请再次尝试<br>2.4 总结<br>通过对thread源码的解读，也就明白了为什么1.6的疑问：</p>
+<p>当在子线程中调用函数时，为什么 即使参数在函数定义中是引用类型（如 int&amp;），如果在 std::thread 创建线程时直接传递一个变量（如 some_param），这个变量仍会被复制到线程中，子线程内部的修改不会影响主线程中的原始变量？<br>因为thread的实现中将类型先经过 decay（解除cv、引用） 处理，如果要传递引用，则必须用类包装一下才行，使用std::ref（不会被decay解除）函数就会返回一个包装对象。</p>
+<p>然后传给可调用对象的实参并不是用户传给thread的参数，而是线程内部会将传入的参数先进行delay（解除cv和引用）并保存到_Decay_copied （tuple）实例中，然后在_Invoke 函数调用可调用对象时，使用 std::move 将其以右值的方式传递至可调用对象。也就是说，传给可调用对象的参数是二手(经过一系列处理)的，并不是传给thread的参数。</p>
+<p>那为什么使用<code>std::ref</code>就可以实现引用效果呢？<br>这里我们看下<code>std::ref</code>的源码</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class _Ty&gt;</span><br><span class="line">_NODISCARD _CONSTEXPR20 reference_wrapper&lt;_Ty&gt; ref(_Ty&amp; _Val) noexcept &#123;</span><br><span class="line">    return reference_wrapper&lt;_Ty&gt;(_Val);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>reference_wrapper</code>是一个类类型，说白了就是将参数的地址和类型保存起来。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_CONSTEXPR20 reference_wrapper(_Uty&amp;&amp; _Val) noexcept(noexcept(_Refwrap_ctor_fun&lt;_Ty&gt;(_STD declval&lt;_Uty&gt;()))) &#123;</span><br><span class="line">    _Ty&amp; _Ref = static_cast&lt;_Uty&amp;&amp;&gt;(_Val);</span><br><span class="line">     _Ptr      = _STD addressof(_Ref);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当我们要使用这个类对象时，自动转化为取内部参数的地址里的数据即可，就达到了和实参关联的效果</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"> _CONSTEXPR20 operator _Ty&amp;() const noexcept &#123;</span><br><span class="line">    return *_Ptr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">_NODISCARD _CONSTEXPR20 _Ty&amp; get() const noexcept &#123;</span><br><span class="line">    return *_Ptr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所以我们可以这么理解传递给thread对象构造函数的参数，仍然作为右值被保存，如<code>ref(int)</code>实际是作为<code>reference_wrapper(int)</code>对象保存在threa的类成员里。<br>而调用的时候触发了仿函数<code>()</code>进而获取到外部实参的地址内的数据。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="std-thread-Start-的参数存储与-decay-机制"><a href="#std-thread-Start-的参数存储与-decay-机制" class="headerlink" title="std::thread::_Start 的参数存储与 decay 机制"></a>std::thread::_Start 的参数存储与 decay 机制</h4><p>上文已深入分析了 <code>_Start</code> 的实现，其核心流程：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// _Start 的参数存储流程</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">_Fn</span>, <span class="keyword">class</span>... _Args&gt;</span><br><span class="line"><span class="type">void</span> _Start(_Fn&amp;&amp; _Fx, _Args&amp;&amp;... _Ax) &#123;</span><br><span class="line">    <span class="keyword">using</span> _Tuple = tuple&lt;<span class="type">decay_t</span>&lt;_Fn&gt;, <span class="type">decay_t</span>&lt;_Args&gt;...&gt;;</span><br><span class="line">    <span class="comment">// ① decay 移除引用和 cv 限定符，参数以值类型存储到元组</span></span><br><span class="line">    <span class="keyword">auto</span> _Decay_copied = <span class="built_in">make_unique</span>&lt;_Tuple&gt;(forward&lt;_Fn&gt;(_Fx), forward&lt;_Args&gt;(_Ax)...);</span><br><span class="line">    <span class="comment">// ② 获取 _Invoke 函数指针（静态成员函数模板实例化）</span></span><br><span class="line">    <span class="keyword">constexpr</span> <span class="keyword">auto</span> _Invoker_proc = _Get_invoke&lt;_Tuple&gt;(make_index_sequence&lt;<span class="number">1</span> + <span class="keyword">sizeof</span>...(_Args)&gt;&#123;&#125;);</span><br><span class="line">    <span class="comment">// ③ _beginthreadex 创建 OS 线程，线程入口为 _Invoke</span></span><br><span class="line">    _Thr._Hnd = <span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>*&gt;(_beginthreadex(<span class="literal">nullptr</span>, <span class="number">0</span>, _Invoker_proc, _Decay_copied.<span class="built_in">get</span>(), <span class="number">0</span>, &amp;_Thr._Id));</span><br><span class="line">    <span class="keyword">if</span> (_Thr._Hnd) &#123;</span><br><span class="line">        _Decay_copied.<span class="built_in">release</span>();  <span class="comment">// 所有权转移给线程</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所有参数经 <code>decay_t</code> 处理——移除引用、const&#x2F;volatile、数组&#x2F;函数退化为指针。这解释了为什么 <code>std::thread</code> 总是按值存储参数，即使原始参数是引用类型。</p>
+<h4 id="Invoke-中-std-invoke-的调用展开"><a href="#Invoke-中-std-invoke-的调用展开" class="headerlink" title="_Invoke 中 std::invoke 的调用展开"></a>_Invoke 中 std::invoke 的调用展开</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">_Tuple</span>, <span class="type">size_t</span>... _Indices&gt;</span><br><span class="line"><span class="type">static</span> <span class="type">unsigned</span> <span class="type">int</span> __stdcall _Invoke(<span class="type">void</span>* _RawVals) <span class="keyword">noexcept</span> &#123;</span><br><span class="line">    <span class="type">const</span> unique_ptr&lt;_Tuple&gt; _FnVals(<span class="built_in">static_cast</span>&lt;_Tuple*&gt;(_RawVals));</span><br><span class="line">    _Tuple&amp; _Tup = *_FnVals.<span class="built_in">get</span>();</span><br><span class="line">    <span class="comment">// get&lt;_Indices&gt; 从元组提取参数，move 转右值传递</span></span><br><span class="line">    std::<span class="built_in">invoke</span>(std::<span class="built_in">move</span>(std::<span class="built_in">get</span>&lt;_Indices&gt;(_Tup))...);</span><br><span class="line">    _Cnd_do_broadcast_at_thread_exit();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::invoke</code> 统一处理函数指针、成员函数指针、函数对象等所有可调用类型。参数通过 <code>std::get&lt;_Indices&gt;</code> 从元组提取，<code>std::move</code> 保证移动语义——原参数所有权彻底转移给线程函数。</p>
+<h4 id="reference-wrapper-如何”绕过”-decay"><a href="#reference-wrapper-如何”绕过”-decay" class="headerlink" title="reference_wrapper 如何”绕过” decay"></a>reference_wrapper 如何”绕过” decay</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">_Ty</span>&gt;</span><br><span class="line"><span class="function">reference_wrapper&lt;_Ty&gt; <span class="title">ref</span><span class="params">(_Ty&amp; _Val)</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">reference_wrapper</span>&lt;_Ty&gt;(_Val);  <span class="comment">// 保存指针</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">reference_wrapper</span> &#123;</span><br><span class="line">    _Ty* _Ptr;  <span class="comment">// 存的是地址！</span></span><br><span class="line">    <span class="keyword">operator</span> _Ty&amp;() <span class="type">const</span> <span class="keyword">noexcept</span> &#123; <span class="keyword">return</span> *_Ptr; &#125;  <span class="comment">// 隐式转换回引用</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::ref</code> 返回 <code>reference_wrapper</code> 对象（不是引用本身），<code>decay_t</code> 不破坏这个类类型。<code>reference_wrapper</code> 内部存指针，隐式转换运算符恢复引用——这就是 “<code>std::ref</code> 让线程能传递引用” 的原理：参数本身是值类型的 <code>reference_wrapper</code> 对象，但使用时自动还原为引用。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>默认用 join + RAII</strong>：thread_guard 模式是黄金法则——宁可等线程完成，也不要 detach 后访问已释放的栈变量</li>
+<li><strong>detach 的少数合法场景</strong>：后台日志线程、心跳线程——这些线程生命周期和进程一致，不依赖局部变量</li>
+<li><strong>隐式转换是魔鬼</strong>：<code>char*</code> → <code>string</code> 在线程参数传递时可能发生在指针已被释放之后——始终显式构造 <code>std::string(buffer)</code></li>
+<li><strong>成员函数线程要传 this</strong>：<code>std::thread(&amp;Class::method, &amp;obj, args...)</code>——类成员函数隐含 this 指针，必须显式传递</li>
+<li><strong>hardware_concurrency 不可靠</strong>：虚拟机&#x2F;容器可能返回宿主 CPU 数——建议用配置项覆盖</li>
+<li><strong>move-only 参数是线程的安全保证</strong>：<code>unique_ptr</code> 转移所有权后原变量失效，天然防止数据竞争</li>
+</ol>
+<h2 id="相关笔记"><a href="#相关笔记" class="headerlink" title="相关笔记"></a>相关笔记</h2><ul>
+<li><a href="/posts/%E9%94%81/">锁</a> — mutex &#x2F; spinlock 深入</li>
+<li><a href="/posts/%E5%8D%8F%E7%A8%8B/">协程</a> — C++20 协程</li>
+<li><a href="/posts/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a> — 线程池设计与实现</li>
+<li><a href="/posts/%E6%9D%A1%E4%BB%B6%E5%8F%98%E9%87%8F/">条件变量</a> — condition_variable 深入</li>
+<li><a href="/posts/%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C/">原子操作</a> — atomic &#x2F; memory_order</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: std::thread 构造函数的参数传递机制？</strong></p>
+<p>所有参数经 <code>decay_t</code> 处理（移除引用和 cv 限定符），以值类型存入内部元组。线程启动时 <code>_Invoke</code> 用 <code>std::move</code> 将元组元素以右值方式转发给可调用对象。这就是为什么即使形参是引用类型，默认也是按值传递。</p>
+<p><strong>Q2: join 和 detach 的区别？</strong></p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>含义</th>
+<th>后续</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>join</td>
+<td>等待线程结束</td>
+<td>线程资源被回收，可安全访问共享数据</td>
+</tr>
+<tr>
+<td>detach</td>
+<td>分离线程，独立运行</td>
+<td>主线程无法控制，不能 join，线程独立运行直到结束</td>
+</tr>
+</tbody></table>
+<p><strong>Q3: detach 的风险场景？</strong></p>
+<p>线程引用或指针指向 main 中的局部变量，detach 后 main 退出，局部变量被释放——线程访问悬空指针。解决：① 用 join 确保变量生命周期；② 按值传递或智能指针。</p>
+<p><strong>Q4: std::ref 为什么能让线程传递引用？</strong></p>
+<p><code>std::ref</code> 返回 <code>reference_wrapper&lt;T&gt;</code> 对象（值类型），内部存储 <code>T*</code> 指针。<code>decay_t</code> 不会破坏 <code>reference_wrapper</code> 的类型，线程调用时通过隐式转换 <code>operator T&amp;()</code> 还原引用。</p>
+<p><strong>Q5: thread_guard 模式是什么？</strong></p>
+<p>RAII 封装的线程管理类：构造函数接受 <code>std::thread&amp;</code>，析构函数调用 <code>join()</code>。主线程即使抛异常，栈展开时 thread_guard 析构自动等待线程完成——避免资源泄漏。</p>
+<p><em><em>Q6: 隐式转换（char</em> → string）为什么危险？</em>*</p>
+<p>线程构造函数将参数（指针）先存入内部存储，线程启动后才进行隐式转换。若 main 先于转换退出，指针指向的 buffer 已释放——转换时访问悬空指针。显式构造 <code>std::string(buffer)</code> 可强制立即转换。</p>
+<p><strong>Q7: std::thread 为什么不可复制？</strong></p>
+<p>每个 <code>std::thread</code> 对象独占一个 OS 线程句柄（<code>_Thr._Hnd</code>）——复制意味着两个对象管理同一线程，析构两次导致 double-join&#x2F;terminate。只支持移动语义：<code>auto t2 = std::move(t1)</code>（t1 变为空线程）。</p>
+<p><strong>Q8: 成员函数线程为什么需要传 this？</strong></p>
+<p>非静态成员函数隐含第一个参数 <code>this</code>：<code>void Class::foo(int x)</code> 实际签名是 <code>void foo(Class* this, int x)</code>。<code>std::thread(&amp;Class::foo, &amp;obj, 42)</code> 中 <code>&amp;obj</code> 就是传给 <code>this</code>。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：<code>std::thread t(functor())</code> —— “最烦恼的解析”，被解析为函数声明。<strong>修复</strong>：用花括号 <code>std::thread t{functor()}</code> 或额外括号 <code>std::thread t((functor()))</code>。</p>
+</li>
+<li><p><strong>陷阱</strong>：thread 析构时未 join&#x2F;detach → <code>std::terminate</code>。<strong>修复</strong>：永远在 <code>std::thread</code> 离开作用域前 join 或 detach。</p>
+</li>
+<li><p><strong>陷阱</strong>：多线程同时 cout → 输出乱码。<strong>修复</strong>：cout 加锁或使用线程安全的日志库（如 spdlog）。</p>
+</li>
+<li><p><strong>反问</strong>：「你能想到为什么 thread 设计成 decay-copy 参数？」希望听到：线程生命周期独立于调用者栈帧——decay-copy 保证参数在线程启动后仍有效，避免悬空引用。</p>
+</li>
+<li><p><strong>反问</strong>：「hardware_concurrency() 返回的值可靠吗？」希望听到：不可靠——容器&#x2F;VM 可能误导，建议提供配置项覆盖。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>thread 参数传递？</td>
+<td>decay-copy 存副本，_Invoke 中 move 转发</td>
+</tr>
+<tr>
+<td>join vs detach？</td>
+<td>join 等待线程结束，detach 分离独立运行</td>
+</tr>
+<tr>
+<td>std::ref 原理？</td>
+<td>返回 reference_wrapper（存指针），隐式转换还原引用</td>
+</tr>
+<tr>
+<td>最烦恼的解析？</td>
+<td><code>thread t(functor())</code> 被当成函数声明</td>
+</tr>
+<tr>
+<td>thread_guard？</td>
+<td>RAII 封装，析构自动 join</td>
+</tr>
+<tr>
+<td>不可复制原因？</td>
+<td>独占 OS 线程句柄，复制 &#x3D; double-free</td>
+</tr>
+<tr>
+<td>成员函数线程？</td>
+<td>额外传 this：<code>&amp;Class::method, &amp;obj</code></td>
+</tr>
+<tr>
+<td>隐式转换陷阱？</td>
+<td>char*→string 发生在线程启动后，指针可能已失效</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E7%BA%BF%E7%A8%8B/">https://weimo1.github.io/posts/%E7%BA%BF%E7%A8%8B/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" title="线程池"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">线程池</div></div><div class="info-2"><div class="info-item-1">线程池线程池c++11线程池123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117#ifndef __THREAD_POOL_H__#define __THREA...</div></div></div></a><a class="pagination-related" href="/posts/%E7%B1%BB%E5%9E%8B%E6%93%A6%E9%99%A4/" title="类型擦除"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">类型擦除</div></div><div class="info-2"><div class="info-item-1">类型擦除 适用范围：C++ 类型擦除（Type Erasure）技术的概念、实现方式及应用场景。  一、核心概念 定义：类型擦除就是将原有类型消除或者隐藏。通过统一的泛型接口操作不同类型的对象，使得使用者无需关心具体类型。它桥接了动态多态（面向对象）与静态多态（模板泛型）之间的鸿沟。 关键词：类型擦除（Type Erasure）、std::function、std::any、Concept-Model 模式、外部多态（External Polymorphism）、void*、虚函数、模板 适用场景&#x2F;边界： 需要在同一容器中存储不同类型的对象（无共同基类） 需要统一接口但无法修改...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B"><span class="toc-number">1.</span> <span class="toc-text">线程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%BB%BA%E7%AB%8B"><span class="toc-number">2.</span> <span class="toc-text">线程的建立</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E7%BA%BF%E7%A8%8B%E5%A6%82%E4%BD%95%E5%8F%91%E8%B5%B7"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 线程如何发起</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-1-%E6%99%AE%E9%80%9A%E5%87%BD%E6%95%B0"><span class="toc-number">2.1.1.</span> <span class="toc-text">1.1.1 普通函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-2-%E4%BB%BF%E5%87%BD%E6%95%B0"><span class="toc-number">2.1.2.</span> <span class="toc-text">1.1.2 仿函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-3-lambda%E5%87%BD%E6%95%B0"><span class="toc-number">2.1.3.</span> <span class="toc-text">1.1.3 lambda函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-4-%E7%B1%BB%E7%9A%84%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0"><span class="toc-number">2.1.4.</span> <span class="toc-text">1.1.4 类的成员函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-5-move"><span class="toc-number">2.1.5.</span> <span class="toc-text">1.1.5 move</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E5%AD%90%E7%BA%BF%E7%A8%8B%E9%9C%80%E8%A6%81%E8%A2%AB%E7%AD%89%E5%BE%85"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 子线程需要被等待</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-detach"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 detach</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-4-%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="toc-number">2.4.</span> <span class="toc-text">1.4. 异常处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-5-%E6%85%8E%E9%87%8D%E4%BD%BF%E7%94%A8%E9%9A%90%E5%BC%8F%E8%BD%AC%E6%8D%A2"><span class="toc-number">2.5.</span> <span class="toc-text">1.5 慎重使用隐式转换</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-6-%E5%A6%82%E4%BD%95%E5%9C%A8%E7%BA%BF%E7%A8%8B%E4%B8%AD%E4%BD%BF%E7%94%A8%E5%BC%95%E7%94%A8"><span class="toc-number">2.6.</span> <span class="toc-text">1.6 如何在线程中使用引用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.7.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.7.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#std-thread-Start-%E7%9A%84%E5%8F%82%E6%95%B0%E5%AD%98%E5%82%A8%E4%B8%8E-decay-%E6%9C%BA%E5%88%B6"><span class="toc-number">2.7.1.1.</span> <span class="toc-text">std::thread::_Start 的参数存储与 decay 机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Invoke-%E4%B8%AD-std-invoke-%E7%9A%84%E8%B0%83%E7%94%A8%E5%B1%95%E5%BC%80"><span class="toc-number">2.7.1.2.</span> <span class="toc-text">_Invoke 中 std::invoke 的调用展开</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#reference-wrapper-%E5%A6%82%E4%BD%95%E2%80%9D%E7%BB%95%E8%BF%87%E2%80%9D-decay"><span class="toc-number">2.7.1.3.</span> <span class="toc-text">reference_wrapper 如何”绕过” decay</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.7.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0"><span class="toc-number">2.8.</span> <span class="toc-text">相关笔记</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">2.9.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">2.9.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">2.9.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

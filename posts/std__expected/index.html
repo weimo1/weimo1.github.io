@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>std__expected | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="std::expected 适用范围：C++23 std::expected——类型安全的错误处理替代异常机制。  一、核心概念 定义：std::expected 是 C++23 标准库中的一个模板类，定义于头文件 &lt;expected&gt; 中。它提供了一种方式来表示两个值之一：类型 T 的期望值，或类型 E 的非期望值。std::expected 永远不会是无值的。 关键词：std::e">
+<meta property="og:type" content="article">
+<meta property="og:title" content="std__expected">
+<meta property="og:url" content="https://weimo1.github.io/posts/std__expected/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="std::expected 适用范围：C++23 std::expected——类型安全的错误处理替代异常机制。  一、核心概念 定义：std::expected 是 C++23 标准库中的一个模板类，定义于头文件 &lt;expected&gt; 中。它提供了一种方式来表示两个值之一：类型 T 的期望值，或类型 E 的非期望值。std::expected 永远不会是无值的。 关键词：std::e">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.561Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "std__expected",
+  "url": "https://weimo1.github.io/posts/std__expected/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.561Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/std__expected/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'std__expected',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">std__expected</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">std__expected</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.561Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="std-expected"><a href="#std-expected" class="headerlink" title="std::expected"></a>std::expected</h1><blockquote>
+<p>适用范围：C++23 <code>std::expected</code>——类型安全的错误处理替代异常机制。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::expected</code> 是 C++23 标准库中的一个模板类，定义于头文件 <code>&lt;expected&gt;</code> 中。它提供了一种方式来表示两个值之一：类型 <code>T</code> 的期望值，或类型 <code>E</code> 的非期望值。<code>std::expected</code> 永远不会是无值的。</li>
+<li><strong>关键词</strong>：<code>std::expected</code>、<code>std::unexpected</code>、<code>and_then</code>、<code>or_else</code>、<code>transform</code>、错误处理、monadic 操作</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>替代异常进行可恢复错误处理</li>
+<li>函数返回值既可能是成功结果也可能是错误信息</li>
+<li>不适合不可恢复的致命错误（仍应用异常&#x2F;assert）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p>众所周知，C++23以前的异常处理是比较麻烦的，尤其是自己要在可能抛出异常的地方，需要自己去捕获它，比如除数为0的异常、使用std::stoi函数将字符串转换成int整型数据、处理文件读写的异常等等，不然很容易造成程序终止。<code>std::expected</code> 为函数返回结果的处理提供了一种更加优雅、类型安全的解决方案。</p>
+<p><strong>第二层：关键步骤详解</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">class</span> <span class="title class_">T</span>, <span class="keyword">class</span> <span class="title class_">E</span> &gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">expected</span>;</span><br><span class="line"><span class="comment">// (since C++23)</span></span><br><span class="line"><span class="keyword">template</span>&lt; <span class="keyword">class</span> <span class="title class_">T</span>, <span class="keyword">class</span> <span class="title class_">E</span> &gt;</span><br><span class="line">    <span class="keyword">requires</span> std::is_void_v&lt;T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">expected</span>&lt;T, E&gt;;</span><br></pre></td></tr></table></figure>
+
+<p>类模板 std::expected 提供了一种表示两种值的方式：类型为 T 的预期值或类型为 E 的意外值。预期值永远不会是无值的。</p>
+<ol>
+<li>主模板。在其自身的存储空间中包含预期值或意外值，该存储空间嵌套在预期对象中。</li>
+<li>void 部分特化。表示预期 void 值或包含意外值。如果包含意外值，则嵌套在预期对象中。</li>
+</ol>
+<p><strong>第三层：底层机制</strong></p>
+<p>模板参数：</p>
+<ul>
+<li><p>T - 预期值的类型。该类型必须是（可能为 cv 限定的）<code>void</code>，或者满足 Destructible 即可析构性要求（特别是，不允许使用数组和引用类型）。</p>
+</li>
+<li><p>E - 意外值的类型。该类型必须满足 Destructible 要求，并且必须是 std::unexpected 的有效模板参数（特别是，不允许使用数组、非对象类型和 cv 限定的类型）。</p>
+</li>
+<li><p><strong>关键数据结构</strong>：union-like 存储（T 或 E 二选一）+ bool 标志位</p>
+</li>
+<li><p><strong>关键公式</strong>：<code>expected&lt;T,E&gt;</code> &#x3D; <code>variant&lt;T,E&gt;</code> 语义 + monadic 操作链</p>
+</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h1 id="C-23中的std-expected-异常处理"><a href="#C-23中的std-expected-异常处理" class="headerlink" title="C++23中的std::expected:异常处理"></a>C++23中的std::expected:异常处理</h1><p>众所周知，C++23以前的异常处理是比较麻烦的，尤其是自己要在可能抛出异常的地方，需要自己去捕获它，比如除数为0的异常、使用std::stoi函数将字符串转换成int整型数据、处理文件读写的异常等等，不然很容易造成程序终止。</p>
+<p>关于C++23中引入的<a target="_blank" rel="noopener external nofollow noreferrer" href="https://en.cppreference.com/w/cpp/utility/expected.html">std::expected</a>，这一全新的词汇表类型，它为函数返回结果的处理提供了一种更加优雅、类型安全的解决方案。</p>
+<p><code>std::expected</code>是C++23标准库中的一个模板类，定义于头文件<code>&lt;expected&gt;</code>中。它提供了一种方式来表示两个值之一：类型<code>T</code>的期望值，或类型<code>E</code>的非期望值。<code>std::expected</code>永远不会是无值的。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">template&lt; class T, class E &gt;</span><br><span class="line">class expected;</span><br><span class="line">(1)	(since C++23)</span><br><span class="line">template&lt; class T, class E &gt;</span><br><span class="line">    requires std::is_void_v&lt;T&gt;</span><br><span class="line">class expected&lt;T, E&gt;;</span><br></pre></td></tr></table></figure>
+
+<p>类模板 std::expected 提供了一种表示两种值的方式：类型为 T 的预期值或类型为 E 的意外值。预期值永远不会是无值的。</p>
+<ol>
+<li>主模板。在其自身的存储空间中包含预期值或意外值，该存储空间嵌套在预期对象中。</li>
+<li>void 部分特化。表示预期 void 值或包含意外值。如果包含意外值，则嵌套在预期对象中。<br>如果程序使用引用类型、函数类型或 std::unexpected 的特化来实例化预期值，则程序格式错误。此外，T 不能是 std::in_place_t 或 std::unexpect_t。</li>
+</ol>
+<p>模板参数</p>
+<p>T - 预期值的类型。该类型必须是（可能为 cv 限定的）<code>void</code>，或者满足<a target="_blank" rel="noopener external nofollow noreferrer" href="https://en.cppreference.com/w/cpp/named_req/Destructible.html">Destructible</a>即可析构性要求（特别是，不允许使用数组和引用类型）。</p>
+<p>E - 意外值的类型。该类型必须满足<code>Destructible</code>要求，并且必须是 std::unexpected 的有效模板参数（特别是，不允许使用数组、非对象类型和 cv 限定的类型）。</p>
+<p>通过<code>has_value()</code>方法检查<code>std::expected</code>对象是否包含期望值，并根据结果进行相应的处理。</p>
+<p><strong>优势分析</strong>：</p>
+<p>•<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=255204675&content_type=Article&match_order=1&q=%E9%93%BE%E5%BC%8F%E8%B0%83%E7%94%A8&zhida_source=entity"><strong>链式调用</strong></a>：通过<code>and_then</code>串联操作，逻辑清晰，代码更具声明式风格。</p>
+<p>•<strong>性能高效</strong>：避免了异常抛出的运行时开销，错误处理在编译时优化。</p>
+<p>•<strong>类型安全</strong>：成功值和错误信息统一封装在<code>std::expected</code>中，调用者处理更直观。</p>
+<h3 id="底层原理"><a href="#底层原理" class="headerlink" title="底层原理"></a>底层原理</h3><h4 id="Expected的ABI布局优化"><a href="#Expected的ABI布局优化" class="headerlink" title="Expected的ABI布局优化"></a>Expected的ABI布局优化</h4><p><code>std::expected&lt;T, E&gt;</code>的内存布局经过精心设计，以最小化空间开销。它通常采用tagged union的形式，仅在必要时存储错误信息。根据GCC 13.2的实现，<code>std::expected&lt;int, std::string&gt;</code>的内存占用为16字节（4字节int + 8字节std::string + 4字节tag），而<code>std::variant&lt;int, std::string&gt;</code>为24字节（因padding增加额外空间）。通过<code>sizeof</code>运算符测量，这一优化节省了约33%的内存，特别适合资源受限的嵌入式环境。</p>
+<h4 id="零开销抽象：编译器如何消除and-then的运行时开销"><a href="#零开销抽象：编译器如何消除and-then的运行时开销" class="headerlink" title="零开销抽象：编译器如何消除and_then的运行时开销"></a><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=255204675&content_type=Article&match_order=1&q=%E9%9B%B6%E5%BC%80%E9%94%80%E6%8A%BD%E8%B1%A1&zhida_source=entity">零开销抽象</a>：编译器如何消除<code>and_then</code>的运行时开销</h4><p><code>std::expected</code>的<code>and_then</code>方法利用模板和内联展开，实现了零开销抽象。以如下代码为例：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_785a7511dc57.png"></p>
+<p>编译器在实例化时将其展开为：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_6b383e3d7d70.png"></p>
+<p>这种展开消除了函数调用和运行时多态的开销。使用Clang 15.0和<code>std::chrono</code>高精度计时测试，<code>and_then</code>链式调用的延迟仅为纳秒级，与手写的if-else分支性能相当。这一特性在高性能场景中尤为关键。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;cmath&gt;</span><br><span class="line">#include &lt;expected&gt;</span><br><span class="line">#include &lt;iomanip&gt;</span><br><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;string_view&gt;</span><br><span class="line"> </span><br><span class="line">enum class parse_error</span><br><span class="line">&#123;</span><br><span class="line">    invalid_input,</span><br><span class="line">    overflow</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line">auto parse_number(std::string_view&amp; str) -&gt; std::expected&lt;double, parse_error&gt;</span><br><span class="line">&#123;</span><br><span class="line">    const char* begin = str.data();</span><br><span class="line">    char* end;</span><br><span class="line">    double retval = std::strtod(begin, &amp;end);</span><br><span class="line"> </span><br><span class="line">    if (begin == end)</span><br><span class="line">        return std::unexpected(parse_error::invalid_input);</span><br><span class="line">    else if (std::isinf(retval))</span><br><span class="line">        return std::unexpected(parse_error::overflow);</span><br><span class="line"> </span><br><span class="line">    str.remove_prefix(end - begin);</span><br><span class="line">    return retval;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    auto process = [](std::string_view str)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cout &lt;&lt; &quot;str: &quot; &lt;&lt; std::quoted(str) &lt;&lt; &quot;, &quot;;</span><br><span class="line">        if (const auto num = parse_number(str); num.has_value())</span><br><span class="line">            std::cout &lt;&lt; &quot;value: &quot; &lt;&lt; *num &lt;&lt; &#x27;\n&#x27;;</span><br><span class="line">            // If num did not have a value, dereferencing num</span><br><span class="line">            // would cause an undefined behavior, and</span><br><span class="line">            // num.value() would throw std::bad_expected_access.</span><br><span class="line">            // num.value_or(123) uses specified default value 123.</span><br><span class="line">        else if (num.error() == parse_error::invalid_input)</span><br><span class="line">            std::cout &lt;&lt; &quot;error: invalid input\n&quot;;</span><br><span class="line">        else if (num.error() == parse_error::overflow)</span><br><span class="line">            std::cout &lt;&lt; &quot;error: overflow\n&quot;;</span><br><span class="line">        else</span><br><span class="line">            std::cout &lt;&lt; &quot;unexpected!\n&quot;; // or invoke std::unreachable();</span><br><span class="line">    &#125;;</span><br><span class="line"> </span><br><span class="line">    for (auto src : &#123;&quot;42&quot;, &quot;42abc&quot;, &quot;meow&quot;, &quot;inf&quot;&#125;)</span><br><span class="line">        process(src);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-expected-的-tagged-union-实现"><a href="#1-expected-的-tagged-union-实现" class="headerlink" title="1. expected 的 tagged union 实现"></a>1. expected 的 tagged union 实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">expected</span> &#123;</span><br><span class="line">    <span class="keyword">union</span> &#123; T m_value; E m_error; &#125;;  <span class="comment">// 互斥存储</span></span><br><span class="line">    <span class="type">bool</span> m_has_value;                  <span class="comment">// 标志位</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">has_value</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> m_has_value; &#125;</span><br><span class="line">    <span class="function">T&amp; <span class="title">value</span><span class="params">()</span> </span>&#123; <span class="keyword">if</span> (!m_has_value) <span class="keyword">throw</span> <span class="built_in">bad_expected_access</span>(m_error); <span class="keyword">return</span> m_value; &#125;</span><br><span class="line">    <span class="function">E&amp; <span class="title">error</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> m_error; &#125;</span><br><span class="line">    <span class="comment">// and_then/or_else: monadic 操作链式处理</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>expected&lt;T,E&gt; vs 异常</strong>：expected 适合可预期的失败（文件不存在），异常适合意外失败</li>
+<li><strong>monadic 操作</strong>：and_then&#x2F;or_else&#x2F;transform 实现链式错误处理</li>
+<li><strong>性能</strong>：无异常抛出路径零开销，等价于返回 variant</li>
+<li><strong>C++23 标准</strong>：之前用 tl::expected 等第三方库</li>
+<li><strong>void 偏特化</strong>：<code>expected&lt;void, E&gt;</code> 只关心成功&#x2F;失败</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: expected 和 optional 的区别？</strong><br>A: optional 只有有值&#x2F;无值二态；expected 有值&#x2F;错误二态，错误带信息</p>
+<p><strong>Q2: expected 替代异常有什么优势？</strong><br>A: 错误处理显式化（函数签名体现）、无异常栈展开开销、适合禁用异常环境</p>
+<p><strong>Q3: and_then 和 transform 的区别？</strong><br>A: and_then 返回 expected（可失败），transform 返回 T（总成功）</p>
+<p><strong>Q4: expected 的内存布局？</strong><br>A: tagged union——值&#x2F;错误共用存储 + bool 标志位</p>
+<p><strong>Q5: C++23 前如何获取 expected？</strong><br>A: tl::expected、boost::outcome、自定义实现</p>
+<p><strong>Q6: expected&lt;void,E&gt; 有什么用？</strong><br>A: 只表示操作成功或失败（类似 Result&lt;(), Error&gt;）</p>
+<p><em><em>Q7: value() 和 operator</em> 的区别？</em>*<br>A: value() 无值时抛 bad_expected_access，operator* 无值时 UB</p>
+<p><strong>Q8: expected 和 Rust Result 的关系？</strong><br>A: 直接灵感来源——C++ expected &#x3D; Rust Result&lt;T,E&gt;</p>
+<p><strong>Q9: 如何从 expected 中提取值并提供默认？</strong><br>A: <code>exp.value_or(default_val)</code> 无值时返回默认值</p>
+<p><strong>Q10: expected 能被用在构造函数中吗？</strong><br>A: 不能直接——构造函数要么成功构造要么抛异常，可用工厂函数返回 expected</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：<code>*exp</code> 不检查值是否存在→UB</li>
+<li><strong>反问</strong>：expected 会取代异常吗？→ 不会，互补——expected 预知失败，异常处理意外</li>
+<li><strong>陷阱</strong>：expected 的错误类型不支持继承层次→无法分类捕获</li>
+<li><strong>反问</strong>：函数返回值用 expected 还是抛异常？→ 可恢复错误用 expected，不可恢复用异常</li>
+<li><strong>陷阱</strong>：在 expected 的 transform 中抛异常→异常传播而非转为错误</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>expected</strong>：值或错误二态容器</li>
+<li><strong>monadic</strong>：and_then&#x2F;or_else&#x2F;transform 链式操作</li>
+<li><strong>value_or</strong>：带默认值的提取</li>
+<li><strong>tagged union</strong>：值&#x2F;错误共用内存</li>
+<li><strong>bad_expected_access</strong>：无值时抛的异常类型</li>
+<li><strong>C++23</strong>：正式纳入标准库</li>
+<li><strong>Result 模式</strong>：Rust 风格的错误处理</li>
+<li><strong>void 特化</strong>：只表示成功&#x2F;失败</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/std__expected/">https://weimo1.github.io/posts/std__expected/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/std__invoke/" title="std__invoke"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">std__invoke</div></div><div class="info-2"><div class="info-item-1">std::invoke 适用范围：C++17 std::invoke统一调用语法、INVOKE协议、函数对象调用、成员指针调用  一、核心概念 定义：std::invoke 是 C++17 引入的统一调用机制，基于 INVOKE 协议。它能统一处理普通函数、成员函数指针、成员变量指针、函数对象(lambdas&#x2F;functors)的调用，无需区分语法形式 关键词：INVOKE协议、统一调用语法、成员指针调用、函数对象、ADL、名字查找 适用场景&#x2F;边界： 泛型库中统一调用各种可调用对象（std::visit、std::thread内部使用） 替代手写区分 (obj.*pm...</div></div></div></a><a class="pagination-related" href="/posts/std__integral_constant/" title="std__integral_constant"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">std__integral_constant</div></div><div class="info-2"><div class="info-item-1">std::integral_constant 适用范围：C++11 std::integral_constant——实现编译时类型安全的整型常量包装。  一、核心概念 定义：std::integral_constant 是一个模板类，它把一个编译期的常量值”包装”成一个类型。通过把值变成类型的一部分，能在编译期传递和使用这个值。简单来说，它是所有 type traits 判断结果的基石。 关键词：std::integral_constant、true_type、false_type、bool_constant、标签派发（Tag Dispatch）、编译期常量 适用场景&#x2F;边界： ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#std-expected"><span class="toc-number">1.</span> <span class="toc-text">std::expected</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#C-23%E4%B8%AD%E7%9A%84std-expected-%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="toc-number">2.</span> <span class="toc-text">C++23中的std::expected:异常处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86"><span class="toc-number">2.1.</span> <span class="toc-text">底层原理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Expected%E7%9A%84ABI%E5%B8%83%E5%B1%80%E4%BC%98%E5%8C%96"><span class="toc-number">2.1.1.</span> <span class="toc-text">Expected的ABI布局优化</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%9B%B6%E5%BC%80%E9%94%80%E6%8A%BD%E8%B1%A1%EF%BC%9A%E7%BC%96%E8%AF%91%E5%99%A8%E5%A6%82%E4%BD%95%E6%B6%88%E9%99%A4and-then%E7%9A%84%E8%BF%90%E8%A1%8C%E6%97%B6%E5%BC%80%E9%94%80"><span class="toc-number">2.1.2.</span> <span class="toc-text">零开销抽象：编译器如何消除and_then的运行时开销</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.2.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-expected-%E7%9A%84-tagged-union-%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.2.1.</span> <span class="toc-text">1. expected 的 tagged union 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.2.2.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.3.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">2.3.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">2.3.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">2.3.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

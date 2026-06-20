@@ -1,0 +1,345 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>逻辑层 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="逻辑层逻辑层c++11 单列模板12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152#pragma once#include &lt;memory&gt;#include &lt;mutex&gt;#include &lt;iostream&gt;using s">
+<meta property="og:type" content="article">
+<meta property="og:title" content="逻辑层">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E9%80%BB%E8%BE%91%E5%B1%82/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="逻辑层逻辑层c++11 单列模板12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152#pragma once#include &lt;memory&gt;#include &lt;mutex&gt;#include &lt;iostream&gt;using s">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.578Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "逻辑层",
+  "url": "https://weimo1.github.io/posts/%E9%80%BB%E8%BE%91%E5%B1%82/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.578Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E9%80%BB%E8%BE%91%E5%B1%82/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '逻辑层',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">逻辑层</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">逻辑层</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.578Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/boost-asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">boost-asio  网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>15分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="逻辑层"><a href="#逻辑层" class="headerlink" title="逻辑层"></a>逻辑层</h1><h1 id="逻辑层-1"><a href="#逻辑层-1" class="headerlink" title="逻辑层"></a>逻辑层</h1><h2 id="c-11-单列模板"><a href="#c-11-单列模板" class="headerlink" title="c++11 单列模板"></a>c++11 单列模板</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">#pragma once</span><br><span class="line">#include &lt;memory&gt;</span><br><span class="line">#include &lt;mutex&gt;</span><br><span class="line">#include &lt;iostream&gt;</span><br><span class="line">using std::cout;</span><br><span class="line">using std::cin;</span><br><span class="line">using std::endl;</span><br><span class="line"> </span><br><span class="line">template &lt;typename T&gt;</span><br><span class="line">class Singleton;</span><br><span class="line"> </span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">class SafeDeletor</span><br><span class="line">&#123;</span><br><span class="line">public:</span><br><span class="line">    void operator()(Singleton&lt;T&gt;* st)</span><br><span class="line">    &#123;</span><br><span class="line">        cout &lt;&lt; &quot;this is safe deleter operator()&quot; &lt;&lt; endl;</span><br><span class="line">        delete st;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line">template &lt;typename T&gt;</span><br><span class="line">class Singleton &#123;</span><br><span class="line">    template&lt;typename T&gt;</span><br><span class="line">    friend class SafeDeletor;</span><br><span class="line">protected:</span><br><span class="line">    ~Singleton() &#123;</span><br><span class="line">        cout &lt;&lt; &quot;this is singleton destruct&quot; &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line">    Singleton() = default;</span><br><span class="line">    Singleton(const Singleton&lt;T&gt;&amp;) = delete;</span><br><span class="line">    Singleton&amp; operator=(const Singleton&lt;T&gt;&amp;st) = delete;</span><br><span class="line">private:</span><br><span class="line">    static std::shared_ptr&lt;T&gt; _instance;</span><br><span class="line">public:</span><br><span class="line">    static std::shared_ptr&lt;T&gt; GetInstance() &#123;</span><br><span class="line">        static std::once_flag s_flag; // C++11新特性，懒汉模式在多线程下也不会生成多个实例，不用进行加锁操作</span><br><span class="line">        std::call_once(s_flag, [&amp;]() &#123; // call_once内部有锁</span><br><span class="line">            _instance = std::shared_ptr&lt;T&gt;(new T, SafeDeletor&lt;T&gt;());</span><br><span class="line">            &#125;);</span><br><span class="line">        return _instance;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    void PrintAddress() &#123;</span><br><span class="line">        cout &lt;&lt; _instance-&gt;get() &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line">// 初始化</span><br><span class="line">template &lt;typename T&gt;</span><br><span class="line">std::shared_ptr&lt;T&gt; Singleton&lt;T&gt;::_instance = nullptr;</span><br></pre></td></tr></table></figure>
+
+<h2 id="逻辑类LogicSystem"><a href="#逻辑类LogicSystem" class="headerlink" title="逻辑类LogicSystem"></a>逻辑类LogicSystem</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">typedef  function&lt;void(shared_ptr&lt;CSession&gt;, short msg_id, string msg_data)&gt; FunCallBack;</span><br><span class="line">class LogicSystem:public Singleton&lt;LogicSystem&gt;</span><br><span class="line">&#123;</span><br><span class="line">    friend class Singleton&lt;LogicSystem&gt;;</span><br><span class="line">public:</span><br><span class="line">    ~LogicSystem();</span><br><span class="line">    void PostMsgToQue(shared_ptr &lt; LogicNode&gt; msg);</span><br><span class="line">private:</span><br><span class="line">    LogicSystem();</span><br><span class="line">    void DealMsg();</span><br><span class="line">    void RegisterCallBacks();</span><br><span class="line">    void HelloWordCallBack(shared_ptr&lt;CSession&gt;, short msg_id, string msg_data);</span><br><span class="line">    std::thread _worker_thread;</span><br><span class="line">    std::queue&lt;shared_ptr&lt;LogicNode&gt;&gt; _msg_que;</span><br><span class="line">    std::mutex _mutex;</span><br><span class="line">    std::condition_variable _consume;</span><br><span class="line">    bool _b_stop;</span><br><span class="line">    std::map&lt;short, FunCallBack&gt; _fun_callbacks;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>1   <code>FunCallBack</code>为要注册的回调函数类型，其参数为绘画类智能指针，消息id，以及消息内容。</p>
+<p>2   <code>_msg_que</code>为逻辑队列</p>
+<p>3   <code>_mutex</code> 为保证逻辑队列安全的互斥量</p>
+<p>4   <code>_consume</code>表示消费者条件变量，用来控制当逻辑队列为空时保证线程暂时挂起等待，不要干扰其他线程。</p>
+<p>5   <code>_fun_callbacks</code>表示回调函数的map，根据id查找对应的逻辑处理函数。</p>
+<p>6   <code>_worker_thread</code>表示工作线程，用来从逻辑队列中取数据并执行回调函数。</p>
+<p>7   <code>_b_stop</code>表示收到外部的停止信号，逻辑类要中止工作线程并优雅退出。</p>
+<p><code>LogicNode</code>定义在CSession.h中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">class LogicNode &#123;</span><br><span class="line">    friend class LogicSystem;</span><br><span class="line">public:</span><br><span class="line">    LogicNode(shared_ptr&lt;CSession&gt;, shared_ptr&lt;RecvNode&gt;);</span><br><span class="line">private:</span><br><span class="line">    shared_ptr&lt;CSession&gt; _session;</span><br><span class="line">    shared_ptr&lt;RecvNode&gt; _recvnode;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>其包含算了会话类的智能指针，主要是为了实现伪闭包，防止session被释放。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">LogicNode::LogicNode(shared_ptr&lt;CSession&gt;  session, </span><br><span class="line">    shared_ptr&lt;RecvNode&gt; recvnode):_session(session),_recvnode(recvnode) &#123;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>LogicSystem</code>的构造函数如下</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">LogicSystem::LogicSystem():_b_stop(false)&#123;</span><br><span class="line">    RegisterCallBacks();</span><br><span class="line">    _worker_thread = std::thread (&amp;LogicSystem::DealMsg, this);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>构造函数中将停止信息初始化为false，注册消息处理函数并且启动了一个工作线程，工作线程执行DealMsg逻辑。<br>注册消息处理函数的逻辑如下</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">void LogicSystem::RegisterCallBacks() &#123;</span><br><span class="line">    _fun_callbacks[MSG_HELLO_WORD] = std::bind(&amp;LogicSystem::HelloWordCallBack, this,</span><br><span class="line">        placeholders::_1, placeholders::_2, placeholders::_3);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>MSG_HELLO_WORD</code>定义在const.h中</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">enum MSG_IDS &#123;</span><br><span class="line">    MSG_HELLO_WORD = 1001</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>MSG_HELLO_WORD</code>表示消息id，<code>HelloWordCallBack</code>为对应的回调处理函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void LogicSystem::HelloWordCallBack(shared_ptr&lt;CSession&gt; session, short msg_id, string msg_data) &#123;</span><br><span class="line">    Json::Reader reader;</span><br><span class="line">    Json::Value root;</span><br><span class="line">    reader.parse(msg_data, root);</span><br><span class="line">    std::cout &lt;&lt; &quot;recevie msg id  is &quot; &lt;&lt; root[&quot;id&quot;].asInt() &lt;&lt; &quot; msg data is &quot;</span><br><span class="line">        &lt;&lt; root[&quot;data&quot;].asString() &lt;&lt; endl;</span><br><span class="line">    root[&quot;data&quot;] = &quot;server has received msg, msg data is &quot; + root[&quot;data&quot;].asString();</span><br><span class="line">    std::string return_str = root.toStyledString();</span><br><span class="line">    session-&gt;Send(return_str, root[&quot;id&quot;].asInt());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在<code>HelloWordCallBack</code>里我们根据消息id和收到的消息，做了相应的处理并且回应给客户端。</p>
+<p>工作线程的处理函数<code>DealMsg</code>逻辑</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">void LogicSystem::DealMsg() &#123;</span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        std::unique_lock&lt;std::mutex&gt; unique_lk(_mutex);</span><br><span class="line">        //判断队列为空则用条件变量阻塞等待，并释放锁</span><br><span class="line">        while (_msg_que.empty() &amp;&amp; !_b_stop) &#123;</span><br><span class="line">            _consume.wait(unique_lk);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        //判断是否为关闭状态，把所有逻辑执行完后则退出循环</span><br><span class="line">        if (_b_stop ) &#123;</span><br><span class="line">            while (!_msg_que.empty()) &#123;</span><br><span class="line">                auto msg_node = _msg_que.front();</span><br><span class="line">                cout &lt;&lt; &quot;recv_msg id  is &quot; &lt;&lt; msg_node-&gt;_recvnode-&gt;_msg_id &lt;&lt; endl;</span><br><span class="line">                auto call_back_iter = _fun_callbacks.find(msg_node-&gt;_recvnode-&gt;_msg_id);</span><br><span class="line">                if (call_back_iter == _fun_callbacks.end()) &#123;</span><br><span class="line">                    _msg_que.pop();</span><br><span class="line">                    continue;</span><br><span class="line">                &#125;</span><br><span class="line">                call_back_iter-&gt;second(msg_node-&gt;_session, msg_node-&gt;_recvnode-&gt;_msg_id,</span><br><span class="line">                    std::string(msg_node-&gt;_recvnode-&gt;_data, msg_node-&gt;_recvnode-&gt;_cur_len));</span><br><span class="line">                _msg_que.pop();</span><br><span class="line">            &#125;</span><br><span class="line">            break;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        //如果没有停服，且说明队列中有数据</span><br><span class="line">        auto msg_node = _msg_que.front();</span><br><span class="line">        cout &lt;&lt; &quot;recv_msg id  is &quot; &lt;&lt; msg_node-&gt;_recvnode-&gt;_msg_id &lt;&lt; endl;</span><br><span class="line">        auto call_back_iter = _fun_callbacks.find(msg_node-&gt;_recvnode-&gt;_msg_id);</span><br><span class="line">        if (call_back_iter == _fun_callbacks.end()) &#123;</span><br><span class="line">            _msg_que.pop();</span><br><span class="line">            continue;</span><br><span class="line">        &#125;</span><br><span class="line">        call_back_iter-&gt;second(msg_node-&gt;_session, msg_node-&gt;_recvnode-&gt;_msg_id, </span><br><span class="line">            std::string(msg_node-&gt;_recvnode-&gt;_data, msg_node-&gt;_recvnode-&gt;_cur_len));</span><br><span class="line">        _msg_que.pop();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>1   <code>DealMsg</code>逻辑中初始化了一个unique_lock，主要是用来控制队列安全，并且配合条件变量可以随时解锁。lock_guard不具备解锁功能，所以此处用unique_lock。<br>2   我们判断队列为空，并且不是停止状态，就挂起线程。否则继续执行之后的逻辑，如果_b_stop为true，说明处于停服状态，则将队列中未处理的消息全部处理完然后退出循环。如果_b_stop未false，则说明没有停服，是consumer发送的激活信号激活了线程，则继续取队列中的数据处理。</p>
+<p>LogicSystem的析构函数需要等待工作线程处理完再退出，但是工作线程可能处于挂起状态，所以要发送一个激活信号唤醒工作线程。并且将_b_stop标记设置为true。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">LogicSystem::~LogicSystem()&#123;</span><br><span class="line">    _b_stop = true;</span><br><span class="line">    _consume.notify_one();</span><br><span class="line">    _worker_thread.join();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>因为网络层收到消息后我们需要将消息投递给逻辑队列进行处理，那么LogicSystem就要封装一个投递函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">void LogicSystem::PostMsgToQue(shared_ptr &lt; LogicNode&gt; msg) &#123;</span><br><span class="line">    std::unique_lock&lt;std::mutex&gt; unique_lk(_mutex);</span><br><span class="line">    _msg_que.push(msg);</span><br><span class="line">    //由0变为1则发送通知信号</span><br><span class="line">    if (_msg_que.size() == 1) &#123;</span><br><span class="line">        _consume.notify_one();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在Session收到数据时这样调用</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LogicSystem::GetInstance()-&gt;PostMsgToQue(make_shared&lt;LogicNode&gt;(shared_from_this(), _recv_msg_node));</span><br></pre></td></tr></table></figure>
+
+<p>再次启动服务器，编译启动，和之前一样可以看到数据收发正常。如下图:</p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：逻辑层（Logic Layer）是服务器架构中与网络层分离的业务处理层，通过消息队列和回调映射表解耦网络 I&#x2F;O 与业务逻辑，使得网络线程不被耗时业务阻塞</li>
+<li><strong>关键词</strong>：单例模板（Singleton）、消息队列（<code>queue&lt;LogicNode&gt;</code>）、回调注册（<code>map&lt;short, FunCallBack&gt;</code>）、条件变量（<code>condition_variable</code>）、工作线程（worker thread）、生产者-消费者模型</li>
+<li><strong>适用场景&#x2F;边界</strong>：所有需要网络层与业务层分离的服务器架构。网络线程负责收发数据并投递消息，逻辑线程负责处理业务逻辑并回调</li>
+</ul>
+<h2 id="二、详细解析"><a href="#二、详细解析" class="headerlink" title="二、详细解析"></a>二、详细解析</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——线程安全的单例模板</strong>：<code>Singleton&lt;T&gt;</code> 用 C++11 <code>std::call_once</code> + <code>std::once_flag</code> 实现线程安全的懒汉单例，内部用 <code>shared_ptr&lt;T&gt;</code> 管理生命周期，通过 <code>SafeDeletor</code> 自定义删除器保证析构安全。禁用拷贝&#x2F;赋值防止多实例</li>
+<li><strong>第二层——消息队列驱动的逻辑系统</strong>：<code>LogicSystem</code> 继承 <code>Singleton&lt;LogicSystem&gt;</code>，核心组件：<code>queue&lt;LogicNode&gt;</code> 消息队列 + <code>mutex</code> 互斥锁 + <code>condition_variable</code> 条件变量。网络层通过 <code>PostMsgToQue()</code> 投递消息（生产者），工作线程 <code>DealMsg()</code> 循环消费（消费者）。队列为空时 <code>condition_variable::wait()</code> 挂起线程避免 CPU 空转</li>
+<li><strong>第三层——回调映射表的注册-分发机制</strong>：<code>map&lt;short, FunCallBack&gt;</code> 按消息 ID 映射回调函数。<code>RegisterCallBacks()</code> 在初始化时注册所有业务处理函数。收到消息后 <code>DealMsg()</code> 根据消息 ID 查找回调并执行，实现命令模式的分发</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>FunCallBack = function&lt;void(shared_ptr&lt;CSession&gt;, short msg_id, string msg_data)&gt;</code>；<code>LogicNode</code> 封装 session + msg_id + msg_data；<code>PostMsgToQue()</code> 加锁入队 + <code>notify_one()</code> 唤醒工作线程</li>
+<li><strong>关键公式</strong>：生产者-消费者吞吐量 &#x3D; min(网络线程投递速率, 逻辑线程处理速率)；单工作线程保证消息顺序处理，多工作线程需按 session 分片避免乱序</li>
+</ul>
+<h2 id="三、动手实践"><a href="#三、动手实践" class="headerlink" title="三、动手实践"></a>三、动手实践</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;queue&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;mutex&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;condition_variable&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;functional&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;map&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">LogicNode</span> &#123;</span><br><span class="line">    <span class="type">int</span> msg_id;</span><br><span class="line">    string data;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SimpleLogic</span> &#123;</span><br><span class="line">    queue&lt;LogicNode&gt; q_;</span><br><span class="line">    mutex mtx_;</span><br><span class="line">    condition_variable cv_;</span><br><span class="line">    map&lt;<span class="type">int</span>, function&lt;<span class="type">void</span>(string)&gt;&gt; callbacks_;</span><br><span class="line">    <span class="type">bool</span> stop_ = <span class="literal">false</span>;</span><br><span class="line">    thread worker_;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">SimpleLogic</span>() &#123;</span><br><span class="line">        worker_ = <span class="built_in">thread</span>([<span class="keyword">this</span>]&#123;</span><br><span class="line">            <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">                unique_lock&lt;mutex&gt; <span class="built_in">lk</span>(mtx_);</span><br><span class="line">                cv_.<span class="built_in">wait</span>(lk, [<span class="keyword">this</span>]&#123; <span class="keyword">return</span> !q_.<span class="built_in">empty</span>() || stop_; &#125;);</span><br><span class="line">                <span class="keyword">if</span> (stop_ &amp;&amp; q_.<span class="built_in">empty</span>()) <span class="keyword">break</span>;</span><br><span class="line">                <span class="keyword">auto</span> node = q_.<span class="built_in">front</span>(); q_.<span class="built_in">pop</span>();</span><br><span class="line">                lk.<span class="built_in">unlock</span>();</span><br><span class="line">                <span class="keyword">if</span> (callbacks_.<span class="built_in">count</span>(node.msg_id))</span><br><span class="line">                    callbacks_[node.msg_id](node.data);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">post</span><span class="params">(LogicNode n)</span> </span>&#123;</span><br><span class="line">        &#123; <span class="function">lock_guard&lt;mutex&gt; <span class="title">lk</span><span class="params">(mtx_)</span></span>; q_.<span class="built_in">push</span>(n); &#125;</span><br><span class="line">        cv_.<span class="built_in">notify_one</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">reg</span><span class="params">(<span class="type">int</span> id, function&lt;<span class="type">void</span>(string)&gt; cb)</span> </span>&#123; callbacks_[id] = cb; &#125;</span><br><span class="line">    ~<span class="built_in">SimpleLogic</span>() &#123;</span><br><span class="line">        &#123; <span class="function">lock_guard&lt;mutex&gt; <span class="title">lk</span><span class="params">(mtx_)</span></span>; stop_ = <span class="literal">true</span>; &#125;</span><br><span class="line">        cv_.<span class="built_in">notify_one</span>();</span><br><span class="line">        worker_.<span class="built_in">join</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用"><a href="#四、进阶应用" class="headerlink" title="四、进阶应用"></a>四、进阶应用</h2><h3 id="多工作线程模型"><a href="#多工作线程模型" class="headerlink" title="多工作线程模型"></a>多工作线程模型</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 按 session_id 哈希分片，同一 session 的消息路由到同一线程</span></span><br><span class="line"><span class="type">size_t</span> idx = hash&lt;<span class="type">size_t</span>&gt;&#123;&#125;(session_id) % worker_count;</span><br><span class="line">workers_[idx].<span class="built_in">post</span>(msg);</span><br><span class="line"><span class="comment">// 保证同一 session 消息顺序处理，不同 session 并行处理</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="背压控制（Backpressure）"><a href="#背压控制（Backpressure）" class="headerlink" title="背压控制（Backpressure）"></a>背压控制（Backpressure）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">PostMsgToQue</span><span class="params">(shared_ptr&lt;LogicNode&gt; msg)</span> </span>&#123;</span><br><span class="line">    <span class="function">unique_lock&lt;mutex&gt; <span class="title">lk</span><span class="params">(_mutex)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (_msg_que.<span class="built_in">size</span>() &gt; MAX_QUEUE_SIZE) &#123;</span><br><span class="line">        <span class="comment">// 队列满时丢弃或阻塞，防止内存爆炸</span></span><br><span class="line">        <span class="keyword">return</span>;  <span class="comment">// 或 _consume.wait(lk, ...);</span></span><br><span class="line">    &#125;</span><br><span class="line">    _msg_que.<span class="built_in">push</span>(msg);</span><br><span class="line">    lk.<span class="built_in">unlock</span>();</span><br><span class="line">    _consume.<span class="built_in">notify_one</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="逻辑层与-asio-的协调退出"><a href="#逻辑层与-asio-的协调退出" class="headerlink" title="逻辑层与 asio 的协调退出"></a>逻辑层与 asio 的协调退出</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">Stop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    _b_stop = <span class="literal">true</span>;</span><br><span class="line">    _consume.<span class="built_in">notify_all</span>();  <span class="comment">// 唤醒工作线程</span></span><br><span class="line">    _worker_thread.<span class="built_in">join</span>();  <span class="comment">// 等待线程退出</span></span><br><span class="line">    <span class="comment">// io_context 也需 stop() 关闭网络层</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>工程经验</strong>：(1) 网络线程禁止做业务逻辑——哪怕一次数据库查询也会拖垮事件循环；(2) 条件变量使用 <code>wait(lock, predicate)</code> 而非 <code>wait(lock)</code> 防止虚假唤醒；(3) 优雅退出时先停止投递 → 等待队列消费完毕 → 通知线程退出 → join 等待。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="单例模板的线程安全实现"><a href="#单例模板的线程安全实现" class="headerlink" title="单例模板的线程安全实现"></a>单例模板的线程安全实现</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">std::shared_ptr&lt;T&gt; Singleton&lt;T&gt;::<span class="built_in">GetInstance</span>() &#123;</span><br><span class="line">    <span class="type">static</span> std::once_flag s_flag;</span><br><span class="line">    std::<span class="built_in">call_once</span>(s_flag, [&amp;]() &#123;</span><br><span class="line">        _instance = std::<span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> T, <span class="built_in">SafeDeletor</span>&lt;T&gt;());</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> _instance;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::call_once</code> + <code>std::once_flag</code> 保证初始化函数<strong>精准执行一次</strong>，多线程同时调用 <code>GetInstance()</code> 时其他线程会阻塞等待初始化完成。这是 C++11 后推荐的懒汉单例实现，比 DCLP（Double-Checked Locking Pattern）更安全简洁。</p>
+<h4 id="条件变量的生产者-消费者模型"><a href="#条件变量的生产者-消费者模型" class="headerlink" title="条件变量的生产者-消费者模型"></a>条件变量的生产者-消费者模型</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 生产者：网络层投递消息</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">LogicSystem::PostMsgToQue</span><span class="params">(shared_ptr&lt;LogicNode&gt; msg)</span> </span>&#123;</span><br><span class="line">    <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lk</span><span class="params">(_mutex)</span></span>;</span><br><span class="line">    _msg_que.<span class="built_in">push</span>(msg);</span><br><span class="line">    <span class="keyword">if</span> (_msg_que.<span class="built_in">size</span>() == <span class="number">1</span>) &#123;</span><br><span class="line">        _consume.<span class="built_in">notify_one</span>();  <span class="comment">// 仅当队列从空变为非空时通知</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 消费者：逻辑线程处理</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">LogicSystem::DealMsg</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lk</span><span class="params">(_mutex)</span></span>;</span><br><span class="line">        _consume.<span class="built_in">wait</span>(lk, [<span class="keyword">this</span>]&#123; <span class="keyword">return</span> !_msg_que.<span class="built_in">empty</span>() || _b_stop; &#125;);</span><br><span class="line">        <span class="comment">// 处理消息...</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键优化：只在队列 <code>size() == 1</code> 时 <code>notify_one()</code>（从 0→1），避免每次 push 都通知（消费者正忙时不需要唤醒）。</p>
+<h4 id="FunCallBack-的回调注册表"><a href="#FunCallBack-的回调注册表" class="headerlink" title="FunCallBack 的回调注册表"></a>FunCallBack 的回调注册表</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">std::map&lt;<span class="type">short</span>, FunCallBack&gt; _fun_callbacks;</span><br><span class="line"><span class="comment">// 注册</span></span><br><span class="line">_fun_callbacks[MSG_HELLO_WORD] = std::<span class="built_in">bind</span>(&amp;LogicSystem::HelloWordCallBack, <span class="keyword">this</span>, _1, _2, _3);</span><br><span class="line"><span class="comment">// 分发</span></span><br><span class="line"><span class="keyword">auto</span> iter = _fun_callbacks.<span class="built_in">find</span>(msg_id);</span><br><span class="line"><span class="keyword">if</span> (iter != _fun_callbacks.<span class="built_in">end</span>()) iter-&gt;<span class="built_in">second</span>(session, msg_id, data);</span><br></pre></td></tr></table></figure>
+
+<p>通过 <code>msg_id</code> 映射到处理函数，实现了消息动态路由。新增业务只需注册新的 id-function 对，无需改动核心循环。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>逻辑层和网络层的解耦是通过消息队列实现的</strong>，队列是性能瓶颈点——大量消息时需考虑无锁队列</li>
+<li><strong><code>unique_lock</code> 优于 <code>lock_guard</code></strong>：需要配合条件变量 <code>wait()</code> 时必须使用 <code>unique_lock</code>（支持解锁&#x2F;重锁）</li>
+<li><strong>优雅停机三件套</strong>：设置 <code>_b_stop</code> → <code>notify</code> 唤醒线程 → <code>join</code> 等待线程退出</li>
+<li><strong>回调注册在构造函数中</strong>：确保线程启动前所有回调已就绪，避免工作线程查不到回调</li>
+<li><strong>消息处理中的 <code>shared_ptr</code> 传递</strong>：<code>LogicNode</code> 持有 <code>shared_ptr&lt;CSession&gt;</code>，防止 session 在处理前被销毁</li>
+<li><strong>条件变量的虚假唤醒</strong>：<code>while</code> 循环判断条件而非 <code>if</code>，应对虚假唤醒</li>
+</ol>
+<h2 id="相关笔记"><a href="#相关笔记" class="headerlink" title="相关笔记"></a>相关笔记</h2><ul>
+<li><a href="/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1/">服务器架构设计</a> — 服务器三层架构</li>
+<li><a href="/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E5%AE%A2%E6%88%B7%E7%AB%AF/">服务器和客户端</a> — Asio 同步&#x2F;异步 socket</li>
+<li><a href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/">asio多线程模型IOServicePool</a> — 多 Reactor 线程池</li>
+<li><a href="/posts/epoll/">epoll</a> — epoll 事件通知机制</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：逻辑层和网络层为什么要分开？</strong></p>
+<p>A：网络层处理高频 I&#x2F;O 事件（微秒级），逻辑层可能涉及数据库查询、计算等耗时操作（毫秒~秒级）。不分离会导致逻辑处理阻塞 I&#x2F;O 线程，影响其他连接的收发。</p>
+<p><strong>Q2：<code>std::call_once</code> 如何保证线程安全？</strong></p>
+<p>A：内部使用互斥锁+原子标志位。第一个线程获取锁执行初始化并设置标志，后续线程检查标志后跳过锁获取。C++ 标准保证异常安全。</p>
+<p><strong>Q3：条件变量 <code>wait</code> 中为什么用 <code>while</code> 而非 <code>if</code>？</strong></p>
+<p>A：条件变量可能被虚假唤醒（spurious wakeup）——线程被唤醒但条件未满足。<code>while</code> 循环确保唤醒后重新检查条件，防止错误的消费行为。</p>
+<p><strong>Q4：<code>notify_one()</code> 只在 <code>size==1</code> 时调用的优化原理？</strong></p>
+<p>A：消费者一次消费所有队列消息，只有当队列从空变非空时才需要唤醒消费者。如果消费者已在忙，额外通知是浪费（CPU 不会响应通知）。</p>
+<p><strong>Q5：<code>unique_lock</code> 和 <code>lock_guard</code> 的区别？</strong></p>
+<p>A：<code>lock_guard</code> 构造加锁析构解锁，不可手动控制。<code>unique_lock</code> 支持 <code>lock()</code>&#x2F;<code>unlock()</code>&#x2F;<code>try_lock()</code>，可与条件变量 <code>wait()</code> 配合（<code>wait</code> 需要临时解锁）。</p>
+<p><strong>Q6：<code>LogicNode</code> 为什么持有 <code>shared_ptr&lt;CSession&gt;</code>？</strong></p>
+<p>A：防止消息处理期间 session 被释放（如连接断开时从 map 中移除）。<code>LogicNode</code> 持有一份引用，处理完后自然释放。</p>
+<p><strong>Q7：<code>_b_stop</code> 的作用？</strong></p>
+<p>A：停机标志。析构时设为 true，配合条件变量唤醒工作线程，线程处理完残余消息后退出循环。</p>
+<p><strong>Q8：如果消息队列无限增长怎么办？</strong></p>
+<p>A：设置队列容量上限，达到上限时采用背压策略：阻塞生产者、丢弃旧消息、或淘汰低优先级消息。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：条件变量 <code>wait</code> 用 <code>if</code> → 虚假唤醒导致访问空队列<br><strong>陷阱2</strong>：停机时只设 <code>_b_stop</code> 不 <code>notify</code> → 工作线程永久阻塞<br><strong>陷阱3</strong>：回调 map 在线程启动后动态注册 → 多线程数据竞争<br><strong>陷阱4</strong>：<code>FunCallBack</code> 用裸函数指针而非 <code>std::function</code> → 不支持成员函数绑定<br><strong>陷阱5</strong>：消息处理中异常未捕获 → 工作线程崩溃，逻辑队列停止消费</p>
+<p><strong>反问</strong>：如果逻辑处理速度跟不上网络层投递速度怎么办？<br><em>答案：消息队列堆积 → 背压机制（让网络层暂停投递或拒绝新连接）、业务降级（丢弃非关键消息）、扩容逻辑线程（多消费者并行处理）。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>网络层&#x2F;逻辑层分离</strong>：消息队列解耦，I&#x2F;O 线程投递，业务线程消费</li>
+<li><strong>std::call_once</strong>：C++11 线程安全的一次性初始化原语</li>
+<li><strong>条件变量</strong>：生产者-消费者模型的核心同步原语，配合 <code>unique_lock</code> 使用</li>
+<li><strong>虚假唤醒</strong>：线程被系统唤醒但条件未满足，必须 <code>while</code> 循环检查</li>
+<li><strong>FunCallBack 注册表</strong>：<code>map&lt;id, function&gt;</code> 实现消息动态路由</li>
+<li><strong>LogicNode</strong>：封装 session + 消息的中间对象，防止 session 提前析构</li>
+<li><strong>背压</strong>：队列满时限制生产速率，防止内存无限增长</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E9%80%BB%E8%BE%91%E5%B1%82/">https://weimo1.github.io/posts/%E9%80%BB%E8%BE%91%E5%B1%82/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E9%94%81/" title="锁"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">锁</div></div><div class="info-2"><div class="info-item-1">锁C++ 多线程详解之互斥锁 mutex如何保证数据安全有时候我们可以将对共享数据的访问和修改聚合到一个函数，在函数内加锁保证数据的安全性。但是对于读取类型的操作，即使读取函数是线程安全的，但是返回值抛给外边使用，存在不安全性。比如一个栈对象，我们要保证其在多线程访问的时候是安全的，可以在判断栈是否为空，判断操作内部我们可以加锁，但是判断结束后返回值就不在加锁了，就会存在线程安全问题。 123456789101112131415161718192021222324252627282930313233343536373839404142434445464748struct empty_st...</div></div></div></a><a class="pagination-related" href="/posts/%E9%80%9A%E7%94%A8%E6%80%A7&amp;%E5%A4%9AIDC&amp;%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93/" title="通用性&amp;多IDC&amp;方案总结"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">通用性&多IDC&方案总结</div></div><div class="info-2"><div class="info-item-1">通用性 &amp; 多 IDC &amp; 方案总结 当 IM 系统需要支撑多条业务线时，长连接网关需要从中台化角度进行设计，支持多业务的灵活对接。同时多 IDC 架构保证异地多活，实现全球范围的低延迟和高可用。  一、核心概念 定义：通用性设计是指将长连接网关抽象为消息通道，通过配置化&#x2F;自动化&#x2F;平台化&#x2F;中台化&#x2F;产品化递进演进，支撑多业务线灵活复用。多 IDC 方案则是基于地理位置进行流量调度，实现跨数据中心的异地多活。 关键词：中台化、配置化、平台化、领域建模、发布&#x2F;订阅、单元化部署、多 IDC、广域请求、跨机房消息路由 适用场景&#x...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%80%BB%E8%BE%91%E5%B1%82"><span class="toc-number">1.</span> <span class="toc-text">逻辑层</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%80%BB%E8%BE%91%E5%B1%82-1"><span class="toc-number">2.</span> <span class="toc-text">逻辑层</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#c-11-%E5%8D%95%E5%88%97%E6%A8%A1%E6%9D%BF"><span class="toc-number">2.1.</span> <span class="toc-text">c++11 单列模板</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%80%BB%E8%BE%91%E7%B1%BBLogicSystem"><span class="toc-number">2.2.</span> <span class="toc-text">逻辑类LogicSystem</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">2.3.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90"><span class="toc-number">2.4.</span> <span class="toc-text">二、详细解析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">2.5.</span> <span class="toc-text">三、动手实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8"><span class="toc-number">2.6.</span> <span class="toc-text">四、进阶应用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E5%B7%A5%E4%BD%9C%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="toc-number">2.6.1.</span> <span class="toc-text">多工作线程模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%83%8C%E5%8E%8B%E6%8E%A7%E5%88%B6%EF%BC%88Backpressure%EF%BC%89"><span class="toc-number">2.6.2.</span> <span class="toc-text">背压控制（Backpressure）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%BB%E8%BE%91%E5%B1%82%E4%B8%8E-asio-%E7%9A%84%E5%8D%8F%E8%B0%83%E9%80%80%E5%87%BA"><span class="toc-number">2.6.3.</span> <span class="toc-text">逻辑层与 asio 的协调退出</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.7.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.7.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E7%9A%84%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.7.1.1.</span> <span class="toc-text">单例模板的线程安全实现</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9D%A1%E4%BB%B6%E5%8F%98%E9%87%8F%E7%9A%84%E7%94%9F%E4%BA%A7%E8%80%85-%E6%B6%88%E8%B4%B9%E8%80%85%E6%A8%A1%E5%9E%8B"><span class="toc-number">2.7.1.2.</span> <span class="toc-text">条件变量的生产者-消费者模型</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FunCallBack-%E7%9A%84%E5%9B%9E%E8%B0%83%E6%B3%A8%E5%86%8C%E8%A1%A8"><span class="toc-number">2.7.1.3.</span> <span class="toc-text">FunCallBack 的回调注册表</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.7.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0"><span class="toc-number">2.8.</span> <span class="toc-text">相关笔记</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.9.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">2.9.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">2.9.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">2.9.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

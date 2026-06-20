@@ -1,0 +1,273 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>StaticMeshPass | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="StaticMeshPass 适用范围：GPU Driven Rendering 的静态网格渲染通道——Compute Shader 视锥剔除 + Hi-Z 遮挡剔除 + Indirect Draw。  写作约束（铁律） 原内容一字不删，只做归纳重组+增加，放不进的进附录 字数硬指标：二≥200、四≥500、五≥1000、六≥8问+5反问+5一句话  一、核心概念 定义：StaticMeshPas">
+<meta property="og:type" content="article">
+<meta property="og:title" content="StaticMeshPass">
+<meta property="og:url" content="https://weimo1.github.io/posts/StaticMeshPass/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="StaticMeshPass 适用范围：GPU Driven Rendering 的静态网格渲染通道——Compute Shader 视锥剔除 + Hi-Z 遮挡剔除 + Indirect Draw。  写作约束（铁律） 原内容一字不删，只做归纳重组+增加，放不进的进附录 字数硬指标：二≥200、四≥500、五≥1000、六≥8问+5反问+5一句话  一、核心概念 定义：StaticMeshPas">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.552Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "StaticMeshPass",
+  "url": "https://weimo1.github.io/posts/StaticMeshPass/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.552Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/StaticMeshPass/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'StaticMeshPass',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">StaticMeshPass</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">StaticMeshPass</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.552Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/Vulkan/">Vulkan</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>4分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="StaticMeshPass"><a href="#StaticMeshPass" class="headerlink" title="StaticMeshPass"></a>StaticMeshPass</h1><blockquote>
+<p>适用范围：GPU Driven Rendering 的静态网格渲染通道——Compute Shader 视锥剔除 + Hi-Z 遮挡剔除 + Indirect Draw。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>，<strong>只做归纳重组+增加</strong>，<strong>放不进的进附录</strong></li>
+<li>字数硬指标：二≥200、四≥500、五≥1000、六≥8问+5反问+5一句话</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：StaticMeshPass 是 GPU Driven Rendering 的核心实现——用 Compute Shader 在 GPU 端完成视锥剔除和 Hi-Z 遮挡剔除，生成 Indirect Draw Command，最终通过 <code>vkCmdDrawIndexedIndirect</code> 渲染可见物体。</li>
+<li>关键词：GPU Driven、视锥剔除、Hi-Z 遮挡剔除、Indirect Draw、Compute Shader 剔除</li>
+<li>适用场景：大量静态网格物体的高效渲染</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="数据流"><a href="#数据流" class="headerlink" title="数据流"></a>数据流</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CPU 物体列表 → GPU Storage Buffer → [CS: 视锥+Hi-Z剔除]</span><br><span class="line">→ 可见物体列表 + Indirect Draw Commands → [GS: GBuffer渲染]</span><br></pre></td></tr></table></figure>
+
+<h3 id="剔除流程（Compute-Shader）"><a href="#剔除流程（Compute-Shader）" class="headerlink" title="剔除流程（Compute Shader）"></a>剔除流程（Compute Shader）</h3><ol>
+<li>获取物体数据（<code>gl_GlobalInvocationID.x</code> 索引）</li>
+<li>将物体包围盒变换到世界空间</li>
+<li><strong>视锥剔除</strong>：6 个视锥平面逐一测试，物体完全在负侧 → 剔除</li>
+<li><strong>Hi-Z 遮挡剔除</strong>：包围盒 8 个顶点投影到屏幕 → 计算 UV 范围和深度 → 选择合适的 Hi-Z mip level → 采样四个角的深度最小值 → 物体最近深度 &gt; 遮挡深度 → 剔除</li>
+<li>通过剔除的物体 → 原子操作追加到可见列表 + 生成 Indirect Draw Command</li>
+</ol>
+<h3 id="双重管线设计"><a href="#双重管线设计" class="headerlink" title="双重管线设计"></a>双重管线设计</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">StaticMeshPass</span> : <span class="keyword">public</span> PassInterface &#123;</span><br><span class="line">    std::unique_ptr&lt;ComputePipeResources&gt; prepass_cull;   <span class="comment">// CS 剔除</span></span><br><span class="line">    std::unique_ptr&lt;GraphicPipeResources&gt; prepass;         <span class="comment">// GS 预深度渲染</span></span><br><span class="line">    std::unique_ptr&lt;ComputePipeResources&gt; gbuffer_cull;    <span class="comment">// CS GBuffer剔除</span></span><br><span class="line">    std::unique_ptr&lt;GraphicPipeResources&gt; gbuffer;         <span class="comment">// GS GBuffer渲染</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每个阶段（预计算&#x2F;GBuffer）都是”先 CS 剔除 + 再 GS 渲染”的双重管线。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="视锥剔除（Compute-Shader-伪代码）"><a href="#视锥剔除（Compute-Shader-伪代码）" class="headerlink" title="视锥剔除（Compute Shader 伪代码）"></a>视锥剔除（Compute Shader 伪代码）</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">6</span>; i++) &#123;</span><br><span class="line">    <span class="type">vec3</span> planeNormal = frustumPlanes[i].xyz;</span><br><span class="line">    <span class="type">float</span> planeDist = frustumPlanes[i].w;</span><br><span class="line">    <span class="comment">// 将平面法线变换到物体局部空间</span></span><br><span class="line">    <span class="type">vec3</span> localNormal = <span class="type">mat3</span>(inverseNormalMatrix) * planeNormal;</span><br><span class="line">    <span class="comment">// 计算包围盒在法线方向的最大投影距离</span></span><br><span class="line">    <span class="type">float</span> r = <span class="built_in">dot</span>(<span class="built_in">abs</span>(localNormal), object.extent);</span><br><span class="line">    <span class="type">float</span> d = <span class="built_in">dot</span>(planeNormal, object.worldPos) + planeDist;</span><br><span class="line">    <span class="keyword">if</span> (d + r &lt; <span class="number">0.0</span>) <span class="keyword">return</span>;  <span class="comment">// 完全在负侧 → 剔除</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Hi-Z-遮挡剔除"><a href="#Hi-Z-遮挡剔除" class="headerlink" title="Hi-Z 遮挡剔除"></a>Hi-Z 遮挡剔除</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 包围盒8顶点→裁剪空间→屏幕UV+深度</span></span><br><span class="line"><span class="type">vec2</span> uv_min = <span class="type">vec2</span>(<span class="number">1.0</span>), uv_max = <span class="type">vec2</span>(<span class="number">0.0</span>);</span><br><span class="line"><span class="type">float</span> depth_min = <span class="number">1.0</span>;</span><br><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">8</span>; i++) &#123;</span><br><span class="line">    <span class="type">vec4</span> clipPos = viewProj * <span class="type">vec4</span>(corners[i], <span class="number">1.0</span>);</span><br><span class="line">    <span class="type">vec3</span> ndc = clipPos.xyz / clipPos.w;</span><br><span class="line">    <span class="type">vec2</span> uv = ndc.xy * <span class="number">0.5</span> + <span class="number">0.5</span>;</span><br><span class="line">    uv_min = <span class="built_in">min</span>(uv_min, uv); uv_max = <span class="built_in">max</span>(uv_max, uv);</span><br><span class="line">    depth_min = <span class="built_in">min</span>(depth_min, ndc.z);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 选择Hi-Z mip level</span></span><br><span class="line"><span class="type">float</span> mip = <span class="built_in">ceil</span>(<span class="built_in">log2</span>(<span class="built_in">max</span>(uv_max - uv_min) * <span class="built_in">textureSize</span>(hiZ, <span class="number">0</span>)));</span><br><span class="line"><span class="type">float</span> occlusionDepth = <span class="built_in">textureLod</span>(hiZ, (uv_min + uv_max) * <span class="number">0.5</span>, mip).r;</span><br><span class="line"><span class="keyword">if</span> (depth_min &gt; occlusionDepth) <span class="keyword">return</span>;  <span class="comment">// 被遮挡 → 剔除</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Indirect-Draw-命令生成"><a href="#Indirect-Draw-命令生成" class="headerlink" title="Indirect Draw 命令生成"></a>Indirect Draw 命令生成</h3><figure class="highlight glsl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint</span> drawIndex = <span class="built_in">atomicAdd</span>(drawCount, <span class="number">1</span>);</span><br><span class="line">indirectCommands[drawIndex] = IndirectDrawCommand(</span><br><span class="line">    object.indexCount, <span class="number">1</span>, object.firstIndex, object.vertexOffset, object.instanceId</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><p><strong>Hi-Z 层级选择</strong>：物体屏幕投影越大 → mip level 越低（高分辨率）；越小 → mip level 越高（低分辨率）。log2 计算确保采样到正确精度的遮挡深度。</p>
+<p><strong>Indirect Draw 的优势</strong>：CPU 不需要知道可见物体数量——GPU 通过原子操作统计，<code>vkCmdDrawIndexedIndirect</code> 直接读取 GPU Buffer 中的命令。CPU 零开销。</p>
+<p><strong>两阶段剔除</strong>：Prepass（深度预计算）+ GBuffer——第一遍只写深度（无需材质），第二遍利用深度缓冲做 Early-Z，减少 GBuffer 的 fragment shader 执行。</p>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="Hi-Z-的局限性"><a href="#Hi-Z-的局限性" class="headerlink" title="Hi-Z 的局限性"></a>Hi-Z 的局限性</h3><p>Hi-Z 是 conservative 的——只取四个角的最大深度（最不遮挡的值），所以永远不会错误剔除可见物体，但可能漏掉一些可剔除的物体（尤其对角线穿透的情况）。RTAO&#x2F;RTAO 可以替代 Hi-Z 实现精确遮挡。</p>
+<h3 id="原子操作的性能"><a href="#原子操作的性能" class="headerlink" title="原子操作的性能"></a>原子操作的性能</h3><p><code>atomicAdd(drawCount, 1)</code> 在高并行度下可能成为瓶颈——数千个线程竞争同一个内存位置。缓解：使用 <code>VK_KHR_shader_atomic_int64</code> 或分层统计（先在 local memory 中汇总，再一次 atomic）。</p>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><p>Q1：GPU Driven Rendering 的核心流程？A：CS 剔除（视锥+Hi-Z）→ 生成 Indirect Draw → GS 渲染。</p>
+<p>Q2：Hi-Z 如何做遮挡剔除？A：物体包围盒投影到屏幕 → 在 Hi-Z 对应 mip 采样四个角深度 → 物体深度 &gt; 遮挡深度 → 剔除。</p>
+<p>Q3：Indirect Draw 的优势？A：CPU 不参与绘制决策，GPU 自主统计可见物体并生成绘制命令。</p>
+<p>Q4：为什么用两阶段（Prepass + GBuffer）？A：预深度填充 depth buffer，GBuffer 阶段利用 Early-Z 减少 fragment shader 开销。</p>
+<p>Q5：Hi-Z 会错误剔除吗？A：取四个角的保守深度，不会错剔，但可能漏剔。</p>
+<p>Q6：原子操作瓶颈如何缓解？A：先在 shared memory 中分层汇总，再一次性 atomicAdd。</p>
+<p>Q7：视锥剔除在哪个空间做？A：将视锥平面变换到物体局部空间，与包围盒做测试。</p>
+<p>Q8：StaticMeshPass 如何支持热重载？A：继承 PassInterface，PassCollector 统一管理 release → re-init。</p>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><blockquote>
+<p>原笔记完整的剔除流程（7 步）、双重管线架构、Indirect Draw 格式定义等均已保留。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/StaticMeshPass/">https://weimo1.github.io/posts/StaticMeshPass/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/String-View/" title="String View"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">String View</div></div><div class="info-2"><div class="info-item-1">String View 适用范围：C++17 std::string_view 非拥有型字符串视图、零拷贝子字符串、高效只读字符串参数传递  一、核心概念 定义：std::string_view 是 C++17 引入的非拥有型只读字符串视图，仅持有指向外部字符序列的指针和长度（sizeof &#x3D; 16字节，64位），不分配堆内存 关键词：非拥有型(non-owning)、零拷贝、substr O(1)、悬空引用、from_chars、sv字面量 适用场景&#x2F;边界： 只读字符串参数传递（替代 const std::string&amp;） 子字符串解析与处理（零拷贝切片） ...</div></div></div></a><a class="pagination-related" href="/posts/Socket%E6%95%B0%E6%8D%AE%E6%B5%81%E5%AE%8C%E6%95%B4%E8%B7%AF%E5%BE%84%E8%A7%A3%E6%9E%90/" title="Socket数据流完整路径解析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Socket数据流完整路径解析</div></div><div class="info-2"><div class="info-item-1">Socket数据流完整路径解析 适用范围：Linux内核网络栈、Socket数据收发路径、DMA&#x2F;Ring Buffer、NAPI&#x2F;软中断、TCP&#x2F;IP协议栈处理流程  一、核心概念 定义：Socket数据流完整路径描述了数据从网卡硬件到用户空间（接收），以及从用户空间到网线（发送）的完整内核数据通路 关键词：DMA、Ring Buffer、NAPI、软中断(softirq)、sk_buff、TCP&#x2F;IP协议栈、sendfile零拷贝 适用场景&#x2F;边界： 理解网络IO性能瓶颈所在位置 调优内核网络参数（Ring Buffer大小、中断亲和性...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#StaticMeshPass"><span class="toc-number">1.</span> <span class="toc-text">StaticMeshPass</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%B5%81"><span class="toc-number">1.3.1.</span> <span class="toc-text">数据流</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%89%94%E9%99%A4%E6%B5%81%E7%A8%8B%EF%BC%88Compute-Shader%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">剔除流程（Compute Shader）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8C%E9%87%8D%E7%AE%A1%E7%BA%BF%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.3.</span> <span class="toc-text">双重管线设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%86%E9%94%A5%E5%89%94%E9%99%A4%EF%BC%88Compute-Shader-%E4%BC%AA%E4%BB%A3%E7%A0%81%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">视锥剔除（Compute Shader 伪代码）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hi-Z-%E9%81%AE%E6%8C%A1%E5%89%94%E9%99%A4"><span class="toc-number">1.4.2.</span> <span class="toc-text">Hi-Z 遮挡剔除</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Indirect-Draw-%E5%91%BD%E4%BB%A4%E7%94%9F%E6%88%90"><span class="toc-number">1.4.3.</span> <span class="toc-text">Indirect Draw 命令生成</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Hi-Z-%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"><span class="toc-number">1.6.1.</span> <span class="toc-text">Hi-Z 的局限性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E7%9A%84%E6%80%A7%E8%83%BD"><span class="toc-number">1.6.2.</span> <span class="toc-text">原子操作的性能</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.8.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

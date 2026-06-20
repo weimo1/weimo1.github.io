@@ -1,0 +1,373 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>分布式化（高可用&amp;水平拓展） | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="分布式化（高可用 &amp; 水平拓展） IM 系统从单机走向分布式时面临的核心挑战：连接的唯一标识、有状态服务的分布式改造、Gateway 与 State Server 的路由交互。通过雪花算法生成唯一 connID、Redis 持久化连接状态、Router SDK 实现分布式路由。  一、核心概念 定义：IM 接入层的分布式化是指在多机器、多数据中心环境下，实现长连接网关的水平扩展和高可用，同">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式化（高可用&amp;水平拓展）">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="分布式化（高可用 &amp; 水平拓展） IM 系统从单机走向分布式时面临的核心挑战：连接的唯一标识、有状态服务的分布式改造、Gateway 与 State Server 的路由交互。通过雪花算法生成唯一 connID、Redis 持久化连接状态、Router SDK 实现分布式路由。  一、核心概念 定义：IM 接入层的分布式化是指在多机器、多数据中心环境下，实现长连接网关的水平扩展和高可用，同">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.565Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "分布式化（高可用&水平拓展）",
+  "url": "https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.565Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&amp;%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '分布式化（高可用&水平拓展）',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">分布式化（高可用&amp;水平拓展）</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">分布式化（高可用&amp;水平拓展）</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.565Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>10分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="分布式化（高可用-水平拓展）"><a href="#分布式化（高可用-水平拓展）" class="headerlink" title="分布式化（高可用 &amp; 水平拓展）"></a>分布式化（高可用 &amp; 水平拓展）</h1><blockquote>
+<p>IM 系统从单机走向分布式时面临的核心挑战：连接的唯一标识、有状态服务的分布式改造、Gateway 与 State Server 的路由交互。通过雪花算法生成唯一 connID、Redis 持久化连接状态、Router SDK 实现分布式路由。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：IM 接入层的分布式化是指在多机器、多数据中心环境下，实现长连接网关的水平扩展和高可用，同时保证连接状态的正确路由和恢复。</li>
+<li>关键词：分布式化、雪花算法、connID、连接状态持久化、Router SDK、Gateway-State 路由、有状态服务</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>单机连接数达上限需要水平扩展</li>
+<li>跨机房部署需要服务发现和路由</li>
+<li>Gateway&#x2F;State Server 崩溃后的快速恢复</li>
+<li>需要支持动态扩缩容</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解"><a href="#原理拆解" class="headerlink" title="原理拆解"></a>原理拆解</h3><p><strong>第一层：连接唯一标识问题</strong></p>
+<p>单机时 connID 在 Gateway 本地生成即可。分布式场景下需要跨机器唯一标识一个连接。</p>
+<p>原始方案：<code>runID + endpoint + connID</code>（字符串拼接，带宽开销大）</p>
+<p>优化方案：直接使用<strong>雪花算法</strong>生成 int64 的唯一 connID：</p>
+<ul>
+<li>1 位无效位（灰度升级预留）</li>
+<li>41 位毫秒级时间戳</li>
+<li>10 位节点编号（5位数据中心 + 5位机器编号 &#x3D; 1024 台机器）</li>
+<li>12 位毫秒内并发序号</li>
+<li>单机 50w 连接 × 1024 机器 &#x3D; 5 亿同时在线</li>
+</ul>
+<p>如果需要超过 5 亿在线，可以降低 12 位序号来换取更多机器位。</p>
+<p><strong>第二层：State Server 的无状态化改造</strong></p>
+<p>State Server 的核心数据结构：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> connState <span class="keyword">struct</span> &#123;</span><br><span class="line">    sync.RWMutex</span><br><span class="line">    heartTimer   *timingwheel.Timer</span><br><span class="line">    reConnTimer  *timingwheel.Timer</span><br><span class="line">    msgTimer     *timingwheel.Timer</span><br><span class="line">    msgTimerLock <span class="type">string</span></span><br><span class="line">    connID       <span class="type">uint64</span></span><br><span class="line">    did          <span class="type">uint64</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>持久化方案：</strong></p>
+<ul>
+<li>connID 存储在 Redis SET 中（int64 压缩存储）</li>
+<li>SET 按 hash 分片（<code>connID % 1024</code> 得到 slot），每个 SET 不超过 5k 条（避免大 Key）</li>
+<li>State Server 配置要读取的 slot range</li>
+<li>重启时遍历 slot 批量加载 connID，恢复心跳&#x2F;消息&#x2F;重连定时器</li>
+</ul>
+<p><strong>注意：</strong> State Server 只能将 connID 写入配置的 slot，重启时加载对应 slot 中的 connID。这使得扩缩容困难——这正是有状态服务与 Web 无状态服务的本质区别。</p>
+<p><strong>恢复逻辑：</strong></p>
+<ol>
+<li><strong>恢复 lastMsg</strong>：从 Redis 读取最后一次 push 的消息，重新启动 msgTimer</li>
+<li><strong>恢复心跳</strong>：重新创建心跳定时器。若连接已失效→心跳周期后进入重连→重连超时后清理</li>
+<li><strong>恢复 max_client_id</strong>：从 Redis 读取，保证上行消息可靠性。生命周期跨越一次连接，断开时由重连定时器触发删除</li>
+</ol>
+<p><strong>第三层：Gateway 与 State Server 的分布式交互</strong></p>
+<p>需要一个 <strong>Router SDK</strong>（而非独立 Server），减少网络调用。提供两个接口：</p>
+<ul>
+<li><code>Add(did, endpoint+connID)</code>：注册路由</li>
+<li><code>Query(did)</code>：查询路由</li>
+</ul>
+<p><strong>点对点通信：</strong> State Server 注册时写入路由。Gateway 通过 did 查到 endpoint+connID，直接 RPC push 消息。</p>
+<p><strong>群组通信：</strong> push 量过大时使用 MQ 削峰填谷。每个 State Server 消费确定的分区（通常一个）。</p>
+<p><strong>简化设计：</strong> 同一个 Gateway 持有的连接状态由同一个 State Server 处理。Gateway 仅与一个 State Server 通信（类似 Kafka 架构）。State Server 可靠性依赖快速重启（Redis 中秒级恢复数据）。</p>
+<p><strong>业务层配合：</strong> Router SDK 维护 <code>sessionID → did 倒排列表</code>。发送消息时 mget did → 获取分区号和 endpoint → 发送到对应 State Server → 内部 connID 路由找到 socket 完成 push。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 雪花算法生成 connID</span></span><br><span class="line"><span class="keyword">type</span> Snowflake <span class="keyword">struct</span> &#123;</span><br><span class="line">    epoch      <span class="type">int64</span>  <span class="comment">// 起始时间戳</span></span><br><span class="line">    machineID  <span class="type">int64</span>  <span class="comment">// 机器ID (10位)</span></span><br><span class="line">    sequence   <span class="type">int64</span>  <span class="comment">// 序列号 (12位)</span></span><br><span class="line">    lastStamp  <span class="type">int64</span></span><br><span class="line">    mu         sync.Mutex</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(s *Snowflake)</span></span> NextID() <span class="type">int64</span> &#123;</span><br><span class="line">    s.mu.Lock()</span><br><span class="line">    <span class="keyword">defer</span> s.mu.Unlock()</span><br><span class="line">    </span><br><span class="line">    now := time.Now().UnixMilli()</span><br><span class="line">    <span class="keyword">if</span> now &lt; s.lastStamp &#123;</span><br><span class="line">        <span class="comment">// 时钟回拨，等待</span></span><br><span class="line">        <span class="keyword">for</span> now &lt; s.lastStamp &#123;</span><br><span class="line">            now = time.Now().UnixMilli()</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> now == s.lastStamp &#123;</span><br><span class="line">        s.sequence = (s.sequence + <span class="number">1</span>) &amp; <span class="number">0xFFF</span></span><br><span class="line">        <span class="keyword">if</span> s.sequence == <span class="number">0</span> &#123;</span><br><span class="line">            <span class="comment">// 当前毫秒用完，等下一毫秒</span></span><br><span class="line">            <span class="keyword">for</span> now &lt;= s.lastStamp &#123;</span><br><span class="line">                now = time.Now().UnixMilli()</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        s.sequence = <span class="number">0</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    s.lastStamp = now</span><br><span class="line">    <span class="keyword">return</span> ((now - s.epoch) &lt;&lt; <span class="number">22</span>) | (s.machineID &lt;&lt; <span class="number">12</span>) | s.sequence</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Router SDK</span></span><br><span class="line"><span class="keyword">type</span> RouterSDK <span class="keyword">struct</span> &#123;</span><br><span class="line">    localCache <span class="keyword">map</span>[<span class="type">uint64</span>]<span class="type">string</span>  <span class="comment">// did → endpoint+connID</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r *RouterSDK)</span></span> Add(did <span class="type">uint64</span>, endpoint <span class="type">string</span>, connID <span class="type">uint64</span>) &#123;</span><br><span class="line">    r.localCache[did] = fmt.Sprintf(<span class="string">&quot;%s:%d&quot;</span>, endpoint, connID)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r *RouterSDK)</span></span> Query(did <span class="type">uint64</span>) (<span class="type">string</span>, <span class="type">uint64</span>, <span class="type">bool</span>) &#123;</span><br><span class="line">    val, ok := r.localCache[did]</span><br><span class="line">    <span class="keyword">if</span> !ok &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;&quot;</span>, <span class="number">0</span>, <span class="literal">false</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 解析 endpoint:connID</span></span><br><span class="line">    parts := strings.SplitN(val, <span class="string">&quot;:&quot;</span>, <span class="number">2</span>)</span><br><span class="line">    connID, _ := strconv.ParseUint(parts[<span class="number">1</span>], <span class="number">10</span>, <span class="number">64</span>)</span><br><span class="line">    <span class="keyword">return</span> parts[<span class="number">0</span>], connID, <span class="literal">true</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>雪花算法</strong>：分布式唯一 ID 生成的经典方案，connID 生成的核心</li>
+<li><strong>Redis 持久化</strong>：有状态服务的数据持久化方案</li>
+<li><strong>服务发现</strong>：Router SDK 本质是简化的服务发现</li>
+<li><strong>MQ 削峰</strong>：群聊 push 的流量削峰填谷</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li>类似 Kafka 的 Partition 设计：每个 Gateway 绑定一个 State Server，简化路由复杂度</li>
+<li>微信&#x2F;QQ 的分布式化依赖于严格的 ID 生成和服务发现系统</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>connID 分片</strong>：按 <code>connID % 1024</code> 分片避免 Redis 大 Key</li>
+<li><strong>推拉结合简化状态机</strong>：长连接仅负责发控制信令，消息内容由客户端 pull——减少 State Server 需要持久化的状态</li>
+<li><strong>Router SDK 本地化</strong>：路由表缓存在本地内存，避免每次查远程 KV</li>
+<li><strong>State Server 无状态化</strong>：依赖 Redis 持久化，秒级重启恢复</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="有状态服务-vs-无状态服务的根本区别"><a href="#有状态服务-vs-无状态服务的根本区别" class="headerlink" title="有状态服务 vs 无状态服务的根本区别"></a>有状态服务 vs 无状态服务的根本区别</h3><p>Web 服务可以轻易水平扩展——因为无状态（每个请求独立，session 存 Redis）。但长连接 State Server 持有 TCP 连接的大量实时状态（心跳&#x2F;重连&#x2F;消息定时器），进程重启意味着全部连接的状态丢失。</p>
+<p>分布式化的本质是将这些状态从<strong>进程内存</strong>迁移到<strong>分布式缓存（Redis）</strong>，从而实现重启恢复。但这带来了扩缩容困难——slot 绑定到固定 State Server，新机器不能自动承担旧连接。</p>
+<h3 id="为什么-Router-用-SDK-而不是独立-Server"><a href="#为什么-Router-用-SDK-而不是独立-Server" class="headerlink" title="为什么 Router 用 SDK 而不是独立 Server"></a>为什么 Router 用 SDK 而不是独立 Server</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 方案A：独立 Router Server（多一次网络调用）</span></span><br><span class="line">IM Server → Router Server (RPC) → 返回 Gateway 地址 → IM Server → Gateway (RPC)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 方案B：Router SDK 本地化</span></span><br><span class="line">IM Server → RouterSDK.Query(did) → 本地查询缓存 → IM Server → Gateway (RPC)</span><br></pre></td></tr></table></figure>
+
+<p>方案 B 节省了一次网络 RTT（通常 1-5ms），在 IM 的 200ms 延迟目标下占比不小。</p>
+<h3 id="推拉结合对分布式化的简化"><a href="#推拉结合对分布式化的简化" class="headerlink" title="推拉结合对分布式化的简化"></a>推拉结合对分布式化的简化</h3><p>如果长连接仅负责推送控制信令（通知”有新消息”），消息内容由客户端 pull，State Server 仅需保存最后一个 push 的消息（lastMsg），大大简化了状态机：</p>
+<ul>
+<li>不需要维护消息队列和批量重发逻辑</li>
+<li>msgTimer 只需对一个消息生效</li>
+<li>重启后只需恢复 lastMsg + 重新启动定时器</li>
+</ul>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><strong>slot 绑定的扩缩容问题</strong>：新 State Server 无法接管已有连接，只能等旧连接自然消亡或主动迁移</li>
+<li><strong>Redis 大 Key</strong>：一个 SET 超过 5k 条元素导致操作变慢和主从同步延迟</li>
+<li><strong>定时器恢复的边界</strong>：重启时连接已失效→定时器会自然过期清理，不会造成泄漏</li>
+</ol>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ol>
+<li>有状态服务的分布式化是”伪无状态化”——状态从进程迁到分布式缓存，但 slot 绑定限制了真正的弹性</li>
+<li>推拉结合不仅优化消息下发，还大幅简化 State Server 的状态机——设计上的一举两得</li>
+<li>雪花算法的 41 位时间戳可用约 69 年，但真到了那一天，可以通过 epoch 迁移或增加位数解决</li>
+<li>Router SDK 本地化缓存是典型的”以空间换时间”——牺牲内存一致性换延迟</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：IM 系统为什么要做分布式化？</p>
+<p>A：单机连接数有上限（通常 &lt;100 万），需要水平扩展支撑千万&#x2F;亿级用户。同时需要高可用——单机故障不影响全局。</p>
+<p>Q2：雪花算法生成的 connID 各段含义是什么？</p>
+<p>A：1bit 无效位 + 41bit 时间戳 + 10bit 机器ID（5bit DC + 5bit 机器 &#x3D; 1024台）+ 12bit 序列号。保证全局唯一且趋势递增。</p>
+<p>Q3：State Server 如何实现重启后状态恢复？</p>
+<p>A：关键状态（connID、lastMsg、max_client_id）存储在 Redis。重启时按 slot range 批量加载，恢复心跳定时器、消息定时器、重连定时器。</p>
+<p>Q4：Gateway 和 State Server 如何交互？</p>
+<p>A：通过 Router SDK 本地路由表。Gateway 绑定一个 State Server（类似 Kafka partition）。State Server 注册 did↔connID 映射，Gateway 通过 did 查到 endpoint 再 RPC push。</p>
+<p>Q5：为什么 Router 用 SDK 而非独立 Server？</p>
+<p>A：节省一次额外的网络调用 RTT（1-5ms）。SDK 在进程内本地缓存路由表，Query 直接查内存。</p>
+<p>Q6：connID 为什么需要 hash 分片存储？</p>
+<p>A：Redis SET 元素数 &gt; 5k 会造成大 Key 问题（操作变慢、主从同步延迟）。按 <code>connID % 1024</code> 分片后每个 SET 保持较小规模。</p>
+<p>Q7：推拉结合如何简化 State Server 的状态机？</p>
+<p>A：长连接仅 push 控制信令（通知有新消息），消息内容客户端 pull。State Server 只需存 lastMsg（最后一条 push 的消息），大大减少需持久化的状态。</p>
+<p>Q8：State Server 扩缩容为什么困难？</p>
+<p>A：connID 写入固定 slot。新 State Server 只能接管新 slot 的连接，旧连接还在旧 slot 上。需要等连接自然消亡或主动迁移。</p>
+<p>Q9：分布式环境下 Gateway 崩溃怎么处理？</p>
+<p>A：State Server 未及时清理资源，connID 仍然有效。客户端用原 connID 重连到新 Gateway，State Server 正常识别并继续服务。</p>
+<p>Q10：群聊下行消息如何避免重复消费？</p>
+<p>A：使用 MQ 削峰填谷。每个 State Server 消费确定的分区（通常一个），避免相同消息被多个 State Server 重复 push。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司在实际分布式化过程中，是如何处理 State Server 扩缩容的？是否采用了连接迁移方案？</p>
+</li>
+<li><p>当 Redis 集群出现问题时，State Server 的 fallback 策略是什么？</p>
+</li>
+<li><p>陷阱 1：”State Server 完全无状态化可行吗？” — 不可。心跳&#x2F;重连&#x2F;消息定时器这些实时状态必须驻留内存。持久化到 Redis 只是”伪无状态化”，能快速恢复但做不到真正的水平弹性。</p>
+</li>
+<li><p>陷阱 2：”雪花算法的时钟回拨怎么解决？” — 1) 短期回拨：等待直到追上 2) 长期回拨：报警 + 人工切换 epoch 3) 根本方案：用 NTP 持续对时，尽量不出现回拨。</p>
+</li>
+<li><p>陷阱 3：”同一 Gateway 绑定一个 State Server 是不是有单点风险？” — 是的。State Server 挂掉后该 Gateway 的所有连接不可用。通过秒级重启 + Redis 恢复缓解。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>分布式化的核心是：将连接状态从进程内存迁移到分布式缓存，实现跨机器的唯一标识和可恢复性。</li>
+<li>雪花算法生成 connID 的关键是：时间戳 + 机器ID + 序列号，保证全局唯一和趋势递增。</li>
+<li>State Server 的”伪无状态化”是：状态存 Redis，重启时秒级恢复，但受限于 slot 绑定难以弹性扩缩。</li>
+<li>Router SDK 优于独立 Server 的地方是：本地查询节省 1 次 RTT，适合 IM 的 200ms 延迟目标。</li>
+<li>当被问到”如何分布式化一个状态服务”时回答：”状态持久化到分布式缓存 → 按 hash 分片 → 机器绑定 slot → 通过 Router SDK 本地化路由减少网络调用。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的图片，原样保留于此。</p>
+</blockquote>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758015072423-415784f4-828c-4a0b-9bad-7830f89e1faf.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758023866586-2bbabece-eb58-4e73-8dda-428a99581483.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758024102830-d26c5ccf-2275-4478-a777-c05c6f9a2877.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758025094124-486f2f07-9c33-4243-b9d2-861e55e96207.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758025237418-ff236b56-6ba4-4784-89d2-dbd6b9933e64.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758025269070-48abd107-1087-4317-8016-3b2977adc597.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758025531162-7d429f15-d08b-4f10-9bdb-904c8ad5757a.png"></p>
+<blockquote>
+<p>原内容所有技术方案细节已整合到正文各节。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&amp;%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/">https://weimo1.github.io/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8&amp;%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8/" title="分布式存储"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">分布式存储</div></div><div class="info-2"><div class="info-item-1">分布式存储 适用范围：IM 系统中的离线消息与历史消息存储方案——扩散写模型与分级存储架构  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 代码块必须标注语言。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：IM 即时通讯系统中的消息存储子系统，负责离线消息和历史消息的持久化存储与拉取，支撑消息漫游、多端同步等核心功能。是项目存储引擎模块在 IM 业务场景的具体应用。 技术栈与依赖：KV 存储引擎（LevelDB&#x2F;RocksDB 风格）、消息队列、扩散写模型 ...</div></div></div></a><a class="pagination-related" href="/posts/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7Raft/" title="分布式一致性Raft"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">分布式一致性Raft</div></div><div class="info-2"><div class="info-item-1">分布式一致性：Raft 共识算法 适用范围：分布式共识算法——Raft 领导选举、日志复制、安全性、与 Paxos 对比、CAP&#x2F;BASE 理论。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%EF%BC%88%E9%AB%98%E5%8F%AF%E7%94%A8-%E6%B0%B4%E5%B9%B3%E6%8B%93%E5%B1%95%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">分布式化（高可用 &amp; 水平拓展）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E6%9C%8D%E5%8A%A1-vs-%E6%97%A0%E7%8A%B6%E6%80%81%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%A0%B9%E6%9C%AC%E5%8C%BA%E5%88%AB"><span class="toc-number">1.5.1.</span> <span class="toc-text">有状态服务 vs 无状态服务的根本区别</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-Router-%E7%94%A8-SDK-%E8%80%8C%E4%B8%8D%E6%98%AF%E7%8B%AC%E7%AB%8B-Server"><span class="toc-number">1.5.2.</span> <span class="toc-text">为什么 Router 用 SDK 而不是独立 Server</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A8%E6%8B%89%E7%BB%93%E5%90%88%E5%AF%B9%E5%88%86%E5%B8%83%E5%BC%8F%E5%8C%96%E7%9A%84%E7%AE%80%E5%8C%96"><span class="toc-number">1.5.3.</span> <span class="toc-text">推拉结合对分布式化的简化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.4.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.5.5.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

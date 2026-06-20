@@ -1,0 +1,401 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>手撕系列-单例模板与快排 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="手撕系列：单例模板 &amp; 快排 适用范围：面试高频手写代码题，涵盖 C++ 单例模式的模板化实现（基于 call_once + shared_ptr）和快速排序的模板递归实现。  一、核心概念 定义：本笔记收录两道面试中最常见的手撕代码题——通用单例模板类（Singleton Template）和快速排序（Quicksort），展示 C++ 模板编程在多线程安全和泛型算法中的应用。 关键词：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="手撕系列-单例模板与快排">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97-%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E4%B8%8E%E5%BF%AB%E6%8E%92/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="手撕系列：单例模板 &amp; 快排 适用范围：面试高频手写代码题，涵盖 C++ 单例模式的模板化实现（基于 call_once + shared_ptr）和快速排序的模板递归实现。  一、核心概念 定义：本笔记收录两道面试中最常见的手撕代码题——通用单例模板类（Singleton Template）和快速排序（Quicksort），展示 C++ 模板编程在多线程安全和泛型算法中的应用。 关键词：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.571Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "手撕系列-单例模板与快排",
+  "url": "https://weimo1.github.io/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97-%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E4%B8%8E%E5%BF%AB%E6%8E%92/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.571Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97-%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E4%B8%8E%E5%BF%AB%E6%8E%92/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '手撕系列-单例模板与快排',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">手撕系列-单例模板与快排</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">手撕系列-单例模板与快排</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.571Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AE%97%E6%B3%95/">算法</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%AE%97%E6%B3%95/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97/">手撕系列</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>18分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="手撕系列：单例模板-快排"><a href="#手撕系列：单例模板-快排" class="headerlink" title="手撕系列：单例模板 &amp; 快排"></a>手撕系列：单例模板 &amp; 快排</h1><blockquote>
+<p>适用范围：面试高频手写代码题，涵盖 C++ 单例模式的模板化实现（基于 <code>call_once</code> + <code>shared_ptr</code>）和快速排序的模板递归实现。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：本笔记收录两道面试中最常见的手撕代码题——通用单例模板类（Singleton Template）和快速排序（Quicksort），展示 C++ 模板编程在多线程安全和泛型算法中的应用。</li>
+<li><strong>关键词</strong>：单例模式、<code>std::call_once</code>、<code>std::once_flag</code>、<code>std::shared_ptr</code>、模板类、快速排序、分治算法、<code>std::swap</code></li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>单例模板：需要全局唯一实例且多线程安全的场景（如日志管理器、配置管理器、数据库连接池）</li>
+<li>快速排序：作为面试必考排序算法，展示分治思想和模板泛型编程能力</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：单例模板</strong></p>
+<p>单例模式保证一个类只有一个实例。传统做法是在类内部静态创建实例，但这份代码更进一步——将单例做成模板类，让任意类型 T 都能复用单例逻辑：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Singleton</span> &#123;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    <span class="built_in">Singleton</span>() = <span class="keyword">default</span>;                          <span class="comment">// 构造保护：只允许派生类调用</span></span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="type">const</span> Singleton&lt;T&gt;&amp;) = <span class="keyword">delete</span>;        <span class="comment">// 禁止拷贝</span></span><br><span class="line">    Singleton&amp; <span class="keyword">operator</span>=(<span class="type">const</span> Singleton&lt;T&gt;&amp;) = <span class="keyword">delete</span>; <span class="comment">// 禁止赋值</span></span><br><span class="line">    <span class="type">static</span> std::shared_ptr&lt;T&gt; _instance;            <span class="comment">// 静态实例指针</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">static</span> std::shared_ptr&lt;T&gt; <span class="title">GetInstance</span><span class="params">()</span></span>;        <span class="comment">// 全局访问点</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>使用时，只需要让目标类继承 <code>Singleton&lt;MyClass&gt;</code>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">ConfigManager</span> : <span class="keyword">public</span> Singleton&lt;ConfigManager&gt; &#123;</span><br><span class="line">    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="title class_">Singleton</span>&lt;ConfigManager&gt;;  <span class="comment">// 允许基类访问构造函数</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">ConfigManager</span>() = <span class="keyword">default</span>;  <span class="comment">// 私有构造</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">LoadConfig</span><span class="params">(<span class="type">const</span> std::string&amp; path)</span> </span>&#123; <span class="comment">/*...*/</span> &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">auto</span> cfg = ConfigManager::<span class="built_in">GetInstance</span>();</span><br><span class="line">cfg-&gt;<span class="built_in">LoadConfig</span>(<span class="string">&quot;app.conf&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><strong>第二层：多线程安全的实现细节</strong></p>
+<p><code>GetInstance()</code> 使用了 C++11 的线程安全机制：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">static</span> std::shared_ptr&lt;T&gt; <span class="title">GetInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">static</span> std::once_flag s_flag;           <span class="comment">// 1. 静态标志位，全局唯一</span></span><br><span class="line">    std::<span class="built_in">call_once</span>(s_flag, [&amp;]() &#123;          <span class="comment">// 2. call_once 保证 lambda 只执行一次</span></span><br><span class="line">        _instance = std::<span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> T); <span class="comment">// 3. 线程安全地创建实例</span></span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> _instance;                        <span class="comment">// 4. 返回 shared_ptr</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>std::once_flag</code>：静态局部变量，整个程序生命周期只会被初始化一次</li>
+<li><code>std::call_once</code>：C++11 标准库提供的”只执行一次”保证，多线程同时调用时只有一个线程执行初始化代码，其他线程阻塞等待</li>
+<li><code>std::shared_ptr&lt;T&gt;</code>：智能指针管理生命周期，避免手动 <code>delete</code></li>
+</ul>
+<p>这比”双重检查锁定（DCLP）”更简单且完全正确——DCLP 在 C++11 之前的内存模型下存在隐患。</p>
+<p><strong>第三层：快速排序的分治原理</strong></p>
+<p>快速排序的核心是”分区”（Partition）操作：</p>
+<ol>
+<li>选一个基准值（pivot），这里用 <code>arr[start]</code></li>
+<li>将数组划分为两部分：左边全部 ≤ pivot，右边全部 ≥ pivot</li>
+<li>递归地对左右两部分排序</li>
+</ol>
+<p>代码中的实现细节：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">T key = arr[start];               <span class="comment">// 选第一个元素为基准</span></span><br><span class="line"><span class="type">int</span> left = start, right = end;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="keyword">while</span> (arr[right] &gt;= key &amp;&amp; left &lt; right) right--;  <span class="comment">// 从右向左找比 key 小的</span></span><br><span class="line">    <span class="keyword">while</span> (arr[left] &lt;= key &amp;&amp; left &lt; right) left++;     <span class="comment">// 从左向右找比 key 大的</span></span><br><span class="line">    std::<span class="built_in">swap</span>(arr[left], arr[right]);                    <span class="comment">// 交换</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> (arr[left] &lt; key) &#123;             <span class="comment">// 相遇点可能和 key 相同</span></span><br><span class="line">    std::<span class="built_in">swap</span>(arr[left], arr[start]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="关键数据结构-接口"><a href="#关键数据结构-接口" class="headerlink" title="关键数据结构&#x2F;接口"></a>关键数据结构&#x2F;接口</h3><table>
+<thead>
+<tr>
+<th>组件</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Singleton&lt;T&gt;</code></td>
+<td>通用单例模板基类，任意继承它的 T 都获得单例能力</td>
+</tr>
+<tr>
+<td><code>std::once_flag</code></td>
+<td>配合 <code>call_once</code> 实现线程安全的一次性初始化</td>
+</tr>
+<tr>
+<td><code>std::shared_ptr&lt;T&gt;</code></td>
+<td>管理单例实例的生命周期，引用计数自动释放</td>
+</tr>
+<tr>
+<td><code>quick_sort_recursive</code></td>
+<td>快排递归实现，接收数组和起止索引</td>
+</tr>
+<tr>
+<td><code>quick_sort</code></td>
+<td>快排对外接口，隐藏递归细节</td>
+</tr>
+</tbody></table>
+<h3 id="关键公式-复杂度"><a href="#关键公式-复杂度" class="headerlink" title="关键公式&#x2F;复杂度"></a>关键公式&#x2F;复杂度</h3><ul>
+<li>快速排序平均时间复杂度：(O(n \log n))，最坏 (O(n^2))（已排序数组且选第一个为 pivot）</li>
+<li>快速排序空间复杂度：(O(\log n))（递归栈深度）</li>
+<li>单例模板：单例创建 O(1)（首次），后续获取 O(1)，空间 O(1)</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;mutex&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// ===== 单例模板 =====</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Singleton</span> &#123;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    <span class="built_in">Singleton</span>() = <span class="keyword">default</span>;</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="type">const</span> Singleton&lt;T&gt;&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    Singleton&amp; <span class="keyword">operator</span>=(<span class="type">const</span> Singleton&lt;T&gt;&amp; st) = <span class="keyword">delete</span>;</span><br><span class="line">    <span class="type">static</span> std::shared_ptr&lt;T&gt; _instance;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">static</span> std::shared_ptr&lt;T&gt; <span class="title">GetInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="type">static</span> std::once_flag s_flag;</span><br><span class="line">        std::<span class="built_in">call_once</span>(s_flag, [&amp;]() &#123;</span><br><span class="line">            _instance = std::<span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> T);</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="keyword">return</span> _instance;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">PrintAddress</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        std::cout &lt;&lt; _instance.<span class="built_in">get</span>() &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">Singleton</span>() &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;this is singleton destruct&quot;</span> &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">std::shared_ptr&lt;T&gt; Singleton&lt;T&gt;::_instance = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ===== 使用示例 =====</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Logger</span> : <span class="keyword">public</span> Singleton&lt;Logger&gt; &#123;</span><br><span class="line">    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="title class_">Singleton</span>&lt;Logger&gt;;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">Logger</span>() &#123; std::cout &lt;&lt; <span class="string">&quot;Logger created\n&quot;</span>; &#125;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">Log</span><span class="params">(<span class="type">const</span> std::string&amp; msg)</span> </span>&#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;[LOG] &quot;</span> &lt;&lt; msg &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ===== 快速排序 =====</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">quick_sort_recursive</span><span class="params">(T arr[], <span class="type">int</span> start, <span class="type">int</span> end)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (start &gt;= end) <span class="keyword">return</span>;</span><br><span class="line">    T key = arr[start];</span><br><span class="line">    <span class="type">int</span> left = start, right = end;</span><br><span class="line">    <span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">        <span class="keyword">while</span> (arr[right] &gt;= key &amp;&amp; left &lt; right) right--;</span><br><span class="line">        <span class="keyword">while</span> (arr[left] &lt;= key &amp;&amp; left &lt; right) left++;</span><br><span class="line">        std::<span class="built_in">swap</span>(arr[left], arr[right]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (arr[left] &lt; key) &#123;</span><br><span class="line">        std::<span class="built_in">swap</span>(arr[left], arr[start]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, start, left - <span class="number">1</span>);</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, left + <span class="number">1</span>, end);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">quick_sort</span><span class="params">(T arr[], <span class="type">int</span> len)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, <span class="number">0</span>, len - <span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ===== 测试 =====</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 单例测试</span></span><br><span class="line">    <span class="keyword">auto</span> logger1 = Logger::<span class="built_in">GetInstance</span>();</span><br><span class="line">    <span class="keyword">auto</span> logger2 = Logger::<span class="built_in">GetInstance</span>();</span><br><span class="line">    logger1-&gt;<span class="built_in">Log</span>(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;Same instance? &quot;</span> &lt;&lt; (logger1 == logger2) &lt;&lt; std::endl;</span><br><span class="line">    <span class="comment">// 输出: 1 (true)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 快排测试</span></span><br><span class="line">    <span class="type">int</span> arr[] = &#123;<span class="number">3</span>, <span class="number">1</span>, <span class="number">4</span>, <span class="number">1</span>, <span class="number">5</span>, <span class="number">9</span>, <span class="number">2</span>, <span class="number">6</span>, <span class="number">5</span>, <span class="number">3</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    <span class="type">int</span> n = <span class="built_in">sizeof</span>(arr) / <span class="built_in">sizeof</span>(arr[<span class="number">0</span>]);</span><br><span class="line">    <span class="built_in">quick_sort</span>(arr, n);</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">        std::cout &lt;&lt; arr[i] &lt;&lt; <span class="string">&quot; &quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    std::cout &lt;&lt; std::endl;</span><br><span class="line">    <span class="comment">// 输出: 1 1 2 3 3 4 5 5 5 6 9</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>智能指针</strong>：<code>Singleton</code> 使用 <code>shared_ptr</code> 管理生命周期。如果不想用 <code>shared_ptr</code>，也可以用 <code>static T _instance</code>（Meyers’ Singleton），但那要求 T 的构造在 <code>GetInstance</code> 内部完成。</li>
+<li><strong>模板编程</strong>：<code>Singleton&lt;T&gt;</code> 展示了 CRTP（Curiously Recurring Template Pattern）的变体——派生类通过继承获得单例能力，而非传统 CRTP 中的静态多态。</li>
+<li><strong>并发编程</strong>：<code>std::call_once</code> + <code>std::once_flag</code> 是 C++11 提供的线程安全”只执行一次”原语，内部使用互斥锁或无锁机制实现。相比手动 <code>std::mutex</code> + double-check，代码更简洁且保证正确。</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><p><strong>单例模板的适用场景</strong>：</p>
+<ul>
+<li>日志管理器（Logger）：整个进程只有一个日志输出流</li>
+<li>配置管理器（ConfigManager）：全局配置只加载一次</li>
+<li>数据库连接池：连接池实例全局唯一</li>
+<li>对象工厂（ObjectFactory）：注册和创建特定类型对象的全局注册表</li>
+</ul>
+<p><strong>注意事项</strong>：</p>
+<ul>
+<li>单例的析构顺序不确定：多个单例之间如果互相依赖，程序退出时可能出现”访问已析构对象”的问题。解决方案是使用 <code>std::shared_ptr</code>（引用计数保证最后一个释放）或避免单例间的析构依赖</li>
+<li>单例不利于单元测试：全局状态使测试难以隔离。可考虑用依赖注入替代单例</li>
+</ul>
+<p><strong>快速排序的工程变体</strong>：</p>
+<ul>
+<li><strong>三向切分快排</strong>：当数组中重复元素很多时，荷兰国旗问题优化——分成 &lt; pivot、&#x3D; pivot、&gt; pivot 三部分</li>
+<li><strong>内省排序（Introsort）</strong>：C++ <code>std::sort</code> 的实现方案——先快排，递归深度超过 (2\log n) 时切换为堆排序，防止退化到 (O(n^2))</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>快排基准选择优化</strong>：选第一个元素为 pivot 在已排序数组上会退化为 O(n²)。改进：随机选择 pivot 或三数取中（median-of-three）</li>
+<li><strong>快排小数组优化</strong>：当子数组长度小于阈值（如 10~15）时，切换到插入排序（常数因子更小）</li>
+<li><strong>单例的懒汉 vs 饿汉</strong>：这份代码是懒汉式（Lazy）——首次调用 <code>GetInstance()</code> 才创建。优点：无初始化开销；缺点：首次调用有延迟。饿汉式在程序启动时创建，无并发问题但可能浪费资源</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong><code>std::call_once</code> 的底层实现</strong>（简化版）：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// std::call_once 的简化实现思路</span></span><br><span class="line"><span class="comment">// 实际标准库实现更复杂，涉及 futex/atomic 等系统调用</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">call_once</span><span class="params">(once_flag&amp; flag, Callable&amp;&amp; func)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 快速路径：如果已经执行过，直接返回</span></span><br><span class="line">    <span class="keyword">if</span> (flag._state == DONE) <span class="keyword">return</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 慢路径：需要加锁</span></span><br><span class="line">    <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(flag._mutex)</span></span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 双重检查：获取锁后可能已执行</span></span><br><span class="line">    <span class="keyword">if</span> (flag._state == DONE) <span class="keyword">return</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 执行函数</span></span><br><span class="line">    <span class="built_in">func</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 标记完成 + 唤醒所有等待线程</span></span><br><span class="line">    flag._state = DONE;</span><br><span class="line">    flag._cv.<span class="built_in">notify_all</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>快速排序分区过程的逐步推演</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">输入: [3, 1, 4, 1, 5]  key=3</span><br><span class="line">初始: left=0, right=4</span><br><span class="line">step1: right-- → arr[3]=1 &lt; 3, right停在3</span><br><span class="line">       left++  → arr[1]=1 &lt; 3, left++; arr[2]=4 &gt; 3, left停在2</span><br><span class="line">       swap: arr[2]↔arr[3] → [3, 1, 1, 4, 5]</span><br><span class="line">step2: right-- → arr[2]=1 &lt; 3, right停在2</span><br><span class="line">       left 在2, left &lt; right 不成立, 退出while</span><br><span class="line">       arr[left]=1 &lt; key=3? yes → swap arr[0]↔arr[2]</span><br><span class="line">结果: [1, 1, 3, 4, 5]</span><br><span class="line">递归: [1,1] 和 [4,5]</span><br></pre></td></tr></table></figure>
+
+<p><strong>Singleton 模板的友元机制解析</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Logger</span> : <span class="keyword">public</span> Singleton&lt;Logger&gt; &#123;</span><br><span class="line">    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="title class_">Singleton</span>&lt;Logger&gt;;  <span class="comment">// 关键：允许基类访问私有构造</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">Logger</span>() &#123;&#125;  <span class="comment">// 私有构造：外部不能直接 new Logger</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>Singleton&lt;Logger&gt;::GetInstance()</code> 中 <code>new T</code> 需要调用 T 的构造函数。由于 Logger 的构造函数是 private 的，必须通过 <code>friend class Singleton&lt;Logger&gt;</code> 授予基类模板访问权限。这是 C++ 中模板基类访问派生类私有成员的经典模式。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><p><strong>陷阱1：<code>std::call_once</code> 中 lambda 捕获 <code>_instance</code></strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">static</span> std::shared_ptr&lt;T&gt; <span class="title">GetInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">static</span> std::once_flag s_flag;</span><br><span class="line">    std::<span class="built_in">call_once</span>(s_flag, [&amp;]() &#123;       <span class="comment">// [&amp;] 按引用捕获</span></span><br><span class="line">        _instance = std::<span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> T);</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">return</span> _instance;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里 <code>[&amp;]</code> 按引用捕获，lambda 中访问 <code>_instance</code> 是安全的——<code>s_flag</code> 是 static，<code>_instance</code> 也是 static（类静态成员），生命周期相同。如果用 <code>[=]</code> 按值捕获，lambda 会拷贝 <code>_instance</code>（此时为 nullptr），赋值操作只影响副本而非原变量。</p>
+<p><strong>陷阱2：快排中 <code>left</code> 和 <code>right</code> 相遇后的处理</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (arr[left] &lt; key) &#123;</span><br><span class="line">    std::<span class="built_in">swap</span>(arr[left], arr[start]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么需要这个判断？因为 <code>left</code> 和 <code>right</code> 相遇时，相遇点的值可能 ≥ key（当 right 先到达 left 时）。如果相遇点值 ≥ key，则 key 已经在正确位置（相遇点左侧），不需要交换。这个细节容易被忽略。</p>
+<p><strong>陷阱3：Singleton 的析构时访问</strong></p>
+<p>假设有两个单例 A 和 B，A 的析构函数中访问了 B：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">A</span> : <span class="keyword">public</span> Singleton&lt;A&gt; &#123; ~<span class="built_in">A</span>() &#123; B::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">DoSomething</span>(); &#125; &#125;;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">B</span> : <span class="keyword">public</span> Singleton&lt;B&gt; &#123; <span class="comment">/*...*/</span> &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>程序退出时，静态对象的析构顺序与构造顺序相反。如果 A 后构造（前析构），在 A 的析构中访问 B 是安全的；但如果 B 先析构，则 A 析构时 B 的 <code>shared_ptr</code> 已释放，可能导致 crash。解决方案：确保单例间无析构依赖，或使用 <code>weak_ptr</code>。</p>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li><strong><code>call_once</code> 是 C++11 单例的最佳实践</strong>：比 DCLP 简单、比 Meyers’ Singleton 灵活（可做模板），且标准保证线程安全。唯一的代价是首次调用时的锁开销，但单例通常只在启动阶段创建。</li>
+<li><strong>模板 + 友元 &#x3D; 通用基础组件的钥匙</strong>：通过 <code>friend class Singleton&lt;T&gt;</code> 让模板基类访问派生类的私有构造，是实现”非侵入式单例”的关键技术。</li>
+<li><strong>快排的面试要点不在背诵代码，而在理解分区过程</strong>：面试官更关心你是否理解 partition 的原理、边界条件处理、以及最坏情况的优化策略。能在白板上推演一轮分区过程比能默写出代码更有说服力。</li>
+<li><strong>代码块必须标注语言</strong>：原笔记的代码块缺少语言标注。C++ 代码必须用 <code>c++</code>（不可用 <code>cpp</code> 或 <code>c</code>），这既符合模板规范，也让 Markdown 渲染器正确高亮。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>单例相关：</strong></p>
+<p>Q1：手写一个线程安全的 C++ 单例模式？</p>
+<p>A：使用 <code>std::call_once</code> + <code>std::once_flag</code> + <code>std::shared_ptr</code>，比双重检查锁定更简洁且标准保证正确。核心代码：static once_flag s_flag; call_once(s_flag, []{ instance &#x3D; make_shared<T>(); }); return instance; 私有化构造&#x2F;拷贝&#x2F;赋值。</p>
+<p>Q2：C++ 单例的几种实现方式？优劣对比？</p>
+<p>A：1）Meyers’ Singleton（C++11 static 局部变量，最简洁但无法做模板）；2）DCLP（双重检查锁定，C++11 前不可靠）；3）<code>call_once</code> 方案（本笔记方案，标准保证，可模板化）。推荐 Meyers’ 用于简单场景，<code>call_once</code> 模板用于需要复用单例逻辑的场景。</p>
+<p>Q3：为什么要用 <code>shared_ptr</code> 而不是裸指针或 <code>unique_ptr</code>？</p>
+<p>A：<code>shared_ptr</code> 引用计数避免悬空指针。如果多个地方持有同一个单例引用，<code>unique_ptr</code> 会导致所有权争议。裸指针需手动管理生命周期，容易 double-free 或 use-after-free。</p>
+<p>Q4：<code>friend class Singleton&lt;T&gt;</code> 这行的作用是什么？</p>
+<p>A：让模板基类 <code>Singleton&lt;T&gt;</code> 能访问派生类 T 的私有构造函数。<code>GetInstance()</code> 中的 <code>new T</code> 需要调用 T 的构造，但 T 的构造是 private 的（防止外部直接创建）。friend 声明授予基类访问权限。</p>
+<p><strong>快排相关：</strong></p>
+<p>Q5：手写快速排序？</p>
+<p>A：选基准值（pivot）→ 分区（partition）：双指针从两端向中间扫描，交换逆序元素 → 递归排序左右子数组。时间复杂度 O(n log n) 平均，O(n²) 最坏，空间 O(log n)。</p>
+<p>Q6：快排为什么最坏是 O(n²)？如何避免？</p>
+<p>A：每次 pivot 都是最小&#x2F;最大值时，分区极不均衡（一边 n-1，一边 0），退化为冒泡排序。避免方法：随机选 pivot、三数取中（median-of-three）。</p>
+<p>Q7：快排是稳定排序吗？为什么不稳定？</p>
+<p>A：不稳定。partition 过程中的 swap 可能改变相等元素的相对顺序。例：[5a, 1, 5b] pivot&#x3D;5a → swap(5a, 1) → [1, 5a, 5b]，5a 和 5b 的相对顺序可能被改变。</p>
+<p>Q8：快排和归并排序的对比？</p>
+<p>A：快排原地排序（O(log n) 栈空间），但不稳定、最坏 O(n²)；归并排序稳定、保证 O(n log n)，但需 O(n) 额外空间。大多数标准库的排序实现基于快排变体（如 introsort）。</p>
+<p><strong>综合：</strong></p>
+<p>Q9：这段 Singleton 模板中 <code>static std::once_flag s_flag</code> 为什么写在函数内部？</p>
+<p>A：C++11 保证 static 局部变量的初始化是线程安全的（Magic Statics）。写在函数内部有两个好处：1）懒初始化（首次调用时才创建）；2）线程安全由编译器&#x2F;标准库保证，无需手动加锁。</p>
+<p>Q10：Singleton 模板中为什么把构造&#x2F;拷贝&#x2F;赋值放在 protected&#x2F;delete 中？</p>
+<p>A：构造函数 <code>protected</code>：允许派生类构造（因为派生类继承自 Singleton），但不允许外部直接创建。拷贝和赋值 <code>= delete</code>：禁止拷贝单例实例，保证全局唯一。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p><strong>针对面试官的深度问题：</strong></p>
+<p>贵公司在工程中是如何使用单例模式的？是直接用依赖注入框架管理还是手动实现单例？</p>
+<p>对于单例的单元测试，贵团队有没有好的实践来隔离单例带来的全局状态？</p>
+<p><strong>常见的陷阱问题：</strong></p>
+<p>陷阱问题1：两个线程同时首次调用 <code>GetInstance()</code>，会不会创建两个实例？答案：不会。<code>std::call_once</code> 保证只有一个线程执行初始化 lambda，另一个线程阻塞等待。初始化完成后两个线程拿到的都是同一个 <code>shared_ptr</code>。</p>
+<p>陷阱问题2：快排的 pivot 选 <code>arr[start]</code>，当输入数组已排序时会怎样？答案：每次分区极不均衡（左边 0 个、右边 n-1 个），退化为 O(n²) 时间 + O(n) 递归栈，可能爆栈。改进：随机选 pivot 或三数取中。</p>
+<p>陷阱问题3：这段快排代码在数组中所有元素都相等时正确吗？答案：正确但效率低。所有元素等于 key，right 会一直左移到 left 位置，while 循环几乎遍历整个子数组，但每次分区大小只减 1，退化为 O(n²)。三向切分快排可解决此问题。</p>
+<p>陷阱问题4：<code>Singleton&lt;T&gt;::_instance</code> 是 static 成员变量，什么时候析构？答案：程序退出时，静态对象按构造的逆序析构。析构 <code>shared_ptr</code> 会释放管理的 T 对象。问题：如果另一个单例的析构函数依赖 T 还存活，可能出问题（静态对象析构顺序不确定）。</p>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>线程安全单例的核心：<code>std::call_once</code> + <code>std::once_flag</code>，标准保证多线程只初始化一次。</p>
+<p>快排的核心：选 pivot → 双指针分区（小于放左、大于放右）→ 递归左右子数组。</p>
+<p><code>friend class Singleton&lt;T&gt;</code> 的作用：让模板基类访问派生类私有构造，实现非侵入式单例。</p>
+<p>快排最坏 O(n²) 的根源：pivot 选择不当导致分区极不均衡，退化为冒泡排序。</p>
+<p><code>shared_ptr</code> 管理单例优于裸指针的原因：引用计数自动释放、避免 use-after-free、支持多处持有引用。</p>
+<p>当被问到”手撕单例”时，回答：”用 <code>call_once</code> + <code>shared_ptr</code> 的模板实现，构造 protected&#x2F;拷贝赋值 delete，派生类 friend 基类以允许私有构造。”</p>
+<p>当被问到”手撕快排”时，回答：”选第一个元素为 pivot，双指针从两端扫描交换，递归排序左右子数组。优化可用随机 pivot 或三数取中防退化。”</p>
+<h2 id="附录（原笔记代码保留）"><a href="#附录（原笔记代码保留）" class="headerlink" title="附录（原笔记代码保留）"></a>附录（原笔记代码保留）</h2><blockquote>
+<p>以下为原笔记中所有代码片段，原样完整保留于此。</p>
+</blockquote>
+<h3 id="单例模板（多次使用单例类）"><a href="#单例模板（多次使用单例类）" class="headerlink" title="单例模板（多次使用单例类）"></a>单例模板（多次使用单例类）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//为了让单例更加通用，可以做成模板类</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Singleton</span> &#123;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    <span class="built_in">Singleton</span>() = <span class="keyword">default</span>;</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="type">const</span> Singleton&lt;T&gt;&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    Singleton&amp; <span class="keyword">operator</span>=(<span class="type">const</span> Singleton&lt;T&gt;&amp; st) = <span class="keyword">delete</span>;</span><br><span class="line">    <span class="type">static</span> std::shared_ptr&lt;T&gt; _instance;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">static</span> std::shared_ptr&lt;T&gt; <span class="title">GetInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="type">static</span> std::once_flag s_flag;</span><br><span class="line">        std::<span class="built_in">call_once</span>(s_flag, [&amp;]() &#123;</span><br><span class="line">            _instance = std::<span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> T);</span><br><span class="line">            &#125;);</span><br><span class="line">        <span class="keyword">return</span> _instance;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">PrintAddress</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        std::cout &lt;&lt; _instance.<span class="built_in">get</span>() &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">Singleton</span>() &#123;</span><br><span class="line">        std::cout &lt;&lt; <span class="string">&quot;this is singleton destruct&quot;</span> &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">std::shared_ptr&lt;T&gt; Singleton&lt;T&gt;::_instance = <span class="literal">nullptr</span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="快排"><a href="#快排" class="headerlink" title="快排"></a>快排</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">quick_sort_recursive</span><span class="params">(T arr[],<span class="type">int</span> start,<span class="type">int</span> end)</span></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(start&gt;=end)<span class="keyword">return</span> ;</span><br><span class="line">    T key=arr[start];</span><br><span class="line">    <span class="type">int</span> left=start,right=end;</span><br><span class="line">    <span class="keyword">while</span>(left&lt;right)&#123;</span><br><span class="line">        <span class="keyword">while</span>(arr[right]&gt;=key&amp;&amp;left&lt;right) right--;</span><br><span class="line">        <span class="keyword">while</span>(arr[left] &lt;= key &amp;&amp; left &lt; right) left++;</span><br><span class="line">        std::<span class="built_in">swap</span>(arr[left], arr[right]); <span class="comment">// 左右指针都停下时，交换二者的值</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(arr[left]&lt;key)&#123; <span class="comment">// 相遇点若比key小，交换（因为相遇点可能和key相同，所以需要判断一下）</span></span><br><span class="line">        std::<span class="built_in">swap</span>(arr[left], arr[start]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, start, left - <span class="number">1</span>);</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, left + <span class="number">1</span>, end);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">quick_sort</span><span class="params">(T arr[], <span class="type">int</span> len)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">quick_sort_recursive</span>(arr, <span class="number">0</span>, len - <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97-%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E4%B8%8E%E5%BF%AB%E6%8E%92/">https://weimo1.github.io/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97-%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%E4%B8%8E%E5%BF%AB%E6%8E%92/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%8A%98%E5%8F%A0%E8%A1%A8%E8%BE%BE%E5%BC%8F/" title="折叠表达式"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">折叠表达式</div></div><div class="info-2"><div class="info-item-1">折叠表达式 适用范围：C++17 折叠表达式（Fold Expression）及完美转发（std::forward）机制。  参考：https://zhuanlan.zhihu.com/p/718967999 一、核心概念 定义：折叠表达式是 C++17 引入的语法，用 (pack op ...) 形式对参数包进行展开和运算，替代了递归模板解包模式。完美转发 &#x3D; std::forward + 万能引用 + 引用折叠，三者合一实现参数的左值&#x2F;右值属性不变传递。 关键词：折叠表达式（Fold Expression）、参数包展开、完美转发、std::forward、万能引用...</div></div></div></a><a class="pagination-related" href="/posts/%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97/" title="手撕系列"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">手撕系列</div></div><div class="info-2"><div class="info-item-1">手撕系列单例模板（多次使用单例类）12345678910111213141516171819202122232425//为了让单例更加通用，可以做成模板类template &lt;typename T&gt;class Singleton &#123;protected:    Singleton() = default;    Singleton(const Singleton&lt;T&gt;&amp;) = delete;    Singleton&amp; operator=(const Singleton&lt;T&gt;&amp; st) = delete;    stati...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%89%8B%E6%92%95%E7%B3%BB%E5%88%97%EF%BC%9A%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF-%E5%BF%AB%E6%8E%92"><span class="toc-number">1.</span> <span class="toc-text">手撕系列：单例模板 &amp; 快排</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84-%E6%8E%A5%E5%8F%A3"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键数据结构&#x2F;接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%85%AC%E5%BC%8F-%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">1.2.3.</span> <span class="toc-text">关键公式&#x2F;复杂度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E7%AC%94%E8%AE%B0%E4%BB%A3%E7%A0%81%E4%BF%9D%E7%95%99%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（原笔记代码保留）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E4%BE%8B%E6%A8%A1%E6%9D%BF%EF%BC%88%E5%A4%9A%E6%AC%A1%E4%BD%BF%E7%94%A8%E5%8D%95%E4%BE%8B%E7%B1%BB%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">单例模板（多次使用单例类）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BF%AB%E6%8E%92"><span class="toc-number">1.7.2.</span> <span class="toc-text">快排</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

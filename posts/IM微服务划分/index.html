@@ -1,0 +1,364 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>IM微服务划分 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="IM 微服务划分 IM 系统微服务划分旨在将复杂的即时通讯系统按业务领域拆分为独立部署、独立扩展的服务单元。参考腾讯云 IM 的功能划分，合理拆分接入层、业务层、存储层，实现高内聚低耦合。  参考：腾讯云即时通信 IM 功能介绍 一、核心概念 定义：IM 微服务划分是基于领域驱动设计（DDD）原则，将 IM 系统按业务边界拆分为独立服务的架构设计方法。每个服务有独立的数据库、独立的部署周期和独立的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IM微服务划分">
+<meta property="og:url" content="https://weimo1.github.io/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="IM 微服务划分 IM 系统微服务划分旨在将复杂的即时通讯系统按业务领域拆分为独立部署、独立扩展的服务单元。参考腾讯云 IM 的功能划分，合理拆分接入层、业务层、存储层，实现高内聚低耦合。  参考：腾讯云即时通信 IM 功能介绍 一、核心概念 定义：IM 微服务划分是基于领域驱动设计（DDD）原则，将 IM 系统按业务边界拆分为独立服务的架构设计方法。每个服务有独立的数据库、独立的部署周期和独立的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.544Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "IM微服务划分",
+  "url": "https://weimo1.github.io/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.544Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'IM微服务划分',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">IM微服务划分</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">IM微服务划分</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.544Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="IM-微服务划分"><a href="#IM-微服务划分" class="headerlink" title="IM 微服务划分"></a>IM 微服务划分</h1><blockquote>
+<p>IM 系统微服务划分旨在将复杂的即时通讯系统按业务领域拆分为独立部署、独立扩展的服务单元。参考腾讯云 IM 的功能划分，合理拆分接入层、业务层、存储层，实现高内聚低耦合。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/document/product/269/1499">腾讯云即时通信 IM 功能介绍</a></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：IM 微服务划分是基于领域驱动设计（DDD）原则，将 IM 系统按业务边界拆分为独立服务的架构设计方法。每个服务有独立的数据库、独立的部署周期和独立的技术栈选择。</li>
+<li>关键词：微服务、领域驱动、限界上下文、接入层、业务层、存储层、服务拆分</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>大型 IM 系统（百万+ 用户）</li>
+<li>多人团队协作开发</li>
+<li>需要独立扩展不同模块</li>
+<li>小规模系统单体优先</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：IM 微服务核心划分</strong></p>
+<p>参考腾讯云 IM 的功能划分，典型拆分：</p>
+<ul>
+<li><strong>用户域</strong>：用户注册、登录、Profile 管理、好友关系</li>
+<li><strong>会话域</strong>：会话列表、会话管理、会话置顶&#x2F;删除</li>
+<li><strong>消息域</strong>：消息收发、消息存储、消息漫游、消息已读&#x2F;未读</li>
+<li><strong>群组域</strong>：群创建&#x2F;解散、群成员管理、群设置</li>
+<li><strong>接入层</strong>：长连接网关、IP Config、State Server</li>
+<li><strong>媒体域</strong>：图片&#x2F;视频&#x2F;文件上传、缩略图处理</li>
+</ul>
+<p><strong>第二层：拆分原则</strong></p>
+<ol>
+<li><strong>按业务领域拆分</strong>（非按技术层）：用户服务包含用户的所有逻辑（+ 数据库），不是”用户 API + 用户 DB”分开</li>
+<li><strong>高内聚低耦合</strong>：服务内部改动不影响其他服务</li>
+<li><strong>独立部署</strong>：每个服务可独立上线和回滚</li>
+<li><strong>独立数据库</strong>：每个服务拥有自己的数据，通过 API 访问其他服务数据</li>
+</ol>
+<p><strong>第三层：常见拆分误区</strong></p>
+<ul>
+<li><strong>拆分过细</strong>：每个功能一个服务 → 服务间调用链复杂、延迟高</li>
+<li><strong>按技术层拆分</strong>：API 层 + 服务层 + DAO 层 → 修改一个功能需要改三层</li>
+<li><strong>共享数据库</strong>：多个服务共用数据库 → 耦合严重，无法独立扩展</li>
+</ul>
+<h3 id="关键公式-复杂度"><a href="#关键公式-复杂度" class="headerlink" title="关键公式&#x2F;复杂度"></a>关键公式&#x2F;复杂度</h3><p>微服务拆分粒度：服务数 &#x3D; 团队数（康威定律）<br>合理的微服务数量：通常 5-15 个核心服务</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 消息域微服务接口</span></span><br><span class="line">service MessageService &#123;</span><br><span class="line">    rpc SendMessage(SendMessageReq) returns (SendMessageResp);</span><br><span class="line">    rpc PullMessages(PullMessagesReq) returns (PullMessagesResp);</span><br><span class="line">    rpc MarkRead(MarkReadReq) returns (MarkReadResp);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 用户域微服务接口</span></span><br><span class="line">service UserService &#123;</span><br><span class="line">    rpc Register(RegisterReq) returns (RegisterResp);</span><br><span class="line">    rpc Login(LoginReq) returns (LoginResp);</span><br><span class="line">    rpc GetProfile(GetProfileReq) returns (Profile);</span><br><span class="line">    rpc AddFriend(AddFriendReq) returns (AddFriendResp);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 群组域微服务接口</span></span><br><span class="line">service GroupService &#123;</span><br><span class="line">    rpc CreateGroup(CreateGroupReq) returns (Group);</span><br><span class="line">    rpc JoinGroup(JoinGroupReq) returns (JoinGroupResp);</span><br><span class="line">    rpc GetGroupMembers(GetGroupMembersReq) returns (MemberList);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>DDD 领域驱动设计</strong>：微服务拆分边界来源于限界上下文</li>
+<li><strong>CAP 定理</strong>：服务间通信需要考虑一致性和可用性的权衡</li>
+<li><strong>RPC 框架</strong>：gRPC&#x2F;Thrift 用于服务间通信</li>
+<li><strong>服务网格</strong>：Istio&#x2F;Linkerd 管理服务间流量</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>腾讯云 IM</strong>：接入层 + 消息 + 用户 + 群组 + 媒体等独立服务</li>
+<li><strong>Slack&#x2F;Discord</strong>：微服务架构支持实时协作功能</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>API 网关</strong>：统一入口，鉴权、限流、路由</li>
+<li><strong>异步通信</strong>：核心路径同步 RPC，非核心路径异步消息</li>
+<li><strong>数据冗余</strong>：适度冗余避免跨服务查询（如消息服务冗余用户昵称）</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="IM-微服务的核心挑战"><a href="#IM-微服务的核心挑战" class="headerlink" title="IM 微服务的核心挑战"></a>IM 微服务的核心挑战</h3><p><strong>挑战 1：消息发送的跨服务调用链</strong></p>
+<p>一个简单的”发消息”操作可能涉及：</p>
+<ol>
+<li>接入层 Gateway 接收</li>
+<li>鉴权服务验证合法性</li>
+<li>消息服务存储消息</li>
+<li>群组服务查询群成员</li>
+<li>用户服务查询在线状态</li>
+<li>路由服务查询目标 Gateway</li>
+<li>推送服务下发消息</li>
+</ol>
+<p>如果每个都是同步 RPC 调用，总延迟 &#x3D; Σ 各服务 RTT。需要：</p>
+<ul>
+<li>异步化非关键步骤（更新未读计数）</li>
+<li>数据冗余（消息服务存储用户昵称）</li>
+<li>批量处理（打包多个查询）</li>
+</ul>
+<p><strong>挑战 2：分布式事务</strong></p>
+<p>“创建群聊”操作涉及群组服务（创建群）+ 消息服务（发送系统消息）+ 用户服务（更新群列表）。如果没有分布式事务保证，可能出现部分成功。</p>
+<p>解决方案：</p>
+<ul>
+<li>Saga 模式：每个步骤有补偿操作</li>
+<li>最终一致性：异步重试保证最终一致</li>
+<li>事件驱动：一个服务完成操作后发事件，其他服务消费</li>
+</ul>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>不要过早做微服务拆分——单体在 100 万用户以下通常是更好的选择</li>
+<li>按业务领域拆分，数据归属清晰，避免分布式事务</li>
+<li>服务间通信优先异步（MQ）而非同步（RPC），降低耦合</li>
+<li>IM 的核心路径（消息收发）保持最小调用链，非关键功能异步化</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：IM 系统如何做微服务拆分？</p>
+<p>A：按业务领域：用户域、会话域、消息域、群组域、接入层、媒体域。每个服务独立数据库、独立部署。</p>
+<p>Q2：微服务拆分的原则是什么？</p>
+<p>A：高内聚低耦合、按业务领域非技术层、独立数据库、独立部署。遵循康威定律——服务数约等于团队数。</p>
+<p>Q3：消息发送操作的跨服务调用链如何优化？</p>
+<p>A：核心路径最小化（只做必要 RPC），非关键步骤异步化，数据冗余减少跨服务查询。</p>
+<p>Q4：微服务场景下 IM 消息如何保证一致性？</p>
+<p>A：核心操作强一致（落库后回复 ACK），非核心操作最终一致（异步重试）。使用 Saga 模式处理分布式事务。</p>
+<p>Q5：为什么按业务域而非技术层拆分？</p>
+<p>A：按业务域拆分后，修改一个功能只涉及一个服务。按技术层拆分需要同时改 API + Service + DAO 三层。</p>
+<p>Q6：IM 微服务间的通信方式如何选择？</p>
+<p>A：核心路径（发消息）用同步 RPC（需要即时结果）。非核心（更新未读、同步状态）用异步 MQ。实时推送用长连接。</p>
+<p>Q7：微服务拆分过细有什么问题？</p>
+<p>A：服务间调用链变长（延迟增高）、分布式事务难处理、运维复杂度上升、数据一致性挑战。合理数量 5-15 个。</p>
+<p>Q8：IM 的接入层和业务层为什么要分开？</p>
+<p>A：接入层（Gateway）是 I&#x2F;O 密集型，关注连接和网络吞吐；业务层是 CPU&#x2F;存储密集型，关注业务逻辑。分开后独立优化。</p>
+<p>Q9：跨服务数据访问如何处理？</p>
+<p>A：优先数据冗余（消息服务存用户昵称快照），其次异步查询，最后才同步 RPC 查询。避免强依赖其他服务。</p>
+<p>Q10：如何评估微服务拆分是否合理？</p>
+<p>A：如果一个功能修改只需要改一个服务 → 合理。如果发条消息需要改 3+ 个服务 → 可能拆分有问题。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司的 IM 系统微服务拆分粒度是怎样的？有没有遇到拆分过细带来的问题？</p>
+</li>
+<li><p>在 IM 发消息的核心链路中，跨服务的 RPC 调用总延迟是多少？</p>
+</li>
+<li><p>陷阱 1：”微服务一定比单体好？” — 不是。微服务带来分布式复杂度（网络延迟、事务、运维）。小团队单体架构效率更高。</p>
+</li>
+<li><p>陷阱 2：”所有服务都要独立数据库？” — 理想是独立数据库。但有些查询（如”用户参与的群列表”）跨两个领域，可以接受有限度的共享读。</p>
+</li>
+<li><p>陷阱 3：”RPC 调用一定是同步的？” — 不一定。可以用异步 RPC（回调&#x2F;Future），但 IM 核心链路通常需要同步返回结果。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>微服务拆分的核心是：按业务领域拆分，高内聚低耦合，独立部署独立数据库。</li>
+<li>IM 核心路径优化的关键是：最小化同步调用链，非关键步骤异步化。</li>
+<li>避免拆分过细的方法是：遵循康威定律——服务数不超过团队数。</li>
+<li>跨服务通信的优先级是：数据冗余 &gt; 异步 MQ &gt; 同步 RPC。</li>
+<li>当被问到”IM 怎么做微服务”时回答：”用户&#x2F;消息&#x2F;群组&#x2F;会话&#x2F;接入层独立服务，消息核心路径同步 RPC，状态同步异步 MQ。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的图片与链接，原样保留于此。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/document/product/269/1499">即时通信 IM 功能介绍_腾讯云</a> IM基本功能</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757504128904-615aceb5-b3c1-405f-b677-f3d9fc6293ae.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757513745803-e59c8fa7-5c53-4d90-94c5-bc079757d6be.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757513774357-06815db7-6713-4852-8c47-abc20a93b60e.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757514456734-752680cd-38bb-4552-a8bb-f058698217fe.png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757515526104-9e8ae25f-4431-4a9f-a5db-fa522214500d.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757515492969-6d4afc8f-0d3a-4fad-ab57-86de6b321e23.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757516720257-39262b33-8b72-45a2-a57d-7f4824fb7e77.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757517550037-8f3cac55-357b-48e5-ba43-4f59c1e5d9fc.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/">https://weimo1.github.io/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/IM-Gateway/" title="IM Gateway"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">IM Gateway</div></div><div class="info-2"><div class="info-item-1">IM Gateway IM Gateway（长连接网关）是 IM 系统接入层的核心，负责管理客户端的 TCP 长连接。它承担连接管理、协议解析、消息路由、心跳维护等职责，是客户端和 IM 业务层之间的桥梁。  一、核心概念 定义：IM Gateway 是客户端与服务端建立 TCP 长连接的入口服务，负责管理连接生命周期（建立&#x2F;维持&#x2F;断开）、收发消息、与 State Server 配合完成消息可靠推送。 关键词：TCP 长连接、epoll、协议解析、消息路由、心跳保活、断线重连、State Server 适用场景&#x2F;边界： 客户端与服务端的长连接管理 消息的接入...</div></div></div></a><a class="pagination-related" href="/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/" title="IM即时通讯"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">IM即时通讯</div></div><div class="info-2"><div class="info-item-1">IM 即时通讯 IM（Instant Messaging）即时通讯是通过网络实时传递文字、图片、语音、视频等消息的通信系统。本笔记涵盖 IM 系统的协议选择（TCP vs UDP）和消息序列化（Protobuf）两个核心基础。  参考：为什么 QQ 用 UDP 而不是 TCP | Protobuf 从入门到精通 一、核心概念 定义：IM 即时通讯是指通过互联网实时进行文字、语音、视频等信息交互的通信方式。核心要素包括：可靠有序的消息传递、低延迟的实时触达、多设备同步、消息持久化。 关键词：TCP vs UDP、Protobuf、消息序列化、实时通信、协议选择 适用场景&#x2F;边界： ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#IM-%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86"><span class="toc-number">1.</span> <span class="toc-text">IM 微服务划分</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%85%AC%E5%BC%8F-%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键公式&#x2F;复杂度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#IM-%E5%BE%AE%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%A0%B8%E5%BF%83%E6%8C%91%E6%88%98"><span class="toc-number">1.5.1.</span> <span class="toc-text">IM 微服务的核心挑战</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.2.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

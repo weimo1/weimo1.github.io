@@ -1,0 +1,372 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Redis事务与Lua | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Redis 事务 vs Lua 适用范围：Redis 事务机制（MULTI&#x2F;EXEC）与 Lua 脚本（EVAL&#x2F;EVALSHA）的对比——原子性保证、逻辑处理能力、网络开销、主从复制、Redis 7.0 Functions。  一、核心概念 定义：Redis 提供两种原子性操作方案——事务（MULTI&#x2F;EXEC，命令批量入队后执行）和 Lua 脚本（EVAL，服务器">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis事务与Lua">
+<meta property="og:url" content="https://weimo1.github.io/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Redis 事务 vs Lua 适用范围：Redis 事务机制（MULTI&#x2F;EXEC）与 Lua 脚本（EVAL&#x2F;EVALSHA）的对比——原子性保证、逻辑处理能力、网络开销、主从复制、Redis 7.0 Functions。  一、核心概念 定义：Redis 提供两种原子性操作方案——事务（MULTI&#x2F;EXEC，命令批量入队后执行）和 Lua 脚本（EVAL，服务器">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.550Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Redis事务与Lua",
+  "url": "https://weimo1.github.io/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.550Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Redis事务与Lua',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Redis事务与Lua</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Redis事务与Lua</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.550Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>11分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Redis-事务-vs-Lua"><a href="#Redis-事务-vs-Lua" class="headerlink" title="Redis 事务 vs Lua"></a>Redis 事务 vs Lua</h1><blockquote>
+<p>适用范围：Redis 事务机制（MULTI&#x2F;EXEC）与 Lua 脚本（EVAL&#x2F;EVALSHA）的对比——原子性保证、逻辑处理能力、网络开销、主从复制、Redis 7.0 Functions。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Redis 提供两种原子性操作方案——事务（MULTI&#x2F;EXEC，命令批量入队后执行）和 Lua 脚本（EVAL，服务器端执行，整个脚本作为一个原子整体）。两者各有适用场景，Lua 脚本在逻辑处理能力和性能上通常更优。</li>
+<li><strong>关键词</strong>：MULTI&#x2F;EXEC、EVAL&#x2F;EVALSHA、SCRIPT LOAD、SCRIPT KILL、lua_pcall、主从复制脚本传播、NOSCRIPT 回退、Redis Functions（Redis 7.0）</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>事务：简单批量执行（批量 SET&#x2F;DEL），无逻辑判断需求</li>
+<li>Lua 脚本：需要条件判断（if&#x2F;then）、原子性读-改-写、减少网络往返</li>
+<li>边界：脚本执行期间阻塞所有其他命令，需控制脚本执行时间</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：事务 vs Lua 本质差异</strong></p>
+<p>Redis 事务（MULTI&#x2F;EXEC）只保证命令的原子性——事务中的每个命令要么全部执行成功，要么全部不执行。但事务<strong>没有逻辑处理能力</strong>，只是命令的批量入队和依次执行。</p>
+<p>Lua 脚本可以将整个脚本发送给 Redis 服务器，在服务器端作为一个整体执行。这意味着可以在一个 Lua 脚本中执行多个 Redis 命令，配合判断语句和循环语句实现复杂逻辑。</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Redis 事务</th>
+<th>Lua 脚本</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原子性</td>
+<td>命令级原子（入队期+执行期）</td>
+<td>脚本级原子（整个脚本作为一个整体）</td>
+</tr>
+<tr>
+<td>逻辑处理</td>
+<td>无（只批量执行）</td>
+<td>支持 if&#x2F;else、循环、变量</td>
+</tr>
+<tr>
+<td>网络开销</td>
+<td>N 条命令 N 次网络往返</td>
+<td>1 次脚本传输，服务器端执行</td>
+</tr>
+<tr>
+<td>复用性</td>
+<td>每次重新发送所有命令</td>
+<td>SCRIPT LOAD 预加载，EVALSHA SHA 复用</td>
+</tr>
+</tbody></table>
+<p><strong>第二层：Lua 脚本执行流程</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">客户端 → EVAL script numkeys key... arg... → Redis</span><br><span class="line">  → evalCommand() 解析参数</span><br><span class="line">  → evalGenericCommand() 设置 KEYS[]/ARGV[] 全局变量</span><br><span class="line">  → lua_pcall() 执行脚本（阻塞其他命令）</span><br><span class="line">  → luaReplyToRedisReply() 将返回值转为 Redis 协议</span><br><span class="line">  → 返回结果给客户端</span><br></pre></td></tr></table></figure>
+
+<p><strong>第三层：主从复制中 Lua 脚本的传播</strong></p>
+<p>Lua 脚本执行写命令时，Redis <strong>传播脚本本身</strong>到从节点（而非逐个传播命令结果）。这保证了主从一致性，但也要求脚本必须是确定性的——脚本内不能使用随机数、时间等非确定性数据。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-事务示例"><a href="#3-1-事务示例" class="headerlink" title="3.1 事务示例"></a>3.1 事务示例</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Redis 事务：批量设值</span></span><br><span class="line">redis-cli&gt; MULTI</span><br><span class="line">redis-cli&gt; SET key1 <span class="string">&quot;value1&quot;</span></span><br><span class="line">redis-cli&gt; INCR counter</span><br><span class="line">redis-cli&gt; EXEC</span><br><span class="line"><span class="comment"># 返回：OK, (integer) 1</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-Lua-脚本示例"><a href="#3-2-Lua-脚本示例" class="headerlink" title="3.2 Lua 脚本示例"></a>3.2 Lua 脚本示例</h3><figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 原子性地检查并更新（防止超卖）</span></span><br><span class="line"><span class="keyword">local</span> current = redis.call(<span class="string">&#x27;GET&#x27;</span>, KEYS[<span class="number">1</span>])</span><br><span class="line"><span class="keyword">if</span> current <span class="keyword">and</span> <span class="built_in">tonumber</span>(current) &gt; <span class="number">0</span> <span class="keyword">then</span></span><br><span class="line">    redis.call(<span class="string">&#x27;DECR&#x27;</span>, KEYS[<span class="number">1</span>])</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="keyword">return</span> <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-SCRIPT-LOAD-EVALSHA-复用"><a href="#3-3-SCRIPT-LOAD-EVALSHA-复用" class="headerlink" title="3.3 SCRIPT LOAD + EVALSHA 复用"></a>3.3 SCRIPT LOAD + EVALSHA 复用</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 加载脚本体，返回 SHA 摘要</span></span><br><span class="line">redis-cli&gt; SCRIPT LOAD <span class="string">&quot;return redis.call(&#x27;GET&#x27;, KEYS[1])&quot;</span></span><br><span class="line"><span class="string">&quot;a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 后续通过 SHA 调用（省去网络传输脚本体）</span></span><br><span class="line">redis-cli&gt; EVALSHA a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9 1 mykey</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-分布式锁的正确解锁"><a href="#3-4-分布式锁的正确解锁" class="headerlink" title="3.4 分布式锁的正确解锁"></a>3.4 分布式锁的正确解锁</h3><figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 用 Lua 保证&quot;判断归属 + 删除&quot;是原子的</span></span><br><span class="line"><span class="keyword">if</span> redis.call(<span class="string">&#x27;get&#x27;</span>, KEYS[<span class="number">1</span>]) == ARGV[<span class="number">1</span>] <span class="keyword">then</span></span><br><span class="line">    <span class="keyword">return</span> redis.call(<span class="string">&#x27;del&#x27;</span>, KEYS[<span class="number">1</span>])</span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><p><strong>验证码场景</strong>：用 Lua 脚本原子性地检查验证码 + 删除，防止重复使用。</p>
+<p><strong>限流场景</strong>：Lua 脚本实现滑动窗口限流，比事务更高效。在单次 EVAL 中完成”检查当前窗口计数 → 判断是否超限 → 更新计数 → 设置 TTL”的全流程。</p>
+<p><strong>分布式锁</strong>：<code>SET lock:key uuid NX EX 30</code> 加锁 → 业务执行 → Lua 脚本判断 uuid 后 DEL 解锁。核心：SETNX 保证互斥，EX 防止死锁，UUID 防止误删，Lua 保证判断+删除原子性。</p>
+<h3 id="EVALSHA-注意事项"><a href="#EVALSHA-注意事项" class="headerlink" title="EVALSHA 注意事项"></a>EVALSHA 注意事项</h3><p>生产环境建议客户端先 EVALSHA，收到 NOSCRIPT 错误后再回退 EVAL 发送完整脚本体同时重新 LOAD。原因是脚本缓存可能因重启 &#x2F; SCRIPT FLUSH 丢失。</p>
+<h3 id="Redis-7-0-Functions（推荐迁移）"><a href="#Redis-7-0-Functions（推荐迁移）" class="headerlink" title="Redis 7.0 Functions（推荐迁移）"></a>Redis 7.0 Functions（推荐迁移）</h3><p>Redis 7.0 引入 Functions 替代 Lua 脚本缓存：</p>
+<ul>
+<li>Script 是脚本缓存（非持久），重启丢失；Function 是库级脚本（持久到 AOF&#x2F;RDB）</li>
+<li>支持 FUNCTION LOAD&#x2F;LIST&#x2F;DELETE 库管理</li>
+<li>支持多函数共享逻辑、版本管理、更好的 ACL 控制</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>脚本应幂等且无副作用扩散</strong>：脚本内执行的写命令通过 replication 传播脚本本身（非逐个命令），要求脚本必须是纯函数</li>
+<li><strong>lua-time-limit 默认 5000ms</strong>：脚本执行超时进入 hook 等待，<code>SCRIPT KILL</code> 仅当脚本未执行写操作时生效（lua_write_dirty&#x3D;&#x3D;0），否则只能 <code>SHUTDOWN NOSAVE</code></li>
+<li><strong>redis.call() vs redis.pcall()</strong>：前者遇错直接中断脚本，后者捕获错误返回 error 对象，业务逻辑中推荐 pcall + 自定义错误处理</li>
+<li><strong>避免在 Lua 中做大量计算</strong>：Redis 单线程模型下，脚本执行会阻塞所有其他命令</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-Redis-Lua-脚本执行核心路径（源码级）"><a href="#5-1-Redis-Lua-脚本执行核心路径（源码级）" class="headerlink" title="5.1 Redis Lua 脚本执行核心路径（源码级）"></a>5.1 Redis Lua 脚本执行核心路径（源码级）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Redis scripting.c — evalCommand 入口：EVAL script numkeys key [key...] arg [arg...]</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">evalCommand</span><span class="params">(client *c)</span> &#123;</span><br><span class="line">    <span class="type">long</span> <span class="type">long</span> numkeys = c-&gt;argv[<span class="number">2</span>]-&gt;ptr ? strtoll(c-&gt;argv[<span class="number">2</span>]-&gt;ptr, <span class="literal">NULL</span>, <span class="number">10</span>) : <span class="number">0</span>;</span><br><span class="line">    <span class="comment">// 参数合法性校验：numkeys 必须在 [0, argc-3] 之间</span></span><br><span class="line">    <span class="keyword">if</span> (numkeys &gt; (c-&gt;argc - <span class="number">3</span>)) &#123;</span><br><span class="line">        addReplyError(c, <span class="string">&quot;Number of keys can&#x27;t be greater than number of args&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 核心执行</span></span><br><span class="line">    evalGenericCommand(c, <span class="number">0</span>);  <span class="comment">// 0 表示 EVAL, 1 表示 EVALSHA</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">evalGenericCommand</span><span class="params">(client *c, <span class="type">int</span> evalsha)</span> &#123;</span><br><span class="line">    <span class="type">char</span> *sha = c-&gt;argv[<span class="number">1</span>]-&gt;ptr;</span><br><span class="line">    <span class="comment">// EVALSHA 路径：从 server.lua_scripts 字典中按 SHA 查找缓存脚本</span></span><br><span class="line">    <span class="keyword">if</span> (evalsha) &#123;</span><br><span class="line">        sds body = dictFetchValue(server.lua_scripts, sha);</span><br><span class="line">        <span class="keyword">if</span> (!body) &#123;</span><br><span class="line">            addReplyErrorObject(c, shared.noscripterr);  <span class="comment">// NOSCRIPT 错误</span></span><br><span class="line">            <span class="keyword">return</span>;  <span class="comment">// 客户端应回退到 EVAL</span></span><br><span class="line">        &#125;</span><br><span class="line">        c-&gt;argv[<span class="number">1</span>] = createStringObject(body, sdslen(body));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 设置 keys/argv 到 Lua 全局变量 KEYS[] 和 ARGV[]</span></span><br><span class="line">    luaSetGlobalArray(lua, <span class="string">&quot;KEYS&quot;</span>, c-&gt;argv + <span class="number">3</span>, numkeys);</span><br><span class="line">    luaSetGlobalArray(lua, <span class="string">&quot;ARGV&quot;</span>, c-&gt;argv + <span class="number">3</span> + numkeys, c-&gt;argc - <span class="number">3</span> - numkeys);</span><br><span class="line">    <span class="comment">// 执行 Lua 脚本（popen/pcall 调用 lua_pcall）</span></span><br><span class="line">    lua_pcall(lua, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">    <span class="comment">// 将 Lua 返回值转换为 Redis 协议</span></span><br><span class="line">    luaReplyToRedisReply(c, lua);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-SCRIPT-LOAD-EVALSHA-缓存机制"><a href="#5-2-SCRIPT-LOAD-EVALSHA-缓存机制" class="headerlink" title="5.2 SCRIPT LOAD + EVALSHA 缓存机制"></a>5.2 SCRIPT LOAD + EVALSHA 缓存机制</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 缓存结构：server.lua_scripts 是一个 dict，SHA摘要 → 脚本体</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">scriptCommand</span><span class="params">(client *c)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[<span class="number">1</span>]-&gt;ptr, <span class="string">&quot;load&quot;</span>)) &#123;</span><br><span class="line">        <span class="type">char</span> sha1[<span class="number">41</span>];</span><br><span class="line">        sha1hex(sha1, c-&gt;argv[<span class="number">2</span>]-&gt;ptr, sdslen(c-&gt;argv[<span class="number">2</span>]-&gt;ptr));  <span class="comment">// SHA-1 计算</span></span><br><span class="line">        <span class="comment">// 存储到 lua_scripts 字典</span></span><br><span class="line">        dictAdd(server.lua_scripts, sdsnewlen(sha1, <span class="number">40</span>),</span><br><span class="line">                sdsnewlen(c-&gt;argv[<span class="number">2</span>]-&gt;ptr, sdslen(c-&gt;argv[<span class="number">2</span>]-&gt;ptr)));</span><br><span class="line">        addReplyBulkCBuffer(c, sha1, <span class="number">40</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[<span class="number">1</span>]-&gt;ptr, <span class="string">&quot;flush&quot;</span>)) &#123;</span><br><span class="line">        <span class="comment">// SCRIPT FLUSH: 清空 scriptCache + 重置 Lua VM</span></span><br><span class="line">        scriptingReset();</span><br><span class="line">        addReply(c, shared.ok);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!strcasecmp(c-&gt;argv[<span class="number">1</span>]-&gt;ptr, <span class="string">&quot;kill&quot;</span>)) &#123;</span><br><span class="line">        <span class="comment">// SCRIPT KILL: 仅当脚本未执行写操作时有效</span></span><br><span class="line">        <span class="keyword">if</span> (server.lua_write_dirty == <span class="number">0</span>) &#123;</span><br><span class="line">            lua_sethook(lua, <span class="literal">NULL</span>, <span class="number">0</span>, <span class="number">0</span>);  <span class="comment">// 取消 hook</span></span><br><span class="line">            lua-&gt;lua-&gt;status = LUA_YIELD;</span><br><span class="line">            addReply(c, shared.ok);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-主从复制中-Lua-脚本的传播"><a href="#5-3-主从复制中-Lua-脚本的传播" class="headerlink" title="5.3 主从复制中 Lua 脚本的传播"></a>5.3 主从复制中 Lua 脚本的传播</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 写操作传播：脚本中执行写命令时，Redis 传播脚本本身而非命令结果</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">propagateNow</span><span class="params">(<span class="type">int</span> dbid)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (server.lua_caller) &#123;</span><br><span class="line">        <span class="comment">// 脚本执行环境：传播原始 EVAL/EVALSHA</span></span><br><span class="line">        alsoPropagate(server.lua_caller-&gt;cmd, dbid,</span><br><span class="line">                      server.lua_caller-&gt;argv, server.lua_caller-&gt;argc);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 关键：SCRIPT FLUSH 也会传播到从节点，确保主从脚本缓存一致</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践感悟"><a href="#实践感悟" class="headerlink" title="实践感悟"></a>实践感悟</h3><ol>
+<li><strong>EVALSHA 必须配 Fallback</strong>：生产环境建议 client 端先 EVALSHA，收到 NOSCRIPT 错误后再 EVAL，避免脚本缓存因重启&#x2F;SCRIPT FLUSH 丢失导致调用失败。</li>
+<li><strong>脚本应幂等且无副作用扩散</strong>：脚本内执行的写命令会通过 replication 传播脚本本身（非逐个命令），这保证了主从一致性，但也意味着脚本必须纯函数——不要读随机数、时间等非确定性数据。</li>
+<li><strong>lua-time-limit 默认 5000ms</strong>：脚本执行超时不自动杀（防止写操作丢失一半），而是进入 lua-time-limit hook 等待。<code>SCRIPT KILL</code> 仅当脚本未执行写操作时生效，否则只能 <code>SHUTDOWN NOSAVE</code>。</li>
+<li><strong>redis.call() vs redis.pcall()</strong>：前者遇错直接中断脚本，后者捕获错误返回 error 对象。业务逻辑中推荐 pcall + 自定义错误处理。</li>
+<li><strong>Redis 7.0 引入 Functions</strong>：Script 是脚本缓存（非持久），重启丢失；Function 是库级脚本（持久到 AOF&#x2F;RDB），支持多函数共享逻辑。推荐新项目迁移到 Redis Functions。</li>
+<li><strong>避免在 Lua 中做大量计算</strong>：Redis 单线程模型下，脚本执行会阻塞所有其他命令。复杂计算应拆分为多次小脚本调用或移到客户端处理。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥8个）"><a href="#6-1-高频问法（≥8个）" class="headerlink" title="6.1 高频问法（≥8个）"></a>6.1 高频问法（≥8个）</h3><p><strong>Q1: Redis 事务能保证 ACID 吗？</strong><br>答：不能。Redis 事务只保证原子性（命令要么全执行要么全不执行），但不支持回滚（某条命令语法错误时其他命令继续执行）。持久性和隔离性依赖配置（RDB&#x2F;AOF）。C（一致性）由 Redis 自身保证。</p>
+<p><strong>Q2: Lua 脚本相比 MULTI&#x2F;EXEC 事务的优势？</strong><br>答：① 真正的逻辑处理能力（if&#x2F;else、循环、变量）；② 减少网络往返（整个脚本一次发送）；③ 更灵活的原子边界（脚本内任意多个命令天然原子）；④ 可复用（SCRIPT LOAD 后通过 SHA 重复调用）。</p>
+<p><strong>Q3: EVALSHA 返回 NOSCRIPT 怎么处理？</strong><br>答：客户端捕获 NOSCRIPT 错误后回退执行 EVAL（发送完整脚本体），同时重新 SCRIPT LOAD 缓存。这是生产环境的标准模式，主流客户端（Jedis、Lettuce、go-redis）均已内置。</p>
+<p><strong>Q4: SCRIPT KILL 和 SHUTDOWN NOSAVE 什么区别？</strong><br>答：SCRIPT KILL 仅当脚本未执行写操作时可终止（lua_write_dirty&#x3D;&#x3D;0），适用于纯读脚本超时；脚本已写入数据时 KILL 无效，只能 SHUTDOWN NOSAVE（放弃本次修改并重启）。</p>
+<p><strong>Q5: Lua 脚本中执行 Redis 命令要注意什么？</strong><br>答：① 使用 redis.call() 出错直接中断，redis.pcall() 可捕获错误继续；② 所有 Redis 命令返回的 key 名必须用 KEYS[] 传递（保证集群模式下 hash tag 路由正确）；③ 非确定性命令（TIME、RANDOMKEY）会导致主从不一致，应避免。</p>
+<p><strong>Q6: Redis 集群模式下 Lua 脚本有什么限制？</strong><br>答：脚本涉及的所有 key 必须属于同一个 hash slot（同一个节点），否则报 CROSSSLOT 错误。解决方案：用 hash tag（{user}:id 和 {user}:name 路由到同一节点）。</p>
+<p><strong>Q7: Lua 脚本性能开销有多大？</strong><br>答：lua_pcall 调用本身开销极小（微秒级），主要耗时在脚本内执行的 Redis 命令。复杂逻辑（大循环、字符串拼接）可能在单线程中阻塞。建议每个脚本控制在几十毫秒以内。</p>
+<p><strong>Q8: Redis 7.0 的 Functions 相比 Lua 脚本改进在哪？</strong><br>答：① 持久化：Function 存储在 AOF&#x2F;RDB 中，重启不丢失；② 库管理：支持 FUNCTION LOAD&#x2F;LIST&#x2F;DELETE；③ 版本管理：支持 LIBRARY 级别的隔离和替换；④ 更好的 ACL 控制。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ol>
+<li><strong>「Redis 事务支持回滚」</strong> → 错！语法错误不会触发其他命令回滚，Redis 认为语法错误是编程 bug 应在开发阶段发现。</li>
+<li><strong>「Lua 脚本一定比 Pipeline 快」</strong> → 不一定！Pipeline 对简单批量操作更快（无 Lua VM 开销），Lua 优势在需要条件判断和中间变量时。</li>
+<li><strong>「SCRIPT KILL 可以终止任何超时脚本」</strong> → 错！写操作后的脚本只能用 SHUTDOWN NOSAVE。</li>
+<li><strong>「Lua 脚本天然解决并发问题」</strong> → 脚本本身原子执行，但多客户端并发调同一个脚本时，脚本间仍有竞态。</li>
+<li><strong>「SCRIPT FLUSH 不影响主从复制」</strong> → 错！FLUSH 命令会传播到从节点，导致从节点脚本缓存也清空。</li>
+</ol>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MULTI&#x2F;EXEC 原子性</td>
+<td>入队期+执行期，执行期间不响应其他客户端，但不支持回滚</td>
+</tr>
+<tr>
+<td>EVAL vs EVALSHA</td>
+<td>EVAL 传脚本体，EVALSHA 传 SHA 摘要，更快但需预先 LOAD</td>
+</tr>
+<tr>
+<td>NOSCRIPT 处理</td>
+<td>捕获后回退 EVAL + 重新 LOAD</td>
+</tr>
+<tr>
+<td>SCRIPT KILL 条件</td>
+<td>仅 lua_write_dirty&#x3D;&#x3D;0 时生效</td>
+</tr>
+<tr>
+<td>主从复制</td>
+<td>传播脚本体(非命令结果)，要求脚本确定性</td>
+</tr>
+<tr>
+<td>Redis 7.0 Functions</td>
+<td>持久化脚本库，替代 SCRIPT LOAD 缓存</td>
+</tr>
+<tr>
+<td>cluster 限制</td>
+<td>所有 KEY 必须同一 hash slot，用 hash tag 解决</td>
+</tr>
+</tbody></table>
+<h2 id="附录（原笔记内容归档）"><a href="#附录（原笔记内容归档）" class="headerlink" title="附录（原笔记内容归档）"></a>附录（原笔记内容归档）</h2><h3 id="Lua-脚本相比事务的四大优势"><a href="#Lua-脚本相比事务的四大优势" class="headerlink" title="Lua 脚本相比事务的四大优势"></a>Lua 脚本相比事务的四大优势</h3><ol>
+<li><strong>原子性</strong>：Lua 脚本内的多个命令作为一个整体执行，比事务的命令级原子更彻底。</li>
+<li><strong>逻辑处理能力</strong>：支持 if&#x2F;else、循环、变量，可进行复杂的数据筛选和转换。</li>
+<li><strong>减少网络开销</strong>：只需发送脚本体，服务器端执行后返回结果，明显提升大量命令的执行效率。</li>
+<li><strong>复用性和扩展性</strong>：脚本可在 Redis 中定义保存并重复使用，增加代码复用率。</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/">https://weimo1.github.io/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/" title="Redis内存淘汰"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Redis内存淘汰</div></div><div class="info-2"><div class="info-item-1">Redis 内存淘汰 适用范围：Redis 内存管理、缓存淘汰策略、LRU&#x2F;LFU 算法原理与 C++ 实现  一、项目&#x2F;模块概述 模块定位：Redis 内存淘汰机制是 Redis 缓存系统的关键组件，当内存达到 maxmemory 上限时，自动淘汰旧 key 为新 key 腾出空间。 技术栈与依赖：Redis 内核（纯 C）、zmalloc 内存分配器、24 位 LRU 时钟。 模块边界：输入为内存压力信号，输出为被淘汰的 key。上游是写命令，下游是内存释放。  二、架构设计设计拆解第一层：策略体系Redis 提供 8 种淘汰策略：    策略 范围 算法    ...</div></div></div></a><a class="pagination-related" href="/posts/RTTI%E5%92%8C%E5%9B%9B%E7%A7%8D%E6%8C%87%E9%92%88/" title="RTTI和四种指针"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">RTTI和四种指针</div></div><div class="info-2"><div class="info-item-1">RTTI和四种指针 适用范围：RTTI（Run-Time Type Identification）机制及 C++ 四种类型转换运算符。  一、核心概念 定义：RTTI（运行时类型识别）是 C++ 通过 typeid 和 dynamic_cast 在运行时获取对象实际类型信息的机制。四种指针转换运算符（static_cast、dynamic_cast、const_cast、reinterpret_cast）是 C++ 替代 C 风格强制转换的类型安全转换方式。 关键词：RTTI、typeid、type_info、dynamic_cast、static_cast、const_cast、rei...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Redis-%E4%BA%8B%E5%8A%A1-vs-Lua"><span class="toc-number">1.</span> <span class="toc-text">Redis 事务 vs Lua</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%BA%8B%E5%8A%A1%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 事务示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-Lua-%E8%84%9A%E6%9C%AC%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 Lua 脚本示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-SCRIPT-LOAD-EVALSHA-%E5%A4%8D%E7%94%A8"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 SCRIPT LOAD + EVALSHA 复用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81%E7%9A%84%E6%AD%A3%E7%A1%AE%E8%A7%A3%E9%94%81"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 分布式锁的正确解锁</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.1.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#EVALSHA-%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-number">1.4.2.</span> <span class="toc-text">EVALSHA 注意事项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Redis-7-0-Functions%EF%BC%88%E6%8E%A8%E8%8D%90%E8%BF%81%E7%A7%BB%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">Redis 7.0 Functions（推荐迁移）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.4.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Redis-Lua-%E8%84%9A%E6%9C%AC%E6%89%A7%E8%A1%8C%E6%A0%B8%E5%BF%83%E8%B7%AF%E5%BE%84%EF%BC%88%E6%BA%90%E7%A0%81%E7%BA%A7%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Redis Lua 脚本执行核心路径（源码级）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-SCRIPT-LOAD-EVALSHA-%E7%BC%93%E5%AD%98%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 SCRIPT LOAD + EVALSHA 缓存机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6%E4%B8%AD-Lua-%E8%84%9A%E6%9C%AC%E7%9A%84%E4%BC%A0%E6%92%AD"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 主从复制中 Lua 脚本的传播</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.4.</span> <span class="toc-text">实践感悟</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E7%AC%94%E8%AE%B0%E5%86%85%E5%AE%B9%E5%BD%92%E6%A1%A3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（原笔记内容归档）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Lua-%E8%84%9A%E6%9C%AC%E7%9B%B8%E6%AF%94%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%9B%9B%E5%A4%A7%E4%BC%98%E5%8A%BF"><span class="toc-number">1.7.1.</span> <span class="toc-text">Lua 脚本相比事务的四大优势</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

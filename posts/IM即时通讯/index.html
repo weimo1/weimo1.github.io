@@ -1,0 +1,351 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>IM即时通讯 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="IM 即时通讯 IM（Instant Messaging）即时通讯是通过网络实时传递文字、图片、语音、视频等消息的通信系统。本笔记涵盖 IM 系统的协议选择（TCP vs UDP）和消息序列化（Protobuf）两个核心基础。  参考：为什么 QQ 用 UDP 而不是 TCP | Protobuf 从入门到精通 一、核心概念 定义：IM 即时通讯是指通过互联网实时进行文字、语音、视频等信息交互的通">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IM即时通讯">
+<meta property="og:url" content="https://weimo1.github.io/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="IM 即时通讯 IM（Instant Messaging）即时通讯是通过网络实时传递文字、图片、语音、视频等消息的通信系统。本笔记涵盖 IM 系统的协议选择（TCP vs UDP）和消息序列化（Protobuf）两个核心基础。  参考：为什么 QQ 用 UDP 而不是 TCP | Protobuf 从入门到精通 一、核心概念 定义：IM 即时通讯是指通过互联网实时进行文字、语音、视频等信息交互的通">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.544Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "IM即时通讯",
+  "url": "https://weimo1.github.io/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.544Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'IM即时通讯',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">IM即时通讯</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">IM即时通讯</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.544Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="IM-即时通讯"><a href="#IM-即时通讯" class="headerlink" title="IM 即时通讯"></a>IM 即时通讯</h1><blockquote>
+<p>IM（Instant Messaging）即时通讯是通过网络实时传递文字、图片、语音、视频等消息的通信系统。本笔记涵盖 IM 系统的协议选择（TCP vs UDP）和消息序列化（Protobuf）两个核心基础。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/thread-279-1-1.html">为什么 QQ 用 UDP 而不是 TCP</a> | <a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/thread-4080-1-1.html">Protobuf 从入门到精通</a></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：IM 即时通讯是指通过互联网实时进行文字、语音、视频等信息交互的通信方式。核心要素包括：可靠有序的消息传递、低延迟的实时触达、多设备同步、消息持久化。</li>
+<li>关键词：TCP vs UDP、Protobuf、消息序列化、实时通信、协议选择</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>个人聊天（单聊、群聊）</li>
+<li>企业通讯（钉钉&#x2F;飞书&#x2F;企业微信）</li>
+<li>直播弹幕、在线客服</li>
+<li>不适合：E-mail 类异步通信</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="为什么-QQ-用-UDP-而不是-TCP？"><a href="#为什么-QQ-用-UDP-而不是-TCP？" class="headerlink" title="为什么 QQ 用 UDP 而不是 TCP？"></a>为什么 QQ 用 UDP 而不是 TCP？</h3><p>TCP 的优势：可靠传输、有序交付、拥塞控制、流控。</p>
+<p>但 UDP 在 IM 场景下有自己的优势：</p>
+<ol>
+<li><strong>无需连接建立</strong>：UDP 无三次握手，弱网下 TCP 可能一直建立失败，UDP 直接发包</li>
+<li><strong>更灵活的重传策略</strong>：TCP 的超时重传和拥塞控制有时过于保守。IM 可能更关心实时性而非可靠性（如视频通话允许丢帧）</li>
+<li><strong>无队头阻塞</strong>：TCP 严格按序交付，前面丢包会阻塞后序数据。UDP 各数据包独立</li>
+<li><strong>资源消耗更低</strong>：无连接状态，服务端资源占用小</li>
+</ol>
+<p><strong>为什么现代方案更倾向 QUIC？</strong></p>
+<ul>
+<li>QUIC 基于 UDP 但内置可靠传输、加密、多路复用</li>
+<li>0RTT 重连、连接迁移、无队头阻塞</li>
+<li>结合了 UDP 的灵活性和 TCP 的可靠性</li>
+</ul>
+<p><strong>实际选择：</strong></p>
+<ul>
+<li>文本消息（必须可靠）→ TCP 或 QUIC</li>
+<li>音视频通话（实时优先）→ UDP</li>
+<li>弱网移动端 → QUIC</li>
+</ul>
+<h3 id="消息序列化——Protobuf"><a href="#消息序列化——Protobuf" class="headerlink" title="消息序列化——Protobuf"></a>消息序列化——Protobuf</h3><p>Protobuf 在 IM 中的优势：</p>
+<ol>
+<li><strong>压缩率高</strong>：Varint 编码 + 字段编号替代字段名，比 JSON&#x2F;XML 小 3-10 倍</li>
+<li><strong>解析速度快</strong>：二进制格式，无需字符串解析</li>
+<li><strong>跨语言</strong>：支持 C++&#x2F;Java&#x2F;Go&#x2F;Python 等</li>
+<li><strong>向后兼容</strong>：字段编号保证协议演进兼容性</li>
+</ol>
+<p>典型 IM 消息协议的 Protobuf 定义：</p>
+<figure class="highlight protobuf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">message </span><span class="title class_">ChatMessage</span> &#123;</span><br><span class="line">    <span class="type">uint64</span> msg_id     = <span class="number">1</span>;</span><br><span class="line">    <span class="type">uint64</span> session_id = <span class="number">2</span>;</span><br><span class="line">    <span class="type">uint64</span> from_uid   = <span class="number">3</span>;</span><br><span class="line">    <span class="type">uint64</span> to_uid     = <span class="number">4</span>;</span><br><span class="line">    <span class="type">uint32</span> msg_type   = <span class="number">5</span>;  <span class="comment">// 0:text, 1:image, 2:audio</span></span><br><span class="line">    <span class="type">bytes</span>  content    = <span class="number">6</span>;</span><br><span class="line">    <span class="type">int64</span>  timestamp  = <span class="number">7</span>;</span><br><span class="line">    <span class="type">uint64</span> client_id  = <span class="number">8</span>;  <span class="comment">// 客户端生成的顺序 ID</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Protobuf 消息序列化示例</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;chat.pb.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function">std::string <span class="title">serialize_message</span><span class="params">(<span class="type">uint64_t</span> from, <span class="type">uint64_t</span> to, <span class="type">const</span> std::string&amp; text)</span> </span>&#123;</span><br><span class="line">    ChatMessage msg;</span><br><span class="line">    msg.<span class="built_in">set_msg_id</span>(<span class="built_in">generate_msg_id</span>());</span><br><span class="line">    msg.<span class="built_in">set_from_uid</span>(from);</span><br><span class="line">    msg.<span class="built_in">set_to_uid</span>(to);</span><br><span class="line">    msg.<span class="built_in">set_msg_type</span>(<span class="number">0</span>);  <span class="comment">// text</span></span><br><span class="line">    msg.<span class="built_in">set_content</span>(text);</span><br><span class="line">    msg.<span class="built_in">set_timestamp</span>(<span class="built_in">time</span>(<span class="literal">nullptr</span>));</span><br><span class="line">    </span><br><span class="line">    std::string serialized;</span><br><span class="line">    msg.<span class="built_in">SerializeToString</span>(&amp;serialized);</span><br><span class="line">    <span class="keyword">return</span> serialized;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>Protocol Buffers</strong>：核心消息序列化方案，在 gRPC 中广泛使用</li>
+<li><strong>QUIC 协议</strong>：未来 IM 长连接的主流选择</li>
+<li><strong>WebSocket</strong>：浏览器端 IM 的标准方案</li>
+<li><strong>TCP 拥塞控制</strong>：BBR 等新算法提升弱网吞吐</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>微信&#x2F;QQ</strong>：腾讯自研 Mars 长连接框架，TCP 为主、UDP 为辅</li>
+<li><strong>WhatsApp</strong>：基于 XMPP + 自定义二进制协议</li>
+<li><strong>Telegram</strong>：自研 MTProto 协议</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>精简协议</strong>：自定义二进制协议比 Protobuf 更小（无 schema 开销），但失去兼容性</li>
+<li><strong>增量更新</strong>：只传输变更字段，减少重复数据</li>
+<li><strong>批量消息</strong>：多条消息合并一次 push</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="TCP-vs-UDP-的工程实践"><a href="#TCP-vs-UDP-的工程实践" class="headerlink" title="TCP vs UDP 的工程实践"></a>TCP vs UDP 的工程实践</h3><p>TCP 在 IM 中的问题不是可靠性，而是<strong>盲目可靠</strong>——TCP 为了保证可靠传输会重传丢失的数据包。但 IM 中有些场景不需要绝对可靠：</p>
+<ul>
+<li>视频通话中，丢失一帧画面的影响远小于因重传造成的延迟</li>
+<li>直播弹幕中，偶尔丢失一条弹幕可接受</li>
+</ul>
+<p>这就是为什么”QQ 用 UDP”——早期 QQ 包含音视频通话，TCP 不适合实时音视频。文本消息可以单独用更可靠的信道。</p>
+<h3 id="Protobuf-的-Varint-编码"><a href="#Protobuf-的-Varint-编码" class="headerlink" title="Protobuf 的 Varint 编码"></a>Protobuf 的 Varint 编码</h3><p>Protobuf 的高效在于 Varint 编码：小整数用更少字节存储。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">0-127:          1 byte</span><br><span class="line">128-16383:      2 bytes</span><br><span class="line">16384-2097151:  3 bytes</span><br></pre></td></tr></table></figure>
+
+<p>IM 中的消息 ID、用户 ID 通常用 varint 存储，比固定 8 字节节省 50-70% 空间。</p>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>协议选择没有银弹：TCP 可靠但慢，UDP 快但不可靠，QUIC 是二者折中</li>
+<li>生产环境 TCP 仍是主流——UDP 被运营商限制（QoS、NAT 穿透）</li>
+<li>Protobuf 是 IM 消息序列化的工业标准——在不牺牲太多性能的前提下保证协议兼容性</li>
+<li>自定义二进制协议极快（无 schema 开销），但演化困难——权衡点在于”性能 vs 维护成本”</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：QQ 为什么用 UDP 而不是 TCP？</p>
+<p>A：UDP 无连接、无队头阻塞、灵活可控。适合视频音频等实时场景（允许少量丢包）。现代 IM 更倾向 TCP + QUIC 双协议栈。</p>
+<p>Q2：TCP 和 UDP 在 IM 场景各适合什么？</p>
+<p>A：TCP 适合文本消息（必须可靠）、文件传输。UDP 适合音视频通话（实时优先）。QUIC 试图统一两者。</p>
+<p>Q3：Protobuf 相比 JSON 有什么优势？</p>
+<p>A：二进制编码（比 JSON 小 3-10 倍）、解析速度快（无需字符串解析）、Schema 演化兼容、跨语言支持。</p>
+<p>Q4：Protobuf 的 Varint 编码原理是什么？</p>
+<p>A：每个字节最高位为继续位，低 7 位为数据。小整数用更少字节（如 1 只需 1 字节）。int32 字段平均节省 50% 空间。</p>
+<p>Q5：IM 消息协议的核心字段有哪些？</p>
+<p>A：msg_id（全局唯一）、session_id（会话标识）、from_uid&#x2F;to_uid（收发方）、msg_type（消息类型）、content（内容）、timestamp（时间戳）、client_id（客户端顺序）。</p>
+<p>Q6：自定义二进制协议 vs Protobuf 如何选？</p>
+<p>A：自定义协议极快极省，但演化困难，需自己处理兼容性。Protobuf 有 schema 保证兼容性。高性能场景自定义，通用场景 Protobuf。</p>
+<p>Q7：弱网场景下 TCP 有什么问题？</p>
+<p>A：TCP 严格按序交付，前一个包丢失会阻塞后面所有包（队头阻塞）。拥塞控制保守，弱网下吞吐极低。TCP 建立连接需要 3 次握手（弱网可能一直失败）。</p>
+<p>Q8：QUIC 为什么适合移动端 IM？</p>
+<p>A：0RTT 重连（TCP+TLS 至少 1RTT）、连接迁移（切换 WiFi→4G 不断连）、无队头阻塞（多 Stream 独立）、内置加密。</p>
+<p>Q9：消息序列化如何平衡性能和兼容性？</p>
+<p>A：使用 TLV（Type-Length-Value）或 Protobuf。未知字段可安全跳过，新增字段不影响旧版客户端。向后兼容 + 向前兼容。</p>
+<p>Q10：IM 系统中消息大小如何控制？</p>
+<p>A：文本消息限长（如 5000 字）。图片&#x2F;视频用缩略图 + URL 引用而非 embedding。批量消息合并压缩。超过阈值的大文件走独立的文件传输通道。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司的 IM 系统是否使用了多协议栈（TCP+QUIC）？在做协议升级时如何兼容老客户端？</p>
+</li>
+<li><p>消息序列化方案是如何选择的？有没有因为性能做过自定义二进制协议？</p>
+</li>
+<li><p>陷阱 1：”Protobuf 可以实现零拷贝序列化？” — Protobuf 不是零拷贝。序列化需要分配新 buffer 并逐字段拷贝。可通过 Arena 分配器减少内存碎片，但无法避免拷贝。</p>
+</li>
+<li><p>陷阱 2：”用 UDP 就可以随便丢包？” — IM 中的文本消息不能丢。UDP 之上需自建可靠传输层（ACK+重试+排序），复杂度相当于在 UDP 上实现 TCP。</p>
+</li>
+<li><p>陷阱 3：”JSON 完全可以替代 Protobuf？” — JSON 在带宽紧张或消息量极大的 IM 场景下，大小和解析开销不可接受。毫秒级的延迟预算不允许 JSON 的解析时间。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>IM 协议选择的核心是：TCP 保证可靠文本消息，QUIC 提升弱网体验，UDP 用于实时音视频。</li>
+<li>Protobuf 优于 JSON 的关键是：二进制编码紧凑（小 3-10 倍）+ 解析快速 + Schema 演化兼容。</li>
+<li>QUIC 的杀手级特性是：0RTT 重连和连接迁移——移动端断网重连体验的质变。</li>
+<li>自定义二进制协议的取舍是：极致的性能和空间效率换取协议演化的复杂性。</li>
+<li>当被问到”IM 用什么协议”时回答：”文本消息 TCP + Protobuf 序列化，弱网升级 QUIC。音视频用 UDP+RTP。生产环境 TCP 仍是主流。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的参考链接与图片，原样保留于此。</p>
+</blockquote>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/thread-279-1-1.html">为什么QQ用的是UDP协议而不是TCP协议？-即时通讯开发者社区</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/thread-4080-1-1.html">IM通讯协议专题学习(一)：Protobuf从入门到精通，一篇就够！-即时通讯开发者社区</a></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758380013687-0a7cafd4-b710-418e-8e88-ed7415cd0bcd.png"> <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1758381056120-61439d53-10fb-48e3-9b84-f192e7865acb.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/">https://weimo1.github.io/posts/IM%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/IM%E5%BE%AE%E6%9C%8D%E5%8A%A1%E5%88%92%E5%88%86/" title="IM微服务划分"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">IM微服务划分</div></div><div class="info-2"><div class="info-item-1">IM 微服务划分 IM 系统微服务划分旨在将复杂的即时通讯系统按业务领域拆分为独立部署、独立扩展的服务单元。参考腾讯云 IM 的功能划分，合理拆分接入层、业务层、存储层，实现高内聚低耦合。  参考：腾讯云即时通信 IM 功能介绍 一、核心概念 定义：IM 微服务划分是基于领域驱动设计（DDD）原则，将 IM 系统按业务边界拆分为独立服务的架构设计方法。每个服务有独立的数据库、独立的部署周期和独立的技术栈选择。 关键词：微服务、领域驱动、限界上下文、接入层、业务层、存储层、服务拆分 适用场景&#x2F;边界： 大型 IM 系统（百万+ 用户） 多人团队协作开发 需要独立扩展不同模块 小规模...</div></div></div></a><a class="pagination-related" href="/posts/HTTP%E4%B8%8ETCP%E5%B0%81%E8%A3%85%E5%88%86%E6%9E%90/" title="HTTP与TCP封装分析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">HTTP与TCP封装分析</div></div><div class="info-2"><div class="info-item-1">HTTP与TCP协议封装分析 适用范围：IM项目中GateServer的HTTP服务（Boost.Beast）与ChatServer的TCP长连接（Boost.Asio）的封装设计与对比分析。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#IM-%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF"><span class="toc-number">1.</span> <span class="toc-text">IM 即时通讯</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-QQ-%E7%94%A8-UDP-%E8%80%8C%E4%B8%8D%E6%98%AF-TCP%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">为什么 QQ 用 UDP 而不是 TCP？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B6%88%E6%81%AF%E5%BA%8F%E5%88%97%E5%8C%96%E2%80%94%E2%80%94Protobuf"><span class="toc-number">1.2.2.</span> <span class="toc-text">消息序列化——Protobuf</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TCP-vs-UDP-%E7%9A%84%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.5.1.</span> <span class="toc-text">TCP vs UDP 的工程实践</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Protobuf-%E7%9A%84-Varint-%E7%BC%96%E7%A0%81"><span class="toc-number">1.5.2.</span> <span class="toc-text">Protobuf 的 Varint 编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

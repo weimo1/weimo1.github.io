@@ -1,0 +1,520 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>C++虚函数表创建更新流程分析 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="C++虚函数表创建更新流程分析 适用范围：C++ 虚函数表(vtable)的创建时机、vptr 更新流程、构造&#x2F;析构期间的多态行为。  一、核心概念 定义：虚函数表（vtable）是编译器为每个包含虚函数的类生成的一张函数指针表。虚函数指针（vptr）是每个对象实例中的一个隐藏指针，指向该对象当前类型对应的 vtable。vtable 在编译期创建（存储在 .rodata 段），vptr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C++虚函数表创建更新流程分析">
+<meta property="og:url" content="https://weimo1.github.io/posts/C++%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="C++虚函数表创建更新流程分析 适用范围：C++ 虚函数表(vtable)的创建时机、vptr 更新流程、构造&#x2F;析构期间的多态行为。  一、核心概念 定义：虚函数表（vtable）是编译器为每个包含虚函数的类生成的一张函数指针表。虚函数指针（vptr）是每个对象实例中的一个隐藏指针，指向该对象当前类型对应的 vtable。vtable 在编译期创建（存储在 .rodata 段），vptr">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.543Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "C++虚函数表创建更新流程分析",
+  "url": "https://weimo1.github.io/posts/C++%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.543Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/C++%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'C++虚函数表创建更新流程分析',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">C++虚函数表创建更新流程分析</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">C++虚函数表创建更新流程分析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.543Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B/">对象模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.1k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="C-虚函数表创建更新流程分析"><a href="#C-虚函数表创建更新流程分析" class="headerlink" title="C++虚函数表创建更新流程分析"></a>C++虚函数表创建更新流程分析</h1><blockquote>
+<p>适用范围：C++ 虚函数表(vtable)的创建时机、vptr 更新流程、构造&#x2F;析构期间的多态行为。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：虚函数表（vtable）是编译器为每个包含虚函数的类生成的一张函数指针表。虚函数指针（vptr）是每个对象实例中的一个隐藏指针，指向该对象当前类型对应的 vtable。vtable 在编译期创建（存储在 .rodata 段），vptr 在运行时构造&#x2F;析构期间动态更新。</li>
+<li><strong>关键词</strong>：虚函数表（vtable）、虚函数指针（vptr）、RTTI、多态、构造期间虚函数、析构期间虚函数、thunk、offset-to-top</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>理解 C++ 多态的底层实现</li>
+<li>调试构造&#x2F;析构函数中虚函数调用的非预期行为</li>
+<li>理解 <code>dynamic_cast</code> 和 <code>typeid</code> 的运行时依赖</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p>虚函数表是实现 C++ 运行时多态的核心机制。每个包含虚函数的类有一张 vtable，每个对象实例有一个 vptr 指向其类的 vtable。当通过基类指针&#x2F;引用调用虚函数时，编译器生成间接调用指令：先读 vptr，再从 vtable 中取函数地址，最后调用。</p>
+<p><strong>第二层：关键步骤详解</strong></p>
+<p>构造期间 vptr 更新时间线：</p>
+<ol>
+<li>分配对象内存</li>
+<li>设置 vptr 指向当前构造类的 vtable（在构造函数体执行<strong>之前</strong>）</li>
+<li>调用基类构造函数（基类会再设置 vptr 指向基类 vtable）</li>
+<li>执行当前类的构造函数体</li>
+<li>下一层派生类重复步骤 2-4</li>
+</ol>
+<p>析构期间 vptr 回退时间线：</p>
+<ol>
+<li>设置 vptr 指向当前析构类的 vtable</li>
+<li>执行当前类的析构函数体</li>
+<li>调用基类析构函数（基类会再设置 vptr 指向基类 vtable）</li>
+<li>重复直到最顶层基类</li>
+</ol>
+<p><strong>第三层：底层机制</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每个有虚函数的类在编译时生成 vtable</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">VTable_A</span> &#123;</span><br><span class="line">    std::type_info* rtti;       <span class="comment">// RTTI（-1偏移）</span></span><br><span class="line">    <span class="built_in">void</span> (*vfuncs[<span class="number">1</span>])();        <span class="comment">// 虚函数槽位</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// b.v() 编译为: rax=[rdi]; rax=[rax]; call rax</span></span><br></pre></td></tr></table></figure>
+
+<p>构造期间的 vptr 写入汇编：</p>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="symbol">B:</span>:B():</span><br><span class="line">    <span class="keyword">mov</span> <span class="built_in">QWORD</span> [<span class="built_in">rdi</span>], vtable_B   <span class="comment">; ★ vptr 先指向 B 虚表</span></span><br><span class="line">    <span class="keyword">call</span> A::A()                  <span class="comment">; 再调基类构造（重写 vptr）</span></span><br><span class="line">    <span class="keyword">ret</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>关键数据结构</strong>：vtable（虚函数指针数组）、vptr（对象内隐藏指针）、RTTI slot（vtable[-1]）</li>
+<li><strong>关键公式</strong>：虚函数调用 &#x3D; 两次内存访问（vptr → vtable → func） + 一次间接跳转</li>
+</ul>
+<p>虚函数表的创建是在编译时完成的，但vptr的更新是在运行时每个构造函数执行前进行的。这种设计确保了：</p>
+<ol>
+<li><strong>类型安全</strong>: 构造期间不会调用未完全构造的派生类函数</li>
+<li><strong>正确多态</strong>: 对象完全构造后能正确进行多态调用</li>
+<li><strong>安全析构</strong>: 析构期间不会访问已销毁的派生类部分</li>
+</ol>
+<p>这就是为什么在B的构造函数中调用func()会输出”构造A”而不是”类C”的原因。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h2 id="虚函数表-vtable-的创建和更新时机"><a href="#虚函数表-vtable-的创建和更新时机" class="headerlink" title="虚函数表(vtable)的创建和更新时机"></a>虚函数表(vtable)的创建和更新时机</h2><h3 id="1-编译时阶段"><a href="#1-编译时阶段" class="headerlink" title="1. 编译时阶段"></a>1. 编译时阶段</h3><ul>
+<li><strong>vtable结构创建</strong>: 编译器为每个包含虚函数的类创建vtable结构</li>
+<li><strong>函数地址填充</strong>: 编译器确定每个虚函数在vtable中的位置和函数地址</li>
+</ul>
+<h3 id="2-运行时阶段-对象构造过程"><a href="#2-运行时阶段-对象构造过程" class="headerlink" title="2. 运行时阶段 - 对象构造过程"></a>2. 运行时阶段 - 对象构造过程</h3><h4 id="步骤1-类A对象构造"><a href="#步骤1-类A对象构造" class="headerlink" title="步骤1: 类A对象构造"></a>步骤1: 类A对象构造</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">时间点: A()构造函数开始执行前</span><br><span class="line">动作: </span><br><span class="line">- 创建vptr(虚函数指针)</span><br><span class="line">- vptr指向类A的vtable</span><br><span class="line">- A的vtable: func() -&gt; A::func, fund() -&gt; A::fund</span><br><span class="line">输出: &quot;构造函数A&quot;</span><br></pre></td></tr></table></figure>
+
+<h4 id="步骤2-类B对象构造"><a href="#步骤2-类B对象构造" class="headerlink" title="步骤2: 类B对象构造"></a>步骤2: 类B对象构造</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">时间点: B()构造函数开始执行前</span><br><span class="line">动作:</span><br><span class="line">- 更新vptr指向类B的vtable</span><br><span class="line">- B的vtable: func() -&gt; A::func (B未重写), fund() -&gt; A::fund</span><br><span class="line">- 在构造函数中调用func()，此时vptr指向B的vtable</span><br><span class="line">输出: &quot;构造A&quot; (调用A::func)</span><br></pre></td></tr></table></figure>
+
+<h4 id="步骤3-类C对象构造"><a href="#步骤3-类C对象构造" class="headerlink" title="步骤3: 类C对象构造"></a>步骤3: 类C对象构造</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">时间点: C()构造函数开始执行前  </span><br><span class="line">动作:</span><br><span class="line">- 更新vptr指向类C的vtable</span><br><span class="line">- C的vtable: func() -&gt; C::func, fund() -&gt; C::fund</span><br><span class="line">输出: &quot;构造函数C&quot;</span><br></pre></td></tr></table></figure>
+
+<h2 id="完整执行流程对比"><a href="#完整执行流程对比" class="headerlink" title="完整执行流程对比"></a>完整执行流程对比</h2><h3 id="对象创建阶段-C-c"><a href="#对象创建阶段-C-c" class="headerlink" title="对象创建阶段 (C c;)"></a>对象创建阶段 (C c;)</h3><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤</td>
+<td>vtable状态</td>
+<td>构造函数执行</td>
+<td>输出</td>
+<td>说明</td>
+</tr>
+<tr>
+<td>1</td>
+<td>vptr → A的vtable</td>
+<td>A()执行</td>
+<td>“构造函数A”</td>
+<td>基类构造</td>
+</tr>
+<tr>
+<td>2</td>
+<td>vptr → B的vtable</td>
+<td>B()执行，调用func()</td>
+<td>“构造A”</td>
+<td>调用A::func，因为在构造期间</td>
+</tr>
+<tr>
+<td>3</td>
+<td>vptr → C的vtable</td>
+<td>C()执行</td>
+<td>“构造函数C”</td>
+<td>派生类构造完成</td>
+</tr>
+</tbody></table>
+<h3 id="对象使用阶段-c-fun"><a href="#对象使用阶段-c-fun" class="headerlink" title="对象使用阶段 (c.fun())"></a>对象使用阶段 (c.fun())</h3><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤</td>
+<td>vtable状态</td>
+<td>函数调用</td>
+<td>输出</td>
+<td>说明</td>
+</tr>
+<tr>
+<td>4</td>
+<td>vptr → C的vtable</td>
+<td>C::fun()调用func()</td>
+<td>“开始…类C”</td>
+<td>正常多态调用C::func</td>
+</tr>
+</tbody></table>
+<h3 id="对象销毁阶段-离开作用域"><a href="#对象销毁阶段-离开作用域" class="headerlink" title="对象销毁阶段 (离开作用域)"></a>对象销毁阶段 (离开作用域)</h3><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤</td>
+<td>vtable状态</td>
+<td>析构函数执行</td>
+<td>输出</td>
+<td>说明</td>
+</tr>
+<tr>
+<td>5</td>
+<td>vptr → C的vtable</td>
+<td>~C()执行，调用fund()</td>
+<td>“清除C”</td>
+<td>调用C::fund</td>
+</tr>
+<tr>
+<td>6</td>
+<td>vptr → B的vtable</td>
+<td>~B()执行，调用fund()</td>
+<td>“清除A”</td>
+<td>vptr已更新，调用A::fund</td>
+</tr>
+<tr>
+<td>7</td>
+<td>vptr → A的vtable</td>
+<td>~A()执行</td>
+<td>“析构函数A”</td>
+<td>基类析构</td>
+</tr>
+</tbody></table>
+<h2 id="关键时机对比"><a href="#关键时机对比" class="headerlink" title="关键时机对比"></a>关键时机对比</h2><h3 id="vtable更新-vs-构造函数执行"><a href="#vtable更新-vs-构造函数执行" class="headerlink" title="vtable更新 vs 构造函数执行"></a>vtable更新 vs 构造函数执行</h3><ol>
+<li><strong>vtable更新时机</strong>: 在每个构造函数体执行<strong>之前</strong></li>
+<li><strong>构造函数执行时机</strong>: 在vtable更新<strong>之后</strong></li>
+</ol>
+<h3 id="详细解释：”构造函数体执行之前”"><a href="#详细解释：”构造函数体执行之前”" class="headerlink" title="详细解释：”构造函数体执行之前”"></a>详细解释：”构造函数体执行之前”</h3><h4 id="构造函数的完整执行过程："><a href="#构造函数的完整执行过程：" class="headerlink" title="构造函数的完整执行过程："></a>构造函数的完整执行过程：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">// 当执行 C c; 时的完整时间线：</span><br><span class="line"></span><br><span class="line">第0步：程序准备阶段</span><br><span class="line">├── 为C对象分配内存空间（栈上）</span><br><span class="line">├── 内存中此时只有原始字节，还不是任何类的对象</span><br><span class="line">└── 开始继承链的构造过程</span><br><span class="line"></span><br><span class="line">第1步：A类构造阶段</span><br><span class="line">├── 【关键时刻】设置vptr指向A的vtable</span><br><span class="line">│   └── 此时对象&quot;认为&quot;自己是A类型</span><br><span class="line">├── 执行A()构造函数体：&#123; cout &lt;&lt; &quot;构造函数A&quot; &lt;&lt; endl; &#125;</span><br><span class="line">│   └── 输出：&quot;构造函数A&quot;</span><br><span class="line">└── A的构造部分完成</span><br><span class="line"></span><br><span class="line">第2步：B类构造阶段</span><br><span class="line">├── 【关键时刻】更新vptr指向B的vtable</span><br><span class="line">│   └── 此时对象&quot;认为&quot;自己是B类型（继承了A的数据）</span><br><span class="line">├── 执行B()构造函数体：&#123; func(); &#125;</span><br><span class="line">│   ├── 调用func()时，通过vptr查找B的vtable</span><br><span class="line">│   ├── B的vtable中func()条目指向A::func（因为B没重写）</span><br><span class="line">│   ├── 执行A::func()函数体：&#123; cout &lt;&lt; &quot;构造A&quot; &lt;&lt; endl; &#125;</span><br><span class="line">│   └── 输出：&quot;构造A&quot;</span><br><span class="line">└── B的构造部分完成</span><br><span class="line"></span><br><span class="line">第3步：C类构造阶段  </span><br><span class="line">├── 【关键时刻】更新vptr指向C的vtable</span><br><span class="line">│   └── 此时对象&quot;认为&quot;自己是C类型（继承了A和B的数据）</span><br><span class="line">├── 执行C()构造函数体：&#123; cout &lt;&lt; &quot;构造函数C&quot; &lt;&lt; endl; &#125;</span><br><span class="line">│   └── 输出：&quot;构造函数C&quot;</span><br><span class="line">└── C构造完全完成，对象可以正常使用</span><br><span class="line"></span><br><span class="line">构造完成后的对象状态：</span><br><span class="line">├── vptr指向C的vtable</span><br><span class="line">├── 包含A、B、C三个层次的所有数据成员</span><br><span class="line">└── 可以进行正常的多态调用</span><br></pre></td></tr></table></figure>
+
+<h4 id="详细解释每个”执行”步骤："><a href="#详细解释每个”执行”步骤：" class="headerlink" title="详细解释每个”执行”步骤："></a>详细解释每个”执行”步骤：</h4><p><strong>第1步的”执行A()构造函数体”</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">A() &#123; cout &lt;&lt; &quot;构造函数A&quot; &lt;&lt; endl; &#125;</span><br><span class="line">     ^                              ^</span><br><span class="line">     |                              |</span><br><span class="line">  函数体开始                    函数体结束</span><br><span class="line">     |</span><br><span class="line">  此时vptr已经指向A的vtable</span><br></pre></td></tr></table></figure>
+
+<p><strong>第2步的”执行B()构造函数体”</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">B() &#123; func(); &#125;</span><br><span class="line">     ^       ^</span><br><span class="line">     |       |</span><br><span class="line">  函数体开始  函数体结束</span><br><span class="line">     |</span><br><span class="line">  此时vptr已经指向B的vtable</span><br><span class="line">     |</span><br><span class="line">     └── func()调用过程：</span><br><span class="line">         1. 通过vptr找到B的vtable</span><br><span class="line">         2. 在B的vtable中找func()条目</span><br><span class="line">         3. 发现指向A::func（因为B没重写）</span><br><span class="line">         4. 执行A::func，输出&quot;构造A&quot;</span><br></pre></td></tr></table></figure>
+
+<p><strong>第3步的”执行C()构造函数体”</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">C() &#123; cout &lt;&lt; &quot;构造函数C&quot; &lt;&lt; endl; &#125;</span><br><span class="line">     ^                              ^</span><br><span class="line">     |                              |</span><br><span class="line">  函数体开始                    函数体结束</span><br><span class="line">     |</span><br><span class="line">  此时vptr已经指向C的vtable</span><br></pre></td></tr></table></figure>
+
+<h4 id="为什么是”构造函数体执行之前”？"><a href="#为什么是”构造函数体执行之前”？" class="headerlink" title="为什么是”构造函数体执行之前”？"></a>为什么是”构造函数体执行之前”？</h4><p><strong>原因1 - 类型安全</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">B() &#123; </span><br><span class="line">    func();  // 如果vptr还指向A的vtable，这里就无法体现B的&quot;身份&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因2 - 对象身份的渐进建立</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">对象构造时的&quot;身份&quot;变化：</span><br><span class="line">内存分配 → &quot;我是A&quot; → &quot;我是B&quot; → &quot;我是C&quot;</span><br><span class="line">         ↑vptr→A   ↑vptr→B   ↑vptr→C</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因3 - 防止未定义行为</strong>：<br>如果在C的构造函数中调用虚函数，但vptr还指向A或B的vtable，可能会：</p>
+<ul>
+<li>调用不完整的C版本函数</li>
+<li>访问未初始化的C的成员变量</li>
+</ul>
+<h2 id="vtable内容的确定时机"><a href="#vtable内容的确定时机" class="headerlink" title="vtable内容的确定时机"></a>vtable内容的确定时机</h2><h3 id="重要澄清：vtable内容在编译时确定，不是运行时重写"><a href="#重要澄清：vtable内容在编译时确定，不是运行时重写" class="headerlink" title="重要澄清：vtable内容在编译时确定，不是运行时重写"></a>重要澄清：vtable内容在编译时确定，不是运行时重写</h3><h4 id="编译时就已经确定的vtable内容："><a href="#编译时就已经确定的vtable内容：" class="headerlink" title="编译时就已经确定的vtable内容："></a>编译时就已经确定的vtable内容：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">// 编译器在编译时就创建了三个不同的vtable：</span><br><span class="line"></span><br><span class="line">A的vtable（编译时创建）：</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│ func() → A::func │  // 指向A::func的地址</span><br><span class="line">│ fund() → A::fund │  // 指向A::fund的地址  </span><br><span class="line">└─────────────────┘</span><br><span class="line"></span><br><span class="line">B的vtable（编译时创建）：</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│ func() → A::func │  // B没重写func()，所以仍指向A::func</span><br><span class="line">│ fund() → A::fund │  // B没重写fund()，所以仍指向A::fund</span><br><span class="line">└─────────────────┘</span><br><span class="line"></span><br><span class="line">C的vtable（编译时创建）：</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│ func() → C::func │  // C重写了func()，所以指向C::func  </span><br><span class="line">│ fund() → C::fund │  // C重写了fund()，所以指向C::fund</span><br><span class="line">└─────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h4 id="运行时只是切换vptr指向，不修改vtable内容："><a href="#运行时只是切换vptr指向，不修改vtable内容：" class="headerlink" title="运行时只是切换vptr指向，不修改vtable内容："></a>运行时只是切换vptr指向，不修改vtable内容：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 构造过程中vptr的指向变化（运行时）：</span><br><span class="line"></span><br><span class="line">对象内存布局：</span><br><span class="line">┌──────────────┐</span><br><span class="line">│ vptr ────────┼──┐  // 这个指针在运行时变化</span><br><span class="line">├──────────────┤  │</span><br><span class="line">│ A的数据成员   │  │</span><br><span class="line">├──────────────┤  │</span><br><span class="line">│ B的数据成员   │  │</span><br><span class="line">├──────────────┤  │</span><br><span class="line">│ C的数据成员   │  │</span><br><span class="line">└──────────────┘  │</span><br><span class="line">                  │</span><br><span class="line">第1步：vptr指向A的vtable ←┘</span><br><span class="line">第2步：vptr指向B的vtable  </span><br><span class="line">第3步：vptr指向C的vtable</span><br></pre></td></tr></table></figure>
+
+<h3 id="关键疑问解答：为什么指向B的vtable还是调用A的函数？"><a href="#关键疑问解答：为什么指向B的vtable还是调用A的函数？" class="headerlink" title="关键疑问解答：为什么指向B的vtable还是调用A的函数？"></a>关键疑问解答：为什么指向B的vtable还是调用A的函数？</h3><h4 id="核心概念：vtable存储的是函数地址，不是函数名"><a href="#核心概念：vtable存储的是函数地址，不是函数名" class="headerlink" title="核心概念：vtable存储的是函数地址，不是函数名"></a>核心概念：vtable存储的是函数地址，不是函数名</h4><p>让我们详细看看B的vtable里到底存了什么：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 源代码分析：</span><br><span class="line">class A &#123;</span><br><span class="line">public:</span><br><span class="line">    virtual void func() &#123; cout &lt;&lt; &quot;构造A&quot; &lt;&lt; endl; &#125;  // A定义了func()</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class B : public A &#123;</span><br><span class="line">public:</span><br><span class="line">    // 注意：B类中没有重新定义func()！</span><br><span class="line">    // B继承了A的func()，但没有覆盖它</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">class C : public B &#123;</span><br><span class="line">public:</span><br><span class="line">    void func() &#123; cout &lt;&lt; &quot;类C&quot; &lt;&lt; endl; &#125;  // C重写了func()</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="编译器如何构建各个vtable："><a href="#编译器如何构建各个vtable：" class="headerlink" title="编译器如何构建各个vtable："></a>编译器如何构建各个vtable：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">A的vtable（编译时创建）：</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ func() → 0x1001(A::func) │  // 存储A::func的内存地址</span><br><span class="line">│ fund() → 0x1002(A::fund) │  </span><br><span class="line">└──────────────────────────┘</span><br><span class="line"></span><br><span class="line">B的vtable（编译时创建）：</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ func() → 0x1001(A::func) │  // 因为B没重写，所以还是A::func的地址！</span><br><span class="line">│ fund() → 0x1002(A::fund) │  // 因为B没重写，所以还是A::fund的地址！</span><br><span class="line">└──────────────────────────┘</span><br><span class="line">// 重点：B有自己独立的vtable，但内容指向A的函数</span><br><span class="line"></span><br><span class="line">C的vtable（编译时创建）：</span><br><span class="line">┌──────────────────────────┐</span><br><span class="line">│ func() → 0x2001(C::func) │  // C重写了，所以指向C::func的地址</span><br><span class="line">│ fund() → 0x2002(C::fund) │  // C重写了，所以指向C::fund的地址  </span><br><span class="line">└──────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h4 id="运行时调用过程详解："><a href="#运行时调用过程详解：" class="headerlink" title="运行时调用过程详解："></a>运行时调用过程详解：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">// 在B()构造函数中：</span><br><span class="line">B() &#123; func(); &#125;</span><br><span class="line"></span><br><span class="line">// 执行步骤：</span><br><span class="line">// 1. vptr指向B的vtable的起始地址</span><br><span class="line">// 2. 查找func()在vtable中的偏移位置（第0个位置）</span><br><span class="line">// 3. 从B的vtable[0]读取函数地址 → 得到0x1001</span><br><span class="line">// 4. 跳转到地址0x1001执行 → 这就是A::func的代码！</span><br><span class="line">// 5. 输出&quot;构造A&quot;</span><br></pre></td></tr></table></figure>
+
+<h4 id="形象化比喻："><a href="#形象化比喻：" class="headerlink" title="形象化比喻："></a>形象化比喻：</h4><p>把vtable想象成一个<strong>电话簿</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">A的电话簿：</span><br><span class="line">├── func()的电话: 123-456（A家）</span><br><span class="line">└── fund()的电话: 123-789（A家）</span><br><span class="line"></span><br><span class="line">B的电话簿：</span><br><span class="line">├── func()的电话: 123-456（还是A家！因为B没有自己的func()）</span><br><span class="line">└── fund()的电话: 123-789（还是A家！因为B没有自己的fund()）</span><br><span class="line"></span><br><span class="line">C的电话簿：</span><br><span class="line">├── func()的电话: 987-654（C家，因为C有自己的func()）</span><br><span class="line">└── fund()的电话: 987-321（C家，因为C有自己的fund()）</span><br></pre></td></tr></table></figure>
+
+<p>当你使用B的电话簿查找func()时，得到的电话号码还是指向A家！</p>
+<h4 id="继承-vs-重写的区别："><a href="#继承-vs-重写的区别：" class="headerlink" title="继承 vs 重写的区别："></a>继承 vs 重写的区别：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">class B : public A &#123;</span><br><span class="line">    // B继承了A的func()，但没有重写</span><br><span class="line">    // 编译器会在B的vtable中放入A::func的地址</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">// 如果B重写了：</span><br><span class="line">class B : public A &#123;</span><br><span class="line">    void func() &#123; cout &lt;&lt; &quot;B的函数&quot; &lt;&lt; endl; &#125;  // 重写</span><br><span class="line">    // 这时B的vtable中func()条目才会指向B::func的地址</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>总结</strong>：</p>
+<ul>
+<li>vptr指向B的vtable ✓ （运行时设置）</li>
+<li>B的vtable存储的func()地址是A::func ✓ （编译时确定）</li>
+<li>所以最终调用的是A::func ✓ （逻辑结果）</li>
+</ul>
+<p>这就是为什么”用B的vtable查找，但执行的是A的函数”！</p>
+<h4 id="实际代码示例对比："><a href="#实际代码示例对比：" class="headerlink" title="实际代码示例对比："></a>实际代码示例对比：</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">// 错误理解：如果vptr在构造函数体执行后才更新</span><br><span class="line">B() &#123;</span><br><span class="line">    func();  // 这时如果vptr还指向A，调用的是A::func - 正确！</span><br><span class="line">    // 但这违背了&quot;B对象应该有B的行为&quot;的原则</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 正确机制：vptr在构造函数体执行前更新</span><br><span class="line">B() &#123;</span><br><span class="line">    func();  // vptr已指向B的vtable，但B没重写func()，</span><br><span class="line">             // 所以通过B的vtable找到A::func - 既安全又符合逻辑！</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="关键差异："><a href="#关键差异：" class="headerlink" title="关键差异："></a>关键差异：</h4><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>时机</td>
+<td>vptr指向</td>
+<td>调用func()的结果</td>
+<td>问题</td>
+</tr>
+<tr>
+<td>如果在构造函数体执行后更新</td>
+<td>A的vtable</td>
+<td>A::func</td>
+<td>对象身份混乱</td>
+</tr>
+<tr>
+<td>实际机制：构造函数体执行前更新</td>
+<td>B的vtable</td>
+<td>A::func (通过B的vtable)</td>
+<td>类型安全，逻辑清晰</td>
+</tr>
+</tbody></table>
+<h3 id="析构期间的特殊行为"><a href="#析构期间的特殊行为" class="headerlink" title="析构期间的特殊行为"></a>析构期间的特殊行为</h3><ul>
+<li><strong>逆向更新</strong>: 析构时vptr从派生类向基类逐步更新</li>
+<li><strong>安全析构</strong>: 确保不会调用已析构部分的虚函数</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><p>虚函数表的创建是在编译时完成的，但vptr的更新是在运行时每个构造函数执行前进行的。这种设计确保了：</p>
+<ol>
+<li><strong>类型安全</strong>: 构造期间不会调用未完全构造的派生类函数</li>
+<li><strong>正确多态</strong>: 对象完全构造后能正确进行多态调用</li>
+<li><strong>安全析构</strong>: 析构期间不会访问已销毁的派生类部分</li>
+</ol>
+<p>这就是为什么在B的构造函数中调用func()会输出”构造A”而不是”类C”的原因。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-虚函数表的编译器生成全貌"><a href="#1-虚函数表的编译器生成全貌" class="headerlink" title="1. 虚函数表的编译器生成全貌"></a>1. 虚函数表的编译器生成全貌</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 每个有虚函数的类在编译时生成 vtable</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">VTable_A</span> &#123;</span><br><span class="line">    std::type_info* rtti;       <span class="comment">// RTTI（-1偏移）</span></span><br><span class="line">    <span class="built_in">void</span> (*vfuncs[<span class="number">1</span>])();        <span class="comment">// 虚函数槽位</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// b.v() 编译为: rax=[rdi]; rax=[rax]; call rax</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-多继承下的-thunk"><a href="#2-多继承下的-thunk" class="headerlink" title="2. 多继承下的 thunk"></a>2. 多继承下的 thunk</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// D : B, C。通过 C* 调 D::func() 时的 thunk:</span></span><br><span class="line"><span class="comment">// void thunk(D* this) &#123; this=(D*)((char*)this-16); D::func(this); &#125;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-构造期间-vptr-汇编"><a href="#3-构造期间-vptr-汇编" class="headerlink" title="3. 构造期间 vptr 汇编"></a>3. 构造期间 vptr 汇编</h3><figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="symbol">B:</span>:B():</span><br><span class="line">    <span class="keyword">mov</span> <span class="built_in">QWORD</span> [<span class="built_in">rdi</span>], vtable_B   <span class="comment">; ★ vptr 先指向 B 虚表</span></span><br><span class="line">    <span class="keyword">call</span> A::A()                  <span class="comment">; 再调基类构造（重写 vptr）</span></span><br><span class="line">    <span class="keyword">ret</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>构造中虚函数</strong>：调当前类版本，派生类成员未初始化，是安全设计</li>
+<li><strong>RTTI 紧耦合</strong>：typeid&#x2F;dynamic_cast 依赖虚表前 type_info，非多态类无 RTTI</li>
+<li><strong>虚表只读</strong>：.rodata 编译期生成，不可篡改</li>
+<li><strong>去虚化条件</strong>：final、编译期已知类型、LTO</li>
+<li><strong>开销</strong>：两次访存+间接跳转，BTB miss 约15-20 cycles</li>
+<li><strong>虚表大小</strong>：每虚函数 8B + RTTI + offset-to-top</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: 构造中 vptr 何时设置？</strong><br>A: 构造体执行前，vptr 已设当前类虚表，编译器在构造开头插入赋值</p>
+<p><strong>Q2: 析构中虚函数为何是当前类版本？</strong><br>A: 派生类部分已销毁，vptr 回退到基类虚表</p>
+<p><strong>Q3: 纯虚函数可有实现？构造中调用会？</strong><br>A: 可有默认实现（Base::pure_virtual()）。vptr 调用→__cxa_pure_virtual→terminate</p>
+<p><strong>Q4: 虚表编译时还是运行时？</strong><br>A: 虚表内容编译时定（.rodata），vptr 运行时设。永不修改</p>
+<p><strong>Q5: dynamic_cast 如何调整 this？</strong><br>A: 遍历 RTTI 查继承路径算 offset-to-top。失败返 nullptr&#x2F;抛 bad_cast</p>
+<p><strong>Q6: final 如何实现去虚化？</strong><br>A: final 类无派生类，虚调用直接用函数地址而非查表</p>
+<p><strong>Q7: 虚继承与普通继承 vtable 区别？</strong><br>A: 虚继承引入 vbtable，虚基类偏移编译期不定需运行时查</p>
+<p><strong>Q8: 对象切片为何丢失多态？</strong><br>A: 只拷基类子对象，vptr 指向基类虚表</p>
+<p><strong>Q9: 如何判定需虚表？</strong><br>A: 类或基类有虚函数（含虚析构）或虚继承</p>
+<p><strong>Q10: offset-to-top 是什么？</strong><br>A: 子对象到完整对象起始偏移，dynamic_cast&#x2F;catch 靠它调 this</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：基类指针 <code>static_cast&lt;void*&gt;</code> 再转回→多继承 void* 指向子对象非派生起始</li>
+<li><strong>反问</strong>：vptr 必须偏移 0？→ 非必须，Itanium ABI 约定，MSVC 可不在 0</li>
+<li><strong>陷阱</strong>：<code>memcpy</code> 基类到派生→覆写 vptr</li>
+<li><strong>反问</strong>：全部 final 还需虚表？→ 需，基类指针&#x2F;引用调时无法静态定类型</li>
+<li><strong>陷阱</strong>：析构中 <code>typeid(*this)</code>→vptr 回退，返回基类 type_info</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>vptr 初始化</strong>：构造体执行前即设当前类虚表</li>
+<li><strong>虚表与 RTTI</strong>：虚表前有 type_info，typeid 通过 vptr-1 获取</li>
+<li><strong>thunk</strong>：多继承调整 this 偏移，使派生类以正确地址执行</li>
+<li><strong>虚析构必要</strong>：delete 基类指针非虚析构只调基类→资源泄漏</li>
+<li><strong>vtable 大小</strong>：约 (虚函数数+2)×8B</li>
+<li><strong>去虚化</strong>：编译期已知类型、final、LTO</li>
+<li><strong>vptr 切换次数</strong>：每层构造重写一次</li>
+<li><strong>.rodata</strong>：虚表只读，写入 segfault</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/C++%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/">https://weimo1.github.io/posts/C++%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/CMake/" title="CMake"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">CMake</div></div><div class="info-2"><div class="info-item-1">CMake 适用范围：单一主题（一个概念&#x2F;机制&#x2F;模块），保持可复用、可检索。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，...</div></div></div></a><a class="pagination-related" href="/posts/CVar-%E7%B3%BB%E7%BB%9F/" title="CVar 系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">CVar 系统</div></div><div class="info-2"><div class="info-item-1">CVar（控制台变量）系统 适用范围：运行时配置管理、INI 持久化、AutoCVar 自动注册、ReadOnly&#x2F;ReadAndWrite 权限控制  一、一句话结论CVar 系统 &#x3D; 静态自动注册 + 类型安全模板 + 数组连续存储 + 哈希 O(1) 查找 + shared_mutex 读写锁。AutoCVarFloat/Bool/Int32/String 在构造时自动注册到全局单例，get() 通过预存数组索引 O(1) 读取，无需字符串查找。  二、核心概念解析（≥200字）2.1 三层架构12345用户接口层（AutoCVarXXX）    ↓ stati...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#C-%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90"><span class="toc-number">1.</span> <span class="toc-text">C++虚函数表创建更新流程分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8-vtable-%E7%9A%84%E5%88%9B%E5%BB%BA%E5%92%8C%E6%9B%B4%E6%96%B0%E6%97%B6%E6%9C%BA"><span class="toc-number">1.4.</span> <span class="toc-text">虚函数表(vtable)的创建和更新时机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E7%BC%96%E8%AF%91%E6%97%B6%E9%98%B6%E6%AE%B5"><span class="toc-number">1.4.1.</span> <span class="toc-text">1. 编译时阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E8%BF%90%E8%A1%8C%E6%97%B6%E9%98%B6%E6%AE%B5-%E5%AF%B9%E8%B1%A1%E6%9E%84%E9%80%A0%E8%BF%87%E7%A8%8B"><span class="toc-number">1.4.2.</span> <span class="toc-text">2. 运行时阶段 - 对象构造过程</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AD%A5%E9%AA%A41-%E7%B1%BBA%E5%AF%B9%E8%B1%A1%E6%9E%84%E9%80%A0"><span class="toc-number">1.4.2.1.</span> <span class="toc-text">步骤1: 类A对象构造</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AD%A5%E9%AA%A42-%E7%B1%BBB%E5%AF%B9%E8%B1%A1%E6%9E%84%E9%80%A0"><span class="toc-number">1.4.2.2.</span> <span class="toc-text">步骤2: 类B对象构造</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AD%A5%E9%AA%A43-%E7%B1%BBC%E5%AF%B9%E8%B1%A1%E6%9E%84%E9%80%A0"><span class="toc-number">1.4.2.3.</span> <span class="toc-text">步骤3: 类C对象构造</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">1.5.</span> <span class="toc-text">完整执行流程对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E9%98%B6%E6%AE%B5-C-c"><span class="toc-number">1.5.1.</span> <span class="toc-text">对象创建阶段 (C c;)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E4%BD%BF%E7%94%A8%E9%98%B6%E6%AE%B5-c-fun"><span class="toc-number">1.5.2.</span> <span class="toc-text">对象使用阶段 (c.fun())</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E9%94%80%E6%AF%81%E9%98%B6%E6%AE%B5-%E7%A6%BB%E5%BC%80%E4%BD%9C%E7%94%A8%E5%9F%9F"><span class="toc-number">1.5.3.</span> <span class="toc-text">对象销毁阶段 (离开作用域)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%97%B6%E6%9C%BA%E5%AF%B9%E6%AF%94"><span class="toc-number">1.6.</span> <span class="toc-text">关键时机对比</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#vtable%E6%9B%B4%E6%96%B0-vs-%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E6%89%A7%E8%A1%8C"><span class="toc-number">1.6.1.</span> <span class="toc-text">vtable更新 vs 构造函数执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AF%A6%E7%BB%86%E8%A7%A3%E9%87%8A%EF%BC%9A%E2%80%9D%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E4%BD%93%E6%89%A7%E8%A1%8C%E4%B9%8B%E5%89%8D%E2%80%9D"><span class="toc-number">1.6.2.</span> <span class="toc-text">详细解释：”构造函数体执行之前”</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E7%9A%84%E5%AE%8C%E6%95%B4%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B%EF%BC%9A"><span class="toc-number">1.6.2.1.</span> <span class="toc-text">构造函数的完整执行过程：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AF%A6%E7%BB%86%E8%A7%A3%E9%87%8A%E6%AF%8F%E4%B8%AA%E2%80%9D%E6%89%A7%E8%A1%8C%E2%80%9D%E6%AD%A5%E9%AA%A4%EF%BC%9A"><span class="toc-number">1.6.2.2.</span> <span class="toc-text">详细解释每个”执行”步骤：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF%E2%80%9D%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E4%BD%93%E6%89%A7%E8%A1%8C%E4%B9%8B%E5%89%8D%E2%80%9D%EF%BC%9F"><span class="toc-number">1.6.2.3.</span> <span class="toc-text">为什么是”构造函数体执行之前”？</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#vtable%E5%86%85%E5%AE%B9%E7%9A%84%E7%A1%AE%E5%AE%9A%E6%97%B6%E6%9C%BA"><span class="toc-number">1.7.</span> <span class="toc-text">vtable内容的确定时机</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%87%8D%E8%A6%81%E6%BE%84%E6%B8%85%EF%BC%9Avtable%E5%86%85%E5%AE%B9%E5%9C%A8%E7%BC%96%E8%AF%91%E6%97%B6%E7%A1%AE%E5%AE%9A%EF%BC%8C%E4%B8%8D%E6%98%AF%E8%BF%90%E8%A1%8C%E6%97%B6%E9%87%8D%E5%86%99"><span class="toc-number">1.7.1.</span> <span class="toc-text">重要澄清：vtable内容在编译时确定，不是运行时重写</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E6%97%B6%E5%B0%B1%E5%B7%B2%E7%BB%8F%E7%A1%AE%E5%AE%9A%E7%9A%84vtable%E5%86%85%E5%AE%B9%EF%BC%9A"><span class="toc-number">1.7.1.1.</span> <span class="toc-text">编译时就已经确定的vtable内容：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E5%8F%AA%E6%98%AF%E5%88%87%E6%8D%A2vptr%E6%8C%87%E5%90%91%EF%BC%8C%E4%B8%8D%E4%BF%AE%E6%94%B9vtable%E5%86%85%E5%AE%B9%EF%BC%9A"><span class="toc-number">1.7.1.2.</span> <span class="toc-text">运行时只是切换vptr指向，不修改vtable内容：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E7%96%91%E9%97%AE%E8%A7%A3%E7%AD%94%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8C%87%E5%90%91B%E7%9A%84vtable%E8%BF%98%E6%98%AF%E8%B0%83%E7%94%A8A%E7%9A%84%E5%87%BD%E6%95%B0%EF%BC%9F"><span class="toc-number">1.7.2.</span> <span class="toc-text">关键疑问解答：为什么指向B的vtable还是调用A的函数？</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%EF%BC%9Avtable%E5%AD%98%E5%82%A8%E7%9A%84%E6%98%AF%E5%87%BD%E6%95%B0%E5%9C%B0%E5%9D%80%EF%BC%8C%E4%B8%8D%E6%98%AF%E5%87%BD%E6%95%B0%E5%90%8D"><span class="toc-number">1.7.2.1.</span> <span class="toc-text">核心概念：vtable存储的是函数地址，不是函数名</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BC%96%E8%AF%91%E5%99%A8%E5%A6%82%E4%BD%95%E6%9E%84%E5%BB%BA%E5%90%84%E4%B8%AAvtable%EF%BC%9A"><span class="toc-number">1.7.2.2.</span> <span class="toc-text">编译器如何构建各个vtable：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B%E8%AF%A6%E8%A7%A3%EF%BC%9A"><span class="toc-number">1.7.2.3.</span> <span class="toc-text">运行时调用过程详解：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BD%A2%E8%B1%A1%E5%8C%96%E6%AF%94%E5%96%BB%EF%BC%9A"><span class="toc-number">1.7.2.4.</span> <span class="toc-text">形象化比喻：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BB%A7%E6%89%BF-vs-%E9%87%8D%E5%86%99%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9A"><span class="toc-number">1.7.2.5.</span> <span class="toc-text">继承 vs 重写的区别：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E9%99%85%E4%BB%A3%E7%A0%81%E7%A4%BA%E4%BE%8B%E5%AF%B9%E6%AF%94%EF%BC%9A"><span class="toc-number">1.7.2.6.</span> <span class="toc-text">实际代码示例对比：</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%B7%AE%E5%BC%82%EF%BC%9A"><span class="toc-number">1.7.2.7.</span> <span class="toc-text">关键差异：</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%90%E6%9E%84%E6%9C%9F%E9%97%B4%E7%9A%84%E7%89%B9%E6%AE%8A%E8%A1%8C%E4%B8%BA"><span class="toc-number">1.7.3.</span> <span class="toc-text">析构期间的特殊行为</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.9.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8%E7%9A%84%E7%BC%96%E8%AF%91%E5%99%A8%E7%94%9F%E6%88%90%E5%85%A8%E8%B2%8C"><span class="toc-number">1.9.1.</span> <span class="toc-text">1. 虚函数表的编译器生成全貌</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%A4%9A%E7%BB%A7%E6%89%BF%E4%B8%8B%E7%9A%84-thunk"><span class="toc-number">1.9.2.</span> <span class="toc-text">2. 多继承下的 thunk</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%9E%84%E9%80%A0%E6%9C%9F%E9%97%B4-vptr-%E6%B1%87%E7%BC%96"><span class="toc-number">1.9.3.</span> <span class="toc-text">3. 构造期间 vptr 汇编</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.9.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.10.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">1.10.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.10.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.10.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

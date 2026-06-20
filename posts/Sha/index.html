@@ -1,0 +1,368 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Sha | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Sha 适用范围：项目基础库中的 SHA 系列哈希算法（SHA-1&#x2F;SHA-256 等）实现  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。  一、项目&#x2F;模块概述 模块定位：项">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sha">
+<meta property="og:url" content="https://weimo1.github.io/posts/Sha/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Sha 适用范围：项目基础库中的 SHA 系列哈希算法（SHA-1&#x2F;SHA-256 等）实现  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。  一、项目&#x2F;模块概述 模块定位：项">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.551Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Sha",
+  "url": "https://weimo1.github.io/posts/Sha/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.551Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Sha/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Sha',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Sha</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Sha</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.551Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%9F%BA%E7%A1%80%E5%BA%93%E4%B8%8E%E5%B7%A5%E5%85%B7/">基础库与工具</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Sha"><a href="#Sha" class="headerlink" title="Sha"></a>Sha</h1><blockquote>
+<p>适用范围：项目基础库中的 SHA 系列哈希算法（SHA-1&#x2F;SHA-256 等）实现</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。</li>
+<li><strong>代码块必须标注语言</strong>：C++ 代码用 <code>c++</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：项目基础库中的 SHA 系列安全哈希算法实现，提供 SHA-1、SHA-256 等摘要计算能力。通常与 MD5 模块并列，构成哈希摘要工具链。</li>
+<li><strong>技术栈与依赖</strong>：纯 C++ 标准库实现，无外部依赖</li>
+<li><strong>模块边界</strong>：<ul>
+<li>输入：任意长度字节序列</li>
+<li>输出：固定长度摘要（SHA-1: 160bit, SHA-256: 256bit）</li>
+<li>上下游：被需要数据完整性校验、数字签名（需结合非对称加密）的模块调用</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="第一层：整体架构"><a href="#第一层：整体架构" class="headerlink" title="第一层：整体架构"></a>第一层：整体架构</h3><p>SHA 系列算法统一遵循 <strong>Merkle-Damgård</strong> 构造：</p>
+<ul>
+<li>消息分块（512bit&#x2F;块 对应 SHA-1&#x2F;256，1024bit&#x2F;块 对应 SHA-512）</li>
+<li>逐块压缩（每块与当前哈希状态混合）</li>
+<li>最终输出（最后一个块处理完毕后的状态即为摘要）</li>
+</ul>
+<h3 id="第二层：关键流程"><a href="#第二层：关键流程" class="headerlink" title="第二层：关键流程"></a>第二层：关键流程</h3><ol>
+<li><strong>Padding（填充）</strong>：消息末尾添加 <code>1</code> 位 + 若干 <code>0</code> 位 + 64bit 原始消息长度，使填充后总长度为块大小的整数倍</li>
+<li><strong>逐块压缩</strong>：对每 512bit 块执行压缩函数（SHA-1: 80 轮，SHA-256: 64 轮），每轮包含位移、异或、与或非等位操作</li>
+<li><strong>输出</strong>：将最终状态按大端序输出为字节序列</li>
+</ol>
+<h3 id="第三层：关键设计决策"><a href="#第三层：关键设计决策" class="headerlink" title="第三层：关键设计决策"></a>第三层：关键设计决策</h3><table>
+<thead>
+<tr>
+<th>设计决策</th>
+<th>SHA-1</th>
+<th>SHA-256</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>输出长度</td>
+<td>160bit</td>
+<td>256bit</td>
+</tr>
+<tr>
+<td>轮数</td>
+<td>80</td>
+<td>64</td>
+</tr>
+<tr>
+<td>安全性</td>
+<td>已破解（SHAttered 2017）</td>
+<td>目前安全</td>
+</tr>
+<tr>
+<td>使用场景</td>
+<td>仅用于兼容性</td>
+<td>推荐使用</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>补充：SHA-1 于 2017 年被 Google 的 SHAttered 攻击正式破解（构造了两个不同 PDF 文件具有相同 SHA-1 哈希）。NSA 设计 SHA-1 时声称需 2^80 次操作才能碰撞，但实际攻击只需 2^63 次。SHA-256 目前抵抗所有已知攻击，是 TLS、Git、Bitcoin 等核心基础设施的默认哈希选择。<br>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2010521">https://cloud.tencent.com/developer/article/2010521</a></p>
+</blockquote>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><blockquote>
+<p>补充（SHA-256 伪代码骨架）：</p>
+</blockquote>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// SHA-256 核心压缩函数（简化示意）</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">sha256_transform</span><span class="params">(<span class="type">uint32_t</span> state[<span class="number">8</span>], <span class="type">const</span> <span class="type">uint8_t</span> block[<span class="number">64</span>])</span> </span>&#123;</span><br><span class="line">    <span class="type">uint32_t</span> w[<span class="number">64</span>];</span><br><span class="line">    <span class="comment">// 消息扩展：前16个32bit字直接复制，后续通过公式生成</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">16</span>; i++)</span><br><span class="line">        w[i] = (block[i*<span class="number">4</span>] &lt;&lt; <span class="number">24</span>) | (block[i*<span class="number">4</span><span class="number">+1</span>] &lt;&lt; <span class="number">16</span>) | </span><br><span class="line">               (block[i*<span class="number">4</span><span class="number">+2</span>] &lt;&lt; <span class="number">8</span>) | block[i*<span class="number">4</span><span class="number">+3</span>];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">16</span>; i &lt; <span class="number">64</span>; i++) &#123;</span><br><span class="line">        <span class="type">uint32_t</span> s0 = <span class="built_in">rotr</span>(w[i<span class="number">-15</span>], <span class="number">7</span>) ^ <span class="built_in">rotr</span>(w[i<span class="number">-15</span>], <span class="number">18</span>) ^ (w[i<span class="number">-15</span>] &gt;&gt; <span class="number">3</span>);</span><br><span class="line">        <span class="type">uint32_t</span> s1 = <span class="built_in">rotr</span>(w[i<span class="number">-2</span>], <span class="number">17</span>) ^ <span class="built_in">rotr</span>(w[i<span class="number">-2</span>], <span class="number">19</span>) ^ (w[i<span class="number">-2</span>] &gt;&gt; <span class="number">10</span>);</span><br><span class="line">        w[i] = w[i<span class="number">-16</span>] + s0 + w[i<span class="number">-7</span>] + s1;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 64轮压缩...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>SHA-256 使用 8 个 32bit 初始哈希值（取自前 8 个质数的平方根小数部分），每轮使用一个 32bit 轮常量（取自前 64 个质数的立方根小数部分）。</p>
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="4-1-与项目中其他模块的集成方式"><a href="#4-1-与项目中其他模块的集成方式" class="headerlink" title="4.1 与项目中其他模块的集成方式"></a>4.1 与项目中其他模块的集成方式</h3><ul>
+<li>与 MD5 模块并列，提供统一的哈希摘要接口——上层通过抽象基类或模板参数选择具体算法</li>
+<li>数据完整性校验：文件&#x2F;网络数据包附带 SHA-256 摘要，接收方验证</li>
+<li>Git 底层：Git 使用 SHA-1（正在迁移至 SHA-256）标识 commit&#x2F;blob&#x2F;tree 对象</li>
+</ul>
+<h3 id="4-2-生产环境考量"><a href="#4-2-生产环境考量" class="headerlink" title="4.2 生产环境考量"></a>4.2 生产环境考量</h3><p><strong>安全性</strong></p>
+<ul>
+<li>SHA-1 禁止用于新系统的安全场景——仅保留用于兼容旧协议</li>
+<li>SHA-256 目前安全，但后量子时代可能需要 SHA-3（Keccak）或 SHAKE 系列</li>
+<li>用于密码存储时，不应直接 SHA 密码，而应使用 bcrypt&#x2F;scrypt&#x2F;argon2（带盐+慢哈希）</li>
+</ul>
+<p><strong>性能</strong></p>
+<ul>
+<li>SHA-256 比 SHA-1 慢约 1.5-2×（64 轮 vs 80 轮，但 SHA-1 单轮更简单）</li>
+<li>硬件加速：Intel SHA Extensions（Ice Lake+）提供 SHA-1&#x2F;SHA-256 硬件指令</li>
+<li>对大文件应使用流式处理——分块读取+增量更新，而非一次性加载全文件</li>
+</ul>
+<h3 id="4-3-常见优化策略"><a href="#4-3-常见优化策略" class="headerlink" title="4.3 常见优化策略"></a>4.3 常见优化策略</h3><ul>
+<li>使用 SIMD 实现并行处理多个块的压缩（Intel SHA Extensions）</li>
+<li>预计算轮常量表，避免运行时计算</li>
+<li>对固定前缀的重复哈希（如 HMAC），缓存中间状态</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-SHA-256-的数学安全性"><a href="#5-1-SHA-256-的数学安全性" class="headerlink" title="5.1 SHA-256 的数学安全性"></a>5.1 SHA-256 的数学安全性</h3><p>SHA-256 的 256bit 输出意味着暴力碰撞需要约 2^128 次操作（生日攻击）。这是宇宙级别的数字——即使动用全球所有计算资源，在宇宙寿命内也无法完成。SHA-256 的安全性建立在三个密码学属性上：抗原像攻击（单向）、抗第二原像攻击、抗碰撞。</p>
+<h3 id="5-2-难点与易错点"><a href="#5-2-难点与易错点" class="headerlink" title="5.2 难点与易错点"></a>5.2 难点与易错点</h3><p><strong>陷阱1：填充的长度编码字节序</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SHA 系列使用大端序（big-endian）存储原始消息长度——与 x86 的小端序内存布局不同。</span><br><span class="line">编码时必须显式转换字节序（htonl/htons 或手动翻转）。</span><br></pre></td></tr></table></figure>
+
+<p><strong>陷阱2：SHA-1 的”安全”错觉</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">很多遗留代码仍在使用 SHA-1 并声称&quot;够用&quot;。</span><br><span class="line">实际上 SHAttered 攻击表明：花费约 11 万美元的云计算资源即可构造一对碰撞 PDF。</span><br><span class="line">任何新系统都不应使用 SHA-1。</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-经验总结"><a href="#5-3-经验总结" class="headerlink" title="5.3 经验总结"></a>5.3 经验总结</h3><ol>
+<li><strong>SHA-256 是当前最小推荐安全级别</strong>——SHA-1 已死，MD5 更不用说</li>
+<li><strong>哈希用途决定安全需求</strong>——数据去重用 SHA-256 没问题，密码存储必须用慢哈希</li>
+<li><strong>流式 API 是工程必需的</strong>——<code>Init → Update(可多次) → Final</code> 模式支持大文件和网络流</li>
+<li><strong>哈希算法迟早会被攻破</strong>——系统设计时应允许算法升级（如 Git 从 SHA-1 到 SHA-256 的迁移计划）</li>
+</ol>
+<h2 id="六、面试准备（≥10问法-5反问-5一句话，均带回答）"><a href="#六、面试准备（≥10问法-5反问-5一句话，均带回答）" class="headerlink" title="六、面试准备（≥10问法+5反问+5一句话，均带回答）"></a>六、面试准备（≥10问法+5反问+5一句话，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>Q1：SHA-1 和 SHA-256 的主要区别？</strong><br>A：SHA-1 输出 160bit，80 轮压缩，已被破解。SHA-256 输出 256bit，64 轮压缩但单轮更复杂，目前安全。SHA-256 是 SHA-2 家族的一员。</p>
+<p><strong>Q2：SHA-256 的 Merkle-Damgård 构造原理？</strong><br>A：消息经填充后分固定大小块，每块与前一块的压缩结果一起输入压缩函数，初始向量为固定常数，最终压缩结果即为哈希值。该构造的缺点是容易受到长度扩展攻击（length extension attack）。</p>
+<p><strong>Q3：为什么 Git 要迁移到 SHA-256？</strong><br>A：因为 SHA-1 已可被碰撞攻击——攻击者可以构造两个不同的 commit 具有相同 SHA-1 值，破坏 Git 的内容寻址模型。Git 已从 2020 年开始支持 SHA-256 仓库。</p>
+<p><strong>Q4：HMAC 和普通 SHA 的区别？</strong><br>A：HMAC &#x3D; Hash-based MAC，通过在密钥与消息之间引入双重哈希（内外层）防止长度扩展攻击和密钥恢复。公式：<code>HMAC(K,m) = H((K⊕opad) || H((K⊕ipad) || m))</code>。</p>
+<p><strong>Q5：SHA 填充规则是什么？</strong><br>A：消息末尾追加 1 个 <code>1</code> 位，然后追加足够多的 <code>0</code> 位，使填充后总长度 ≡ 块大小 - 64bit（SHA-256 中为 448 mod 512），最后附加 64bit 原始消息长度（大端序）。</p>
+<p><strong>Q6：MD5 vs SHA-1 vs SHA-256 的性能对比？</strong><br>A：MD5 最快（64 轮简单操作），SHA-1 次之（80 轮），SHA-256 最慢（64 轮但每轮更复杂）。具体倍数：MD5 ≈ 1.0×, SHA-1 ≈ 1.5×, SHA-256 ≈ 2.5×。</p>
+<p><strong>Q7：什么是 SHA-3，和 SHA-2 有什么不同？</strong><br>A：SHA-3 基于 Keccak 海绵构造（sponge construction），而非 Merkle-Damgård。海绵构造天然抵抗长度扩展攻击，且支持可变长度输出（SHAKE 模式）。SHA-3 是为 SHA-2 被攻破准备的备选方案。</p>
+<p><strong>Q8：SHA-256 的输出能否反向推导输入？</strong><br>A：理论上不能——SHA-256 设计为抗原像攻击（单向函数），目前没有已知的有效方法从 256bit 摘要恢复任意长度原文。暴力搜索 2^256 种可能远超计算能力。</p>
+<p><strong>Q9：如何使用 C++ 标准库计算 SHA-256？</strong><br>A：C++ 标准库尚无 SHA 实现。常用方案：OpenSSL（<code>EVP_MD_CTX</code>）、Crypto++、自己实现。项目中通常封装为流式 API（Init&#x2F;Update&#x2F;Final）。</p>
+<p><strong>Q10：为什么比特币使用双 SHA-256？</strong><br>A：挖矿需要计算 <code>SHA256(SHA256(block_header))</code>。双重哈希的原因：1) 防止长度扩展攻击；2) 增加计算工作量而不改变输出格式；3) 历史原因（中本聪的设计选择）。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵团队的 Git 仓库是否已开启 SHA-256 迁移？如何看待这个迁移的时间线？</p>
+</li>
+<li><p>在你们的后端服务中，哪些场景仍在使用 SHA-1？是否有淘汰计划？</p>
+</li>
+<li><p><strong>陷阱问题1</strong>：”SHA-256 加密的数据能解密吗？”——不能，SHA 是哈希（摘要），不是加密。加密是可逆的，哈希不可逆。这是最常见的概念混淆。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：”用 SHA-256 存储密码安全吗？”——不安全。SHA-256 设计目标就是快，攻击者可以每秒尝试数十亿次暴力破解。密码存储必须用 bcrypt&#x2F;scrypt&#x2F;argon2 等慢哈希+盐。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：”SHA-256 摘要可以截断用于校验吗？”——某些场景可以（如 Git 允许短 SHA），但安全场景不行——截断后的碰撞概率指数级上升。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li><p>该模块的核心设计理念是：<strong>Merkle-Damgård 构造——分块压缩、链接状态、最终输出。</strong></p>
+</li>
+<li><p>SHA-256 最重要的安全属性是：<strong>抗原像攻击、抗碰撞，当前无已知有效攻击。</strong></p>
+</li>
+<li><p>避免的常见错误是：<strong>将哈希当加密使用、用快速哈希存储密码、在新系统中使用 SHA-1。</strong></p>
+</li>
+<li><p>与 MD5 模块的关系是：<strong>同一接口体系，不同安全级别——MD5 用于非安全场景，SHA-256 用于安全场景。</strong></p>
+</li>
+<li><p>这个设计的最大优点是<strong>数学上的严格安全保障</strong>；最大代价是<strong>相比 MD5 和 SHA-1 约 1.5-2.5× 的性能开销。</strong></p>
+</li>
+<li><p>当被问到”SHA-256 能破解吗？”——回答：”目前不能。暴力破解需要 2^128 次操作（生日攻击），这在物理上不可行。但密码学没有绝对——未来量子计算（Grover 算法）可将搜索降到 2^128→2^85，仍不现实但更接近可行。”</p>
+</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><blockquote>
+<p>原笔记为占位文件（仅标题），本节为根据模板补充的完整内容。具体项目的 SHA 实现代码待后续填充。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Sha/">https://weimo1.github.io/posts/Sha/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Socket%E5%9C%A8%E7%BD%91%E7%BB%9C%E5%B1%82%E4%B8%AD%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" title="Socket在网络层中的底层实现原理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Socket在网络层中的底层实现原理</div></div><div class="info-2"><div class="info-item-1">Socket在网络层中的底层实现原理 适用范围：Linux 内核网络协议栈分层处理、Socket 系统调用路径（sys_socket→inet_create→tcp_prot）、各网络层中 Socket 的角色与协作、struct socket&#x2F;struct sock&#x2F;struct inet_sock 层次关系  一、核心概念 定义：Socket 在 Linux 内核中体现为三层核心数据结构——struct socket（VFS 层，面向 fd）、struct sock（协议无关网络层）、struct inet_sock（IPv4 特定层）。用户空间的 send()&...</div></div></div></a><a class="pagination-related" href="/posts/SkipList/" title="SkipList"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">SkipList</div></div><div class="info-2"><div class="info-item-1">SkipList 适用范围：LevelDB 内存表（MemTable）的核心数据结构——并发安全的跳表  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：SkipList（跳表）是 LevelDB 内存表 MemTable 的底层数据结构，负责在内存中维护有序的 key-valu...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Sha"><span class="toc-number">1.</span> <span class="toc-text">Sha</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9A%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">第一层：整体架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.2.</span> <span class="toc-text">第二层：关键流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.3.</span> <span class="toc-text">第三层：关键设计决策</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%B8%8E%E9%A1%B9%E7%9B%AE%E4%B8%AD%E5%85%B6%E4%BB%96%E6%A8%A1%E5%9D%97%E7%9A%84%E9%9B%86%E6%88%90%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 与项目中其他模块的集成方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E8%80%83%E9%87%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 生产环境考量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-SHA-256-%E7%9A%84%E6%95%B0%E5%AD%A6%E5%AE%89%E5%85%A8%E6%80%A7"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 SHA-256 的数学安全性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E2%89%A510%E9%97%AE%E6%B3%95-5%E5%8F%8D%E9%97%AE-5%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（≥10问法+5反问+5一句话，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.8.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

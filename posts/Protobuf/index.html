@@ -1,0 +1,395 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Protobuf | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Protobuf Protocol Buffers（Protobuf）是 Google 开发的语言中立、平台中立的结构化数据序列化机制。相比 JSON&#x2F;XML，Protobuf 以二进制格式存储，体积更小、解析更快，是 gRPC 的默认序列化方案，也是 IM 系统降低流量消耗的关键技术。  一、核心概念 定义：Protocol Buffers 是一种接口定义语言（IDL）和二进制序列化协">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Protobuf">
+<meta property="og:url" content="https://weimo1.github.io/posts/Protobuf/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Protobuf Protocol Buffers（Protobuf）是 Google 开发的语言中立、平台中立的结构化数据序列化机制。相比 JSON&#x2F;XML，Protobuf 以二进制格式存储，体积更小、解析更快，是 gRPC 的默认序列化方案，也是 IM 系统降低流量消耗的关键技术。  一、核心概念 定义：Protocol Buffers 是一种接口定义语言（IDL）和二进制序列化协">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.549Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Protobuf",
+  "url": "https://weimo1.github.io/posts/Protobuf/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.549Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Protobuf/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Protobuf',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Protobuf</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Protobuf</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.549Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Protobuf"><a href="#Protobuf" class="headerlink" title="Protobuf"></a>Protobuf</h1><blockquote>
+<p>Protocol Buffers（Protobuf）是 Google 开发的语言中立、平台中立的结构化数据序列化机制。相比 JSON&#x2F;XML，Protobuf 以二进制格式存储，体积更小、解析更快，是 gRPC 的默认序列化方案，也是 IM 系统降低流量消耗的关键技术。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Protocol Buffers 是一种接口定义语言（IDL）和二进制序列化协议。开发者通过 <code>.proto</code> 文件定义数据结构，使用 <code>protoc</code> 编译器生成多语言的数据访问类，实现高效的序列化和反序列化。</li>
+<li><strong>关键词</strong>：二进制序列化、IDL、Varint 编码、ZigZag 编码、字段编号、向后兼容、proto2&#x2F;proto3、gRPC</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>适用：RPC 通信、消息队列数据、配置文件、存储持久化</li>
+<li>边界：不适合人类直接阅读（二进制格式）；调试需借助工具；字段命名影响序列化大小</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：为什么需要 Protobuf</strong></p>
+<p>JSON 和 XML 是文本格式，可读性好但存在冗余。Protobuf 采用二进制编码，核心优势：</p>
+<ul>
+<li><strong>体积小</strong>：整数用 Varint 编码（1-5字节），比 JSON 的文本数字小 3-10 倍</li>
+<li><strong>解析快</strong>：无需词法分析和字符串解析，直接按字段编号读取</li>
+<li><strong>强类型</strong>：编译期类型检查，避免运行时类型错误</li>
+</ul>
+<p><strong>第二层：核心编码机制</strong></p>
+<table>
+<thead>
+<tr>
+<th>编码技术</th>
+<th>原理</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Varint</td>
+<td>每字节最高位表示是否继续，低 7 位存数据</td>
+<td>300 → 1010 1100 0000 0010（2字节）</td>
+</tr>
+<tr>
+<td>ZigZag</td>
+<td>将有符号数映射为无符号数，使负数也能高效压缩</td>
+<td>sint32 字段使用</td>
+</tr>
+<tr>
+<td>Length-delimited</td>
+<td>先写长度再写数据，适合 string&#x2F;bytes&#x2F;message</td>
+<td>“Hi” → 0x02 0x48 0x69</td>
+</tr>
+</tbody></table>
+<p><strong>第三层：字段编号与兼容性</strong></p>
+<p>每个字段有一个唯一编号（1-536870911），序列化时只存储编号-值对。这使得：</p>
+<ul>
+<li>新增字段不影响旧版本（旧版本跳过未知编号）</li>
+<li>删除字段只需标记 reserved，避免编号重用</li>
+<li>字段重命名不影响序列化（编号不变即可）</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight protobuf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// IM 消息的 proto 定义示例</span></span><br><span class="line">syntax = <span class="string">&quot;proto3&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">package</span> im;</span><br><span class="line"></span><br><span class="line"><span class="keyword">message </span><span class="title class_">ChatMessage</span> &#123;</span><br><span class="line">    <span class="type">string</span> msg_id = <span class="number">1</span>;           <span class="comment">// 消息唯一 ID</span></span><br><span class="line">    <span class="type">int64</span> sender_id = <span class="number">2</span>;         <span class="comment">// 发送者</span></span><br><span class="line">    <span class="type">int64</span> target_id = <span class="number">3</span>;         <span class="comment">// 接收者（用户或群ID）</span></span><br><span class="line">    MessageType type = <span class="number">4</span>;        <span class="comment">// 消息类型</span></span><br><span class="line">    <span class="type">bytes</span> content = <span class="number">5</span>;           <span class="comment">// 消息内容（已加密）</span></span><br><span class="line">    <span class="type">int64</span> timestamp = <span class="number">6</span>;         <span class="comment">// 发送时间戳</span></span><br><span class="line">    MessageStatus status = <span class="number">7</span>;    <span class="comment">// 消息状态</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">enum </span><span class="title class_">MessageType</span> &#123;</span><br><span class="line">    TEXT = <span class="number">0</span>;</span><br><span class="line">    IMAGE = <span class="number">1</span>;</span><br><span class="line">    VOICE = <span class="number">2</span>;</span><br><span class="line">    VIDEO = <span class="number">3</span>;</span><br><span class="line">    FILE = <span class="number">4</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">enum </span><span class="title class_">MessageStatus</span> &#123;</span><br><span class="line">    SENDING = <span class="number">0</span>;</span><br><span class="line">    SENT = <span class="number">1</span>;</span><br><span class="line">    DELIVERED = <span class="number">2</span>;</span><br><span class="line">    READ = <span class="number">3</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// C++ 中使用 Protobuf 序列化和反序列化</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;chat.pb.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 构造消息并序列化</span></span><br><span class="line">im::ChatMessage msg;</span><br><span class="line">msg.<span class="built_in">set_msg_id</span>(<span class="string">&quot;msg_001&quot;</span>);</span><br><span class="line">msg.<span class="built_in">set_sender_id</span>(<span class="number">10001</span>);</span><br><span class="line">msg.<span class="built_in">set_target_id</span>(<span class="number">10002</span>);</span><br><span class="line">msg.<span class="built_in">set_type</span>(im::MessageType::TEXT);</span><br><span class="line">msg.<span class="built_in">set_content</span>(<span class="string">&quot;Hello, World!&quot;</span>);</span><br><span class="line">msg.<span class="built_in">set_timestamp</span>(<span class="number">1715678900</span>);</span><br><span class="line"></span><br><span class="line">std::string serialized;</span><br><span class="line">msg.<span class="built_in">SerializeToString</span>(&amp;serialized);</span><br><span class="line"><span class="comment">// serialized 现在是紧凑的二进制数据</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 反序列化</span></span><br><span class="line">im::ChatMessage parsed;</span><br><span class="line">parsed.<span class="built_in">ParseFromString</span>(serialized);</span><br><span class="line">std::string content = parsed.<span class="built_in">content</span>();  <span class="comment">// &quot;Hello, World!&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>gRPC</strong>：Protobuf 是 gRPC 的接口定义语言和序列化协议，.proto 文件直接生成服务端&#x2F;客户端代码</li>
+<li><strong>IM 消息协议</strong>：IM 系统使用 Protobuf 序列化消息体，结合自定义二进制头（如 TLV）实现高效通信</li>
+<li><strong>消息队列</strong>：Kafka、Pulsar 等 MQ 支持 Protobuf 序列化</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>Google 内部</strong>：几乎所有服务间通信使用 Protobuf</li>
+<li><strong>微信</strong>：使用 Protobuf 的变体（MicroMsg 协议）进行消息序列化</li>
+<li><strong>Envoy&#x2F;Istio</strong>：服务网格的 xDS 配置协议基于 Protobuf</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>字段编号分配</strong>：1-15 编号仅占 1 字节（tag），高频字段优先分配</li>
+<li><strong>repeated 字段打包</strong>：proto3 默认使用 packed 编码，减少空间</li>
+<li><strong>避免 large message</strong>：超大消息应分块传输，或使用流式 gRPC</li>
+<li><strong>arena 分配</strong>：Protobuf C++ 支持 Arena 分配器，减少频繁消息的内存分配开销</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="Varint-编码深度解析"><a href="#Varint-编码深度解析" class="headerlink" title="Varint 编码深度解析"></a>Varint 编码深度解析</h3><p>Varint 是 Protobuf 体积优势的核心。每个字节最高位为 continuation bit（1&#x3D;后续还有字节，0&#x3D;最后一个字节），低 7 位为有效数据。</p>
+<p>以 300 为例：</p>
+<ul>
+<li>300 的二进制：<code>100101100</code>（9位）</li>
+<li>Varint 编码：<code>10101100 00000010</code><ul>
+<li>字节1：<code>10101100</code> → 最高位 1（继续），数据 <code>0101100</code></li>
+<li>字节2：<code>00000010</code> → 最高位 0（结束），数据 <code>0000010</code></li>
+<li>拼接数据位：<code>0000010</code> + <code>0101100</code> &#x3D; <code>100101100</code> &#x3D; 300</li>
+</ul>
+</li>
+</ul>
+<p>这比直接存 4 字节 int32 节省了 50% 空间。</p>
+<h3 id="ZigZag-编码解决负数问题"><a href="#ZigZag-编码解决负数问题" class="headerlink" title="ZigZag 编码解决负数问题"></a>ZigZag 编码解决负数问题</h3><p>Varint 对负数不友好（负数的补码高位全是1）。ZigZag 将有符号整数映射为无符号：</p>
+<ul>
+<li>sint32：<code>(n &lt;&lt; 1) ^ (n &gt;&gt; 31)</code> —— 0→0, -1→1, 1→2, -2→3</li>
+<li>使小绝对值（正负）都映射到小无符号数，Varint 编码高效</li>
+</ul>
+<h3 id="Proto2-vs-Proto3"><a href="#Proto2-vs-Proto3" class="headerlink" title="Proto2 vs Proto3"></a>Proto2 vs Proto3</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>Proto2</th>
+<th>Proto3</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>必填字段</td>
+<td>支持 required</td>
+<td>移除（所有字段可选）</td>
+</tr>
+<tr>
+<td>默认值</td>
+<td>可自定义</td>
+<td>固定类型默认值（0&#x2F;空字符串&#x2F;false）</td>
+</tr>
+<tr>
+<td>未知字段</td>
+<td>保留</td>
+<td>proto3.5+ 支持保留</td>
+</tr>
+<tr>
+<td>JSON 映射</td>
+<td>需插件</td>
+<td>内置支持</td>
+</tr>
+</tbody></table>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li><strong>不要给字段编号留空太多</strong>——1-15 仅占 1 字节，16-2047 占 2 字节。高频字段用 1-15</li>
+<li><strong>sint32&#x2F;sint64 优于 int32&#x2F;int64</strong>——有负数时必须用 sint 系列（ZigZag 编码）</li>
+<li><strong>required 字段是坑</strong>——proto3 移除了 required，所有字段可选，向后兼容性更好</li>
+<li><strong>protoc 版本管理很关键</strong>——生成的代码与 protoc 版本绑定，确保团队统一版本</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：Protobuf 相比 JSON&#x2F;XML 有什么优势？</p>
+<p>A：1）体积小 3-10 倍（Varint 编码）2）解析速度快 20-100 倍（无需词法分析）3）强类型保障 4）Schema 演进支持前向&#x2F;后向兼容。代价：不可读、需要编译步骤。</p>
+<p>Q2：Varint 编码的原理？</p>
+<p>A：每字节最高位标识是否继续（1&#x3D;继续，0&#x3D;终止），低 7 位存数据。小整数仅需 1 字节，大整数最多 5 字节（32位）或 10 字节（64位）。</p>
+<p>Q3：Protobuf 如何实现向前&#x2F;向后兼容？</p>
+<p>A：基于字段编号识别数据。新增字段用新编号→旧版本忽略；旧字段标记 reserved→新版本不用该编号。字段重命名不影响兼容性（编号不变）。</p>
+<p>Q4：Proto2 和 Proto3 的主要区别？</p>
+<p>A：Proto3 移除了 required&#x2F;optional 关键字（所有字段默认可选），移除默认值自定义，增加 JSON 映射支持，语法更简洁。</p>
+<p>Q5：为什么 Protobuf 中负数要用 sint32 而不是 int32？</p>
+<p>A：int32 的负数以补码存储，Varint 编码后恒为 10 字节（64位 int）。sint32 使用 ZigZag 编码将负数映射为小正数，然后用 Varint 高效编码。</p>
+<p>Q6：字段编号分配有什么讲究？</p>
+<p>A：1-15 的编号 tag 仅占 1 字节（field_number + wire_type 合并为 1 字节）。16-2047 占 2 字节。高频字段应分配 1-15。编号不可重用（用 reserved 标记废弃编号）。</p>
+<p>Q7：如何处理 Protobuf 的大消息？</p>
+<p>A：避免单个消息过大（建议 &lt;1MB）。大消息用流式传输（gRPC streaming），或分块序列化。C++ 中使用 Arena 分配器减少内存分配。</p>
+<p>Q8：Protobuf 的 wire_type 有哪些？</p>
+<p>A：Varint(0)、64-bit(1)、Length-delimited(2)、Start group(3, 已废弃)、End group(4, 已废弃)、32-bit(5)。不同类型决定数据的 wire format。</p>
+<p>Q9：如何调试 Protobuf 二进制数据？</p>
+<p>A：使用 protoc –decode 命令行工具；使用 DebugString() 方法输出可读文本；使用 Wireshark 等抓包工具的 Protobuf 解析插件。</p>
+<p>Q10：protoc 编译流程是怎样的？</p>
+<p>A：protoc 解析 .proto 文件 → 生成目标语言的代码（–cpp_out、–java_out 等）。gRPC 额外使用 –grpc_out 生成服务代码。生成的类继承自 Message，提供序列化&#x2F;反序列化方法。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵团队在 Protobuf 的字段编号管理上有什么规范？如何避免编号冲突和废弃编号积累？</p>
+</li>
+<li><p>贵公司是否遇到过 Protobuf 版本升级导致的不兼容问题？如何做平滑升级？</p>
+</li>
+<li><p>陷阱 1：”Protobuf 一定比 JSON 好”——如果消息极小且需要可读性（如配置文件），JSON 更合适</p>
+</li>
+<li><p>陷阱 2：”proto 文件改了重新编译就行”——注意向前兼容，删除字段要 reserved，新增字段可加但不改旧编号</p>
+</li>
+<li><p>陷阱 3：”所有字段都 packed 最好”——packed 只对 repeated 基本类型有效，且历史版本可能不支持</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>Protobuf 小体积的秘诀：Varint 变长编码 + ZigZag 负数编码 + 字段编号代替字段名。</li>
+<li>Protobuf 兼容性的基础：字段编号永不变，新增字段用新编号，废弃编号标记 reserved。</li>
+<li>Sint32 优于 int32 的场景：值可能为负数时，ZigZag 编码使负数也能高效压缩。</li>
+<li>高频字段（1-15号）tag 仅 1 字节，低频字段（16+）tag 占 2 字节——编号分配影响大小。</li>
+<li>当被问到”Protobuf 如何提升 IM 性能”时回答：”二进制编码减小流量（Varint + ZigZag），强类型加速解析，字段编号支持协议演进不中断。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的链接，原样保留于此。</p>
+</blockquote>
+<ul>
+<li>IM 通讯协议之 Protobuf 详解与踩坑总结：<a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/forum.php?mod=viewthread&tid=4834&highlight=IM%CD%A8%D1%B6%D0%AD">http://www.52im.net/forum.php?mod=viewthread&amp;tid=4834&amp;highlight=IM%CD%A8%D1%B6%D0%AD</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Protobuf/">https://weimo1.github.io/posts/Protobuf/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Ptrace/" title="Ptrace"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Ptrace</div></div><div class="info-2"><div class="info-item-1">核心定位与层级   工具 作用层级 核心目标 权限要求    strace 用户空间 追踪进程的系统调用 普通用户&#x2F;调试权限   ptrace 用户-内核桥梁 提供进程调试的底层接口 需调试权限   ftrace 内核空间 追踪内核函数执行路径 Root 权限   Ftrace（Function Tracer定位：Linux 内核内置的轻量级调试工具​核心功能​：  函数调用追踪：记录内核函数执行路径 事件追踪：捕获调度&#x2F;中断&#x2F;系统调用等事件 性能分析：测量函数执行时间 动态探测：通过 kprobe 追踪任意内核地址  关键特性：  零开销闲置：未启用时几乎...</div></div></div></a><a class="pagination-related" href="/posts/Poll/" title="Poll"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Poll</div></div><div class="info-2"><div class="info-item-1">Poll 适用范围：Linux poll(2) 系统调用、多路复用IO、pollfd结构体、内核poll_wait机制、与select对比  一、核心概念 定义：poll() 是 Linux 提供的 IO 多路复用系统调用，允许同时监视多个文件描述符的读写就绪状态。与 select 不同，poll 使用 struct pollfd 链表管理事件，没有 FD_SETSIZE 的数量限制 关键词：pollfd、nfds_t、POLLIN&#x2F;POLLOUT、do_sys_poll、poll_wait、revents、内核轮询 适用场景&#x2F;边界： 需要同时监听数十到数百个文件描述...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Protobuf"><span class="toc-number">1.</span> <span class="toc-text">Protobuf</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Varint-%E7%BC%96%E7%A0%81%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">Varint 编码深度解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ZigZag-%E7%BC%96%E7%A0%81%E8%A7%A3%E5%86%B3%E8%B4%9F%E6%95%B0%E9%97%AE%E9%A2%98"><span class="toc-number">1.5.2.</span> <span class="toc-text">ZigZag 编码解决负数问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Proto2-vs-Proto3"><span class="toc-number">1.5.3.</span> <span class="toc-text">Proto2 vs Proto3</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.4.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

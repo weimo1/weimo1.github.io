@@ -1,0 +1,366 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>QT交叉编译(1) | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="QT交叉编译在Ubuntu上交叉编译Qt库并移植到ARM板上是一个复杂但有序的过程。以下是详细的步骤和说明： 一、前期准备 安装Linux环境  推荐使用Ubuntu 20.04 LTS版本。在虚拟机或实体机上安装好Ubuntu系统。   安装交叉编译工具链  对于ARM架构，可以使用以下命令安装交叉编译工具链：1sudo apt-get install gcc-arm-linux-gnueabi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="QT交叉编译(1)">
+<meta property="og:url" content="https://weimo1.github.io/posts/QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91(1)/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="QT交叉编译在Ubuntu上交叉编译Qt库并移植到ARM板上是一个复杂但有序的过程。以下是详细的步骤和说明： 一、前期准备 安装Linux环境  推荐使用Ubuntu 20.04 LTS版本。在虚拟机或实体机上安装好Ubuntu系统。   安装交叉编译工具链  对于ARM架构，可以使用以下命令安装交叉编译工具链：1sudo apt-get install gcc-arm-linux-gnueabi">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.549Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "QT交叉编译(1)",
+  "url": "https://weimo1.github.io/posts/QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91(1)/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.549Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91(1)/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'QT交叉编译(1)',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">QT交叉编译(1)</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">QT交叉编译(1)</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.549Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E7%BC%96%E8%AF%91%E4%B8%8E%E6%9E%84%E5%BB%BA/">编译与构建</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h2 id="QT交叉编译"><a href="#QT交叉编译" class="headerlink" title="QT交叉编译"></a>QT交叉编译</h2><p>在Ubuntu上交叉编译Qt库并移植到ARM板上是一个复杂但有序的过程。以下是详细的步骤和说明：</p>
+<h3 id="一、前期准备"><a href="#一、前期准备" class="headerlink" title="一、前期准备"></a>一、前期准备</h3><ol>
+<li><p><strong>安装Linux环境</strong></p>
+<ul>
+<li>推荐使用Ubuntu 20.04 LTS版本。在虚拟机或实体机上安装好Ubuntu系统。</li>
+</ul>
+</li>
+<li><p><strong>安装交叉编译工具链</strong></p>
+<ul>
+<li>对于ARM架构，可以使用以下命令安装交叉编译工具链：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> apt-get install gcc-arm-linux-gnueabihf</span><br></pre></td></tr></table></figure></li>
+<li>确保交叉编译器路径已添加到环境变量中。例如：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> PATH=/opt/OpenWrt-Toolchain-sunxi_gcc-5.3.0_musl-1.1.16_eabi.Linux-x86_64/toolchain-arm_cortex-a8+vfpv3_gcc-5.3.0_musl-1.1.16_eabi/bin/:<span class="variable">$PATH</span></span><br></pre></td></tr></table></figure></li>
+<li>或者修改<code>~/.bashrc</code>文件，添加上述路径，然后执行<code>source ~/.bashrc</code>使环境变量生效。</li>
+</ul>
+</li>
+<li><p><strong>下载Qt源代码</strong></p>
+<ul>
+<li>从Qt官网下载Qt源代码，例如：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://download.qt.io/archive/qt/5.12/5.12.12/single/qt-everywhere-src-5.12.12.tar.xz</span><br></pre></td></tr></table></figure></li>
+<li>解压源代码包：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tar xvf qt-everywhere-src-5.12.12.tar.xz</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ol>
+<h3 id="二、配置Qt交叉编译环境"><a href="#二、配置Qt交叉编译环境" class="headerlink" title="二、配置Qt交叉编译环境"></a>二、配置Qt交叉编译环境</h3><ol>
+<li><strong>进入Qt源代码目录</strong><ul>
+<li><pre><code class="language-bash">cd qt-everywhere-src-5.12.12
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">2. **执行configure命令**</span><br><span class="line">   - 例如：</span><br><span class="line">     ```bash</span><br><span class="line">     ./configure -opensource -confirm-license -platform linux-g++ -prefix /opt/qt5armhf -xplatform linux-arm-gnueabihf-g++</span><br></pre></td></tr></table></figure>
+</code></pre>
+</li>
+<li>其中：<ul>
+<li><code>-prefix</code>指定Qt安装目录。</li>
+<li><code>-xplatform</code>指定目标平台。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>编译和安装Qt</strong><ul>
+<li>编译Qt：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make -j4</span><br></pre></td></tr></table></figure></li>
+<li>安装Qt：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> make install</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ol>
+<h3 id="三、设置开发环境"><a href="#三、设置开发环境" class="headerlink" title="三、设置开发环境"></a>三、设置开发环境</h3><ol>
+<li><strong>配置环境变量</strong><ul>
+<li>在开发环境中，需要设置Qt库和头文件的路径。例如，在CMake中使用以下命令：<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span>(CMAKE_PREFIX_PATH /opt/qt5armhf/)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>编写和配置项目文件</strong><ul>
+<li>在<code>.pro</code>文件中指定目标平台和相关的编译选项。</li>
+<li>使用<code>qmake</code>生成项目文件和Makefile：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">qmake -project</span><br><span class="line">qmake</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>编译项目</strong><ul>
+<li>使用<code>make</code>命令进行编译：<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>移植到目标设备</strong><ul>
+<li>使用<code>readelf</code>工具分析目标系统的依赖库，并将相关的库文件复制到目标文件系统内。</li>
+<li>通常可以编写脚本自动化这一过程。</li>
+</ul>
+</li>
+</ol>
+<h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.5axxw.com/questions/simple/bhc20h">ubantu QT交叉编译环境安装设置 - 我爱学习网</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.syjlp.com/yiqi/287549.html">怎样交叉编译一个QT应用程序-鲁芽网</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/information/qt%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91">qt交叉编译 - 腾讯云开发者社区</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/gyx_bubai/article/details/131931480">编译QT交叉编译链教程-CSDN博客</a><br>通过以上步骤，你可以在Ubuntu上成功交叉编译Qt库并移植到ARM板上。如果有任何疑问或需要进一步的帮助，请随时提问。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：交叉编译（Cross Compilation）是在一种架构（如 x86_64）上编译生成另一种架构（如 ARM）可执行程序的过程，核心是构建机（BUILD）≠ 目标机（TARGET）</li>
+<li><strong>关键词</strong>：交叉编译工具链、sysroot、BUILD&#x2F;HOST&#x2F;TARGET、-xplatform、硬浮点（hard float）、readelf 验证</li>
+<li><strong>适用场景&#x2F;边界</strong>：嵌入式 ARM 开发、路由器&#x2F;物联网固件编译、目标设备算力不足无法本地编译；边界：依赖内在汇编或系统特定调用的代码不可交叉编译</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——三个角色定义</strong>：BUILD（构建机，运行编译器的 x86 机器）、HOST（运行编译产物的机器，通常&#x3D;BUILD）、TARGET（编译产物的目标架构，如 ARM）。交叉编译中 BUILD&#x3D;HOST ≠ TARGET</li>
+<li><strong>第二层——工具链命名规则</strong>：<code>arch-vendor-kernel-abi</code>，如 <code>arm-linux-gnueabihf-g++</code> → ARM 架构 + Linux 内核 + GNU EABI + 硬件浮点（hard float）。<code>gnueabihf</code> vs <code>gnueabi</code>（软浮点，软件模拟）——硬浮点通过 FPU 寄存器传浮点参数，性能大幅优于软浮点</li>
+<li><strong>第三层——Qt 交叉编译的两平台模型</strong>：<code>-platform linux-g++</code> 指定 Qt 工具（qmake&#x2F;moc&#x2F;rcc）用宿主编译器构建；<code>-xplatform linux-arm-gnueabihf-g++</code> 指定 Qt 库本身用 ARM 编译器构建。两者可不同——这是交叉编译的核心</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>qmake -project &amp;&amp; qmake</code> 生成 Makefile；<code>readelf -h binary | grep Machine</code> 验证目标架构</li>
+<li><strong>关键公式</strong>：<code>./configure -platform &lt;BUILD-mkspec&gt; -xplatform &lt;TARGET-mkspec&gt; -prefix &lt;sysroot-path&gt;</code>；<code>CMAKE_TOOLCHAIN_FILE</code> 用于 CMake 项目指定交叉编译器</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. 安装 ARM 交叉编译工具链</span></span><br><span class="line"><span class="built_in">sudo</span> apt-get install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf</span><br><span class="line"><span class="built_in">export</span> PATH=/opt/arm-toolchain/bin:<span class="variable">$PATH</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. 验证工具链</span></span><br><span class="line">arm-linux-gnueabihf-g++ --version</span><br><span class="line">arm-linux-gnueabihf-g++ -dumpmachine   <span class="comment"># 输出: arm-linux-gnueabihf</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. 编译简单 C++ 程序</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;int main() &#123; return 0; &#125;&#x27;</span> &gt; test.cpp</span><br><span class="line">arm-linux-gnueabihf-g++ -o test_arm test.cpp</span><br><span class="line">file test_arm                     <span class="comment"># ELF 32-bit LSB executable, ARM</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 4. 交叉编译 Qt</span></span><br><span class="line">tar xvf qt-everywhere-src-5.12.12.tar.xz</span><br><span class="line"><span class="built_in">cd</span> qt-everywhere-src-5.12.12</span><br><span class="line">./configure \</span><br><span class="line">  -opensource -confirm-license \</span><br><span class="line">  -platform linux-g++ \                    <span class="comment"># Qt 工具用 x86 编译器</span></span><br><span class="line">  -xplatform linux-arm-gnueabihf-g++ \     <span class="comment"># Qt 库用 ARM 编译器</span></span><br><span class="line">  -prefix /opt/qt5armhf \                  <span class="comment"># 安装到 sysroot</span></span><br><span class="line">  -no-opengl -no-xcb \</span><br><span class="line">  -skip qtwebengine                        <span class="comment"># 跳过不必要的模块</span></span><br><span class="line">make -j$(<span class="built_in">nproc</span>)</span><br><span class="line"><span class="built_in">sudo</span> make install</span><br><span class="line"></span><br><span class="line"><span class="comment"># 5. 验证 Qt ARM 库</span></span><br><span class="line">file /opt/qt5armhf/lib/libQt5Core.so.5.12.12</span><br><span class="line"><span class="comment"># ELF 32-bit LSB shared object, ARM</span></span><br><span class="line">arm-linux-gnueabihf-readelf -h /opt/qt5armhf/lib/libQt5Core.so.5.12.12 | grep Machine</span><br><span class="line"><span class="comment"># Machine: ARM</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>预期</strong>：掌握交叉编译工具链安装、Qt 两平台配置、二进制架构验证</li>
+<li><strong>补充</strong>：在目标机上运行前用 <code>readelf -d myapp | grep NEEDED</code> 确认所有依赖 SO 已部署</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><ul>
+<li><strong>与其他主题的关联</strong>：与编译工具链（GCC&#x2F;Make&#x2F;CMake）、嵌入式 Linux（sysroot 隔离）、Qt 构建系统（qmake&#x2F;mkspec）、CI&#x2F;CD（自动化交叉编译流水线）强相关</li>
+<li><strong>工程中的真实用法</strong>：<ul>
+<li><strong>sysroot 隔离策略</strong>：将 ARM 的库和头文件放在 <code>/opt/arm-sysroot</code>，编译时指定 <code>--sysroot=/opt/arm-sysroot</code>——避免交叉编译时误链接宿主系统的 x86 库，这是交叉编译环境配置的第一原则</li>
+<li><strong>CMake 交叉编译</strong>：创建 <code>toolchain-arm.cmake</code> 指定 <code>CMAKE_C_COMPILER</code>、<code>CMAKE_CXX_COMPILER</code>、<code>CMAKE_FIND_ROOT_PATH</code>，然后 <code>cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-arm.cmake</code> 生成 ARM 构建</li>
+<li><strong>Qt 模块筛选</strong>：<code>-skip qtwebengine</code>（最大模块，节省数小时）、<code>-skip qt3d</code>、<code>-skip qtcharts</code> 等非必要模块，显著加速交叉编译——完整 Qt 编译在 ARM 交叉环境下可能需要数小时</li>
+<li><strong>部署前验证</strong>：① <code>file binary</code> 确认是 ARM 二进制；② <code>readelf -d | grep NEEDED</code> 列出所有依赖；③ 逐一确认这些 .so 在目标板的 <code>/lib</code> 或 <code>/usr/lib</code> 中存在</li>
+</ul>
+</li>
+<li><strong>常见优化策略</strong>：<ul>
+<li><strong>算法层面</strong>：<code>-j$(nproc)</code> 并行编译加速；用 ccache 缓存交叉编译中间产物（第二次编译接近零时间）</li>
+<li><strong>工具链</strong>：生产环境用 Linaro 或 ARM 官方工具链（比发行版自带版本更新）；<code>buildroot</code> 或 <code>Yocto</code> 一键构建完整 ARM 根文件系统</li>
+<li><strong>具体技巧</strong>：<code>-platform</code> 和 <code>-xplatform</code> 写反会导致 qmake 用 ARM 编译器编译（极慢）或 Qt 库用 x86 编译器（错误）；硬浮点工具链（<code>gnueabihf</code>）性能远优于软浮点（<code>gnueabi</code>），现在几乎所有 ARM 板都支持硬浮点；目标板缺少依赖时用 <code>arm-linux-gnueabihf-readelf -d</code> 提前发现，而非等到运行时 <code>symbol not found</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-交叉编译的本质：HOST-vs-TARGET"><a href="#1-交叉编译的本质：HOST-vs-TARGET" class="headerlink" title="1. 交叉编译的本质：HOST vs TARGET"></a>1. 交叉编译的本质：HOST vs TARGET</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 交叉编译三个角色</span></span><br><span class="line"><span class="comment"># BUILD  (构建机)：  运行编译器的机器（x86_64 Ubuntu）</span></span><br><span class="line"><span class="comment"># HOST   (运行机)：  运行编译产物的机器（通常=BUILD）</span></span><br><span class="line"><span class="comment"># TARGET (目标机)：  编译产物的目标架构（ARM）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 工具链命名规则：arch-vendor-kernel-abi</span></span><br><span class="line"><span class="comment"># arm-linux-gnueabihf-g++</span></span><br><span class="line"><span class="comment">#  ^^^       arm 架构</span></span><br><span class="line"><span class="comment">#     ^^^^^  Linux 内核</span></span><br><span class="line"><span class="comment">#           ^^^^^^^^ gnueabihf = GNU EABI + 硬件浮点（hard float）</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 验证交叉编译器</span></span><br><span class="line">arm-linux-gnueabihf-g++ --version</span><br><span class="line">arm-linux-gnueabihf-g++ -dumpmachine  <span class="comment"># 输出 arm-linux-gnueabihf</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-Qt-交叉编译的关键配置"><a href="#2-Qt-交叉编译的关键配置" class="headerlink" title="2. Qt 交叉编译的关键配置"></a>2. Qt 交叉编译的关键配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">./configure \</span><br><span class="line">  -opensource -confirm-license \</span><br><span class="line">  -platform linux-g++ \                  <span class="comment"># ★ BUILD 平台的 mkspec（宿主编译）</span></span><br><span class="line">  -xplatform linux-arm-gnueabihf-g++ \   <span class="comment"># ★ TARGET 平台的 mkspec（目标运行）</span></span><br><span class="line">  -prefix /opt/qt5armhf \                <span class="comment"># 安装到 sysroot</span></span><br><span class="line">  -no-opengl -no-xcb \                   <span class="comment"># 去掉不用的模块，加快编译</span></span><br><span class="line">  -skip qtwebengine                      <span class="comment"># webengine 编译极慢，非必须可跳过</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 重要：-platform = 构建 Qt 工具（qmake/moc）用的编译器</span></span><br><span class="line"><span class="comment">#       -xplatform = Qt 库本身的目标平台</span></span><br><span class="line"><span class="comment">#       两者可以不同 —— 这就是交叉编译的核心</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-检查-ARM-二进制"><a href="#3-检查-ARM-二进制" class="headerlink" title="3. 检查 ARM 二进制"></a>3. 检查 ARM 二进制</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">file /opt/qt5armhf/lib/libQt5Core.so.5.12.12</span><br><span class="line"><span class="comment"># 输出：ELF 32-bit LSB shared object, ARM, EABI5 version 1 (SYSV)</span></span><br><span class="line"></span><br><span class="line">readelf -h /opt/qt5armhf/lib/libQt5Core.so.5.12.12 | grep Machine</span><br><span class="line"><span class="comment"># Machine: ARM</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 确认 SO 依赖</span></span><br><span class="line">arm-linux-gnueabihf-readelf -d libQt5Core.so | grep NEEDED</span><br><span class="line"><span class="comment"># 确保所有依赖在目标机上都存在</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>sysroot 隔离</strong>：把 ARM 的库&#x2F;头放 <code>/opt/arm-sysroot</code>，避免和宿主环境混淆</li>
+<li><strong>-platform vs -xplatform</strong>：前者是编译 Qt 工具（qmake&#x2F;rcc&#x2F;moc）的编译器，后者是 Qt 库的编译器</li>
+<li><strong>skip 不用的模块</strong>：<code>-skip qtwebengine</code> 可节省数小时编译时间</li>
+<li><strong>硬浮点 vs 软浮点</strong>：<code>gnueabihf</code>（hard float）性能更好，现在几乎所有 ARM 板都支持</li>
+<li><strong>CMake 配合</strong>：<code>CMAKE_TOOLCHAIN_FILE</code> + <code>CMAKE_PREFIX_PATH=/opt/qt5armhf</code></li>
+<li><strong>readelf 检查</strong>：部署前用 <code>readelf -d</code> 确认无缺失依赖，避免运行时 <code>symbol not found</code></li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（8题）"><a href="#Q-A（8题）" class="headerlink" title="Q&amp;A（8题）"></a>Q&amp;A（8题）</h3><p><strong>Q1: 什么是交叉编译？</strong><br>A: 在一种架构（如 x86）上编译运行在另一种架构（如 ARM）上的程序。用于嵌入式开发</p>
+<p><strong>Q2: BUILD&#x2F;HOST&#x2F;TARGET 分别指什么？</strong><br>A: BUILD 构建机，HOST 运行编译产物，TARGET 目标架构。一般 BUILD&#x3D;HOST，TARGET 不同</p>
+<p><strong>Q3: Qt configure 的 -platform 和 -xplatform 区别？</strong><br>A: -platform 是构建 Qt 工具（qmake&#x2F;moc）的平台编译器，-xplatform 是 Qt 库的目标平台</p>
+<p><strong>Q4: <code>gnueabihf</code> 中的 hf 是什么？</strong><br>A: hard float，硬件浮点。通过 FPU 寄存器传浮点参数，比软浮点（软件模拟）快很多</p>
+<p><strong>Q5: 交叉编译的 sysroot 作用？</strong><br>A: 隔离目标平台的库和头文件，防止编译时误链宿主系统库</p>
+<p><strong>Q6: 如何验证交叉编译的二进制是 ARM 的？</strong><br>A: <code>file binary</code>、<code>readelf -h | grep Machine</code>、<code>objdump -f</code></p>
+<p><strong>Q7: 哪些 Qt 模块可以跳过以加快编译？</strong><br>A: qtwebengine（最大）、qt3d、qtcharts、qtdatavis3d 等非必要模块</p>
+<p><strong>Q8: 部署到 ARM 板后 <code>symbol not found</code> 怎么排查？</strong><br>A: <code>arm-linux-gnueabihf-readelf -d myapp | grep NEEDED</code> 列出依赖，逐一确认目标机上存在</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：宿主编译 Qt 后再交叉编译 app — 需两套 Qt：一套宿主编译版（运行 qmake），一套 ARM 版（链接库）</li>
+<li><strong>反问</strong>：为什么不用 qemu 本地编译？→ qemu-user 模拟 ARM 太慢，交叉编译快 10-100 倍</li>
+<li><strong>陷阱</strong>：<code>-platform</code> 和 <code>-xplatform</code> 写反 — qmake 用 ARM 编译器编译（慢），Qt 库用了 x86 编译器</li>
+<li><strong>反问</strong>：所有 C++ 项目都能交叉编译吗？→ 原则上可以，但依赖 x86 特定汇编或系统调用的不行</li>
+<li><strong>陷阱</strong>：忘记拷贝依赖 .so 到目标板 — 程序能编译但运行时报找不到库</li>
+</ol>
+<h3 id="一句话答案（5个）"><a href="#一句话答案（5个）" class="headerlink" title="一句话答案（5个）"></a>一句话答案（5个）</h3><ol>
+<li><strong>交叉编译</strong>：x86 上编译 ARM 程序</li>
+<li><strong>-platform</strong>：Qt 工具链的编译器</li>
+<li><strong>-xplatform</strong>：Qt 库的目标平台</li>
+<li><strong>sysroot</strong>：目标平台的隔离根文件系统</li>
+<li><strong>验证方法</strong>：<code>file</code> &#x2F; <code>readelf -h</code> 检查架构</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91(1)/">https://weimo1.github.io/posts/QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91(1)/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/RVO_NRVO/" title="RVO_NRVO"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">RVO_NRVO</div></div><div class="info-2"><div class="info-item-1">RVO&#x2F;NRVO 返回值优化（Return Value Optimization）是 C++ 编译器对函数返回值传递的核心优化手段，通过消除临时对象的构造&#x2F;拷贝&#x2F;析构，直接在调用者栈帧上构造返回值对象。  一、核心概念 定义：RVO（Return Value Optimization）是 C++ 编译器的一种优化技术，通过直接在调用者的栈帧上构造返回值对象，消除函数返回时的临时对象拷贝或移动。分为匿名 RVO（返回临时对象）和具名 NRVO（返回具名局部变量）。 关键词：返回值优化、拷贝消除（Copy Elision）、调用栈帧、隐藏参数传递、std::mo...</div></div></div></a><a class="pagination-related" href="/posts/Ptrace/" title="Ptrace"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Ptrace</div></div><div class="info-2"><div class="info-item-1">核心定位与层级   工具 作用层级 核心目标 权限要求    strace 用户空间 追踪进程的系统调用 普通用户&#x2F;调试权限   ptrace 用户-内核桥梁 提供进程调试的底层接口 需调试权限   ftrace 内核空间 追踪内核函数执行路径 Root 权限   Ftrace（Function Tracer定位：Linux 内核内置的轻量级调试工具​核心功能​：  函数调用追踪：记录内核函数执行路径 事件追踪：捕获调度&#x2F;中断&#x2F;系统调用等事件 性能分析：测量函数执行时间 动态探测：通过 kprobe 追踪任意内核地址  关键特性：  零开销闲置：未启用时几乎...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#QT%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91"><span class="toc-number">1.</span> <span class="toc-text">QT交叉编译</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%89%8D%E6%9C%9F%E5%87%86%E5%A4%87"><span class="toc-number">1.1.</span> <span class="toc-text">一、前期准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%85%8D%E7%BD%AEQt%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E7%8E%AF%E5%A2%83"><span class="toc-number">1.2.</span> <span class="toc-text">二、配置Qt交叉编译环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E8%AE%BE%E7%BD%AE%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83"><span class="toc-number">1.3.</span> <span class="toc-text">三、设置开发环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.4.</span> <span class="toc-text">参考链接</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">6.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E7%9A%84%E6%9C%AC%E8%B4%A8%EF%BC%9AHOST-vs-TARGET"><span class="toc-number">6.1.</span> <span class="toc-text">1. 交叉编译的本质：HOST vs TARGET</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Qt-%E4%BA%A4%E5%8F%89%E7%BC%96%E8%AF%91%E7%9A%84%E5%85%B3%E9%94%AE%E9%85%8D%E7%BD%AE"><span class="toc-number">6.2.</span> <span class="toc-text">2. Qt 交叉编译的关键配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%A3%80%E6%9F%A5-ARM-%E4%BA%8C%E8%BF%9B%E5%88%B6"><span class="toc-number">6.3.</span> <span class="toc-text">3. 检查 ARM 二进制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">6.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%888%E9%A2%98%EF%BC%89"><span class="toc-number">7.1.</span> <span class="toc-text">Q&amp;A（8题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">7.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">7.3.</span> <span class="toc-text">一句话答案（5个）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

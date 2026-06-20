@@ -1,0 +1,430 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>LSM树 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="LSM树WiscKey: 在SSD存储中分离键和值 WiscKey 发布的五年后，工业界用上了 KV 分离吗？ 常见的 LSM 存储引擎，如 LevelDB 和 RocksDB，将用户写入的一组的 key 和 value 存放在一起，按顺序写入 SST。在 compaction 过程中，**引擎将上层的 SST 与下层 SST 合并，产生新的 SST 文件。这一过程中，SST 里面的 key 和">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LSM树">
+<meta property="og:url" content="https://weimo1.github.io/posts/LSM%E6%A0%91/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="LSM树WiscKey: 在SSD存储中分离键和值 WiscKey 发布的五年后，工业界用上了 KV 分离吗？ 常见的 LSM 存储引擎，如 LevelDB 和 RocksDB，将用户写入的一组的 key 和 value 存放在一起，按顺序写入 SST。在 compaction 过程中，**引擎将上层的 SST 与下层 SST 合并，产生新的 SST 文件。这一过程中，SST 里面的 key 和">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.547Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "LSM树",
+  "url": "https://weimo1.github.io/posts/LSM%E6%A0%91/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.547Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/LSM%E6%A0%91/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'LSM树',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">LSM树</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">LSM树</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.547Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/">系统底层408</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">6.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>21分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="LSM树"><a href="#LSM树" class="headerlink" title="LSM树"></a>LSM树</h1><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/486811231">WiscKey: 在SSD存储中分离键和值</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/397466422">WiscKey 发布的五年后，工业界用上了 KV 分离吗？</a></p>
+<p>常见的 LSM 存储引擎，如 LevelDB 和 RocksDB，将用户写入的一组的 key 和 value 存放在一起，按顺序写入 SST。在 compaction 过程中，**引擎将上层的 SST 与下层 SST 合并，产生新的 SST 文件。这一过程中，SST 里面的 key 和 value 都会被重写一遍，**带来较大的写放大。如果 value 的大小远大于 key，compaction 过程带来的写放大会引入巨大的开销。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_124af861bc3f.png"></p>
+<p>在 <a href="https://link.zhihu.com/?target=https://www.usenix.org/conference/fast16/technical-sessions/presentation/lu" rel="external nofollow noreferrer">WiscKey (FAST ‘16)</a> 中，作者提出了一种对 SSD 友好的基于 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=176456300&content_type=Article&match_order=1&q=LSM+%E6%A0%91&zhida_source=entity">LSM 树</a>的存储引擎设计。它通过 KV 分离降低了 LSM 树的写放大。 KV 分离就是将大 value 存放在其他地方，并在 LSM 树中存放一个 value pointer (vptr) 指向 value 所在的位置。在 WiscKey 中，这个存放 value 的地方被称为 Value Log (<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=176456300&content_type=Article&match_order=1&q=vLog&zhida_source=entity">vLog</a>)。由此，LSM 树 compaction 时就不需要重写 value，仅需重新组织 key 的索引。这样一来，就能大大减少写放大，减缓 SSD 的磨损。</p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/443539765">关于Wisckey的对话一：追求写性能的代价</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/443632618">关于Wisckey的对话二：新朋友的到来</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/449168046">关于Wisckey的对话三：机遇与挑战</a></p>
+<p>SSD的新特性主要集中在三方面：</p>
+<ol>
+<li>随机读写与<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=186714983&content_type=Article&match_order=1&q=%E9%A1%BA%E5%BA%8F%E8%AF%BB%E5%86%99&zhida_source=entity">顺序读写</a>的性能差别没有HDD那么大了；</li>
+<li>SSD拥有了并发随机读能力，速度很快；</li>
+<li>SSD有数据擦写次数限制，过量的写入会导致SSD报废。</li>
+</ol>
+<h1 id="经典的LSM实现-LevelDB"><a href="#经典的LSM实现-LevelDB" class="headerlink" title="经典的LSM实现-LevelDB"></a>经典的LSM实现-LevelDB</h1><p>适合磁盘的索引结构通常有两种,一种是就地更新(B+Tree),一种是非就地更新(LSM)。就地更新的索引结构拥有最好的读性能(随机读与顺序读)，而随机写性能很差，无法满足现实工业中的工作负载要求。而非就地更新的索引结构-LSM充分发挥顺序写入的高性能特性，成为写入密集的数据系统的基础。</p>
+<p><strong>顺序写入</strong>的写操作时间复杂度为O(1)，但是带来的第一个问题就是同一个key会占用多个存储空间(更新操作)，直观的想法就是有一个无限大的文件可以无限追加数据。那么读取数据就需要从尾部一直读取到头部，找到的第一个key就返回，但是假设第一个key写入后从未更新那么想要读取此key每次就要读取全量的数据其读取复杂度为O(n)，n为写入次数，同时范围查询就需要磁盘排序后输出O(NLogN)</p>
+<p>第一个优化想法就是合并这个无限大的文件，将被覆盖的key清理掉，只保留最新的key，但这样就不能在一个文件中操作(你不能边压缩边更新,类似GC)，因此需要将<strong>文件分段</strong>。</p>
+<p>每次合并本质上是一次<strong>归并排序</strong>的过程(为了支持范围查询，以及空间压缩)，那么就需要找到所有分段文件中有<strong>重合范围</strong>的文件，进行合并(min_key与max_key)。并且不能合并一个正在写入的文件(假设按大小划分文件)。</p>
+<p>为了降低读取的复杂度，第一个想法就是<strong>利用内存</strong>，将最近最新写入的kv存储在内存数据结构中，红黑树，跳表等。 那么问题是何时将此数据结构dump到磁盘?最简单的是根据其大小的区别，然而在dump之前我们不能继续向其中写入数据，因此在内存中应该存在一个活跃内存表和一个不变内存表，二者相互交替，周期性的将不变内存表dump到内存中形成一个分段文件。</p>
+<p>但这还不够，依旧没有解决最先写入且从未更新的key要读取全量数据的问题，为解决这个问题LSM结构引入了<strong>分层设计</strong>的思想。将所有的kv文件分为c0-ck 共k+1层。c0层是直接从不变的内存表中dump下的结果。而c1-ck是发生过合并的文件。由于ci+1 是ci中具有重叠部分的文件合并的产物，因此可以说在同一层内是不存在重叠key的，因为重叠key已经在其上一层被合并了。那么只有c0层是可能存在重叠的文件的。所以当要读取磁盘上的数据时，最坏情况下只需要读取c0的所有文件以及c1-ck每一层中的一个文件即c0+k个文件即可找到key的位置，分层合并思想使得非就地更新索引在常数次的IO中读取数据。</p>
+<p>通常c0文件定义为2M，每一级比上一级大一个数量级的文件大小。所以高层的文件难以被一次性的加载到内存，因此需要一定的磁盘<strong>索引机制</strong>。我们对每个磁盘文件进行布局设计，分为元数据块，索引块，数据块三大块。元数据块中存储布隆过滤器快速的判断这个文件中是否存在某个key，同时通过对排序索引(通常缓存在内存中)二分查找定位key所在磁盘的位置。进而加速读取的速度，我们叫这种数据文件为SSTABLE(字符串排序表)。</p>
+<p>为了标记哪些SStable属于那一层因此要存在一个sstable的元数据管理文件，在levelDB中叫做MANIFEST文件。其中存储每一个sstable的文件名，所属的级别，最大与最小key的前缀。</p>
+<p>作为一个DB引擎，必须保证数据库进程崩溃前后的数据一致性，常见的做法就是使用<strong>预写日志</strong>。</p>
+<p>将所有的操作记录在一个仅追加的log文件中(称之为WAL)，所有的写入操作都要保证写入WAL成功后才能继续，因此当数据库崩溃后写入WAL的操作将被回溯，反之则被丢弃(只有写入WAL成功才会回复客户端ack)。那么从尾部重放这个WAL文件的操作即可恢复DB。</p>
+<p>但是这个过程由于会消耗磁盘的空间因此也需要不断的进行压缩，同时如果WAL过大也会使得数据库恢复的时间增大这是不可接受的，为此我们需要支持checkpoint<strong>特性</strong>。</p>
+<p>综上我们得到了LSM Tree的实现，本质上他并非是一颗树他是一个整套算法的集合，本质上是一种思想，而非一种单一的数据结构，而对这种的一种经典实现即是<a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/google/leveldb">LevelDB</a>。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_461d2d8bda06.png"></p>
+<h1 id="机遇与挑战"><a href="#机遇与挑战" class="headerlink" title="机遇与挑战"></a>机遇与挑战</h1><p>LSM 是以牺牲读取性能以及空间利用率为代价而换取顺序写入性能的。因此，对LSM结构的优化目标就是想办法提高读取性能和空间利用率。</p>
+<p>读取性能的瓶颈在于读写放大以及合并压缩过程的抖动,以下列出LSM可能选择的优化方向:</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_a3ef313b3762.png"></p>
+<h1 id="KV分离对SSD的优化"><a href="#KV分离对SSD的优化" class="headerlink" title="KV分离对SSD的优化"></a>KV分离对SSD的优化</h1><p>在SSD上使用LSM技术带来两个问题，第一写放大缩短了SSD的使用寿命，第二，传统的LSM无法充分发挥SSD的并行读写特性。</p>
+<p>相较于机械硬盘，随机读取与顺序读取的性能，固态硬盘远没有那么明显的差距，这就意味着过分追求顺序读取而进行的激进优化都将是没有必要的，其中最明显的就是将Key与Value放在一个文件内(sstable),在机械硬盘上这种结构能够保证一次读取就获得数据，减少了磁头寻道寻址的次数，而对于固态硬盘这样做会导致合并压缩过程中，对同一对kv进行多次写入与移动，进而降低了SSD的寿命。虽然也是读取一次但对于固态硬盘来说两次读取也要快于机械硬盘一次读取，而为了有效的减少LSM造成的读写放大，wisckey中将key与value分离存储，value仅存储在vlog中以仅追加的方式，而key存储在之前的lsm tree结构中。这样带来两个好处，第一不需要频繁移动vlaue的值，所以写放大减少，第二 lsm仅存储固定大小的key使得其存储占用变小，在内存中可以同时存储更多的key进而提高了缓存key的数量，间接的降低了读放大问题。</p>
+<p>对于随机读请求，固态硬盘远高于机械硬盘，而对于范围查询，由于真正的value都存储在vLog中因此是无序的，所以进行范围查询就是需要进行随机读取(先从lsm顺序读key再逐个随机读value)，这必然造成性能的下降，传统的随机读取是串行的难以发挥固态硬盘并行随机读取的特性，因此在wisckey中根据迭代器的调用方法<strong>prev,next</strong> 来从排序好的lsm中预读取一定的key到内存中，加速随机的范围查询性能，这种预先读取是异步进行的，充分发挥固态硬盘的并行读取性能。</p>
+<h1 id="KV分离带来的挑战"><a href="#KV分离带来的挑战" class="headerlink" title="KV分离带来的挑战"></a>KV分离带来的挑战</h1><p>那么KV分离同时也带来许多问题，vLog文件会不断增大，那么就需要合并，如何合并才能保证对性能的影响最小化？同时由于移动了value的位置，LSM结构中维护的value的位置信息也要更新。数据具体如何布局？vLog日志如何拆分？wisckey崩溃后如何恢复才能保证数据的一致性呢?</p>
+<h1 id="实现细节"><a href="#实现细节" class="headerlink" title="实现细节"></a>实现细节</h1><h2 id="数据布局"><a href="#数据布局" class="headerlink" title="数据布局"></a>数据布局</h2><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_2df06c1877ba.png"></p>
+<h3 id="KV分离设计"><a href="#KV分离设计" class="headerlink" title="KV分离设计"></a>KV分离设计</h3><ol>
+<li>在sstable文件中数据布局: <strong>&lt;key, addr(vlogName,offset,size)&gt;</strong></li>
+<li>在vlog文件中的数据布局: <strong>&lt;keySize,valueSize,key,Value&gt;</strong></li>
+</ol>
+<h2 id="随机查询"><a href="#随机查询" class="headerlink" title="随机查询"></a>随机查询</h2><ol>
+<li>先访问内存表是否命中key，如果找到地址信息判断是在内存中还是磁盘中(LRU缓存)</li>
+<li>在内存中被缓存了value则直接返回，否则去磁盘中查找，根据vlog的名字找到具体的vlog文件</li>
+<li>然后根据offset定位字节的首地址，根据size读取内容并返回</li>
+<li>基于一定策略将整个vlog涉及的bolck缓存下来</li>
+</ol>
+<h2 id="范围查询"><a href="#范围查询" class="headerlink" title="范围查询"></a>范围查询</h2><ol>
+<li>根据迭代器 next 还是 prev判断 是在游标之前读还是之后读，</li>
+<li>预先读取一定的key，交由底层的线程池异步的取ssd中获取数据</li>
+<li>将异步结果缓存在内存中 等到迭代器的调用</li>
+</ol>
+<h2 id="随机-顺序写入"><a href="#随机-顺序写入" class="headerlink" title="随机&#x2F;顺序写入"></a>随机&#x2F;顺序写入</h2><ol>
+<li>将set操作先写入vlog日志中(存储key的作用之一就是既作为预写日志又作为值日志)</li>
+<li>然后将返回的地址信息写入LSM中返回</li>
+<li>返回写入成功</li>
+</ol>
+<h2 id="合并压缩"><a href="#合并压缩" class="headerlink" title="合并压缩"></a>合并压缩</h2><ol>
+<li>vlog分为多个文件 其中存在一个活跃vlog文件 用于写入数据作为head地址</li>
+<li>最先写入的的日志在最后的vlog中 存在tail地址</li>
+<li>多个写入线程运行在head地址处追加日志</li>
+<li>而只有一个后台线程执行垃圾收集运行在尾部</li>
+<li>每次选择一个vlog文件的内容去lsm结构中随机查询(可并行化) 将没有失效的key重新写会到head地址处重新追加到vlog中</li>
+<li>然后更新lsm中这些key的新地址</li>
+<li>并释放老的vlog文件</li>
+<li>这一过程中需要先将数据写入新的vlog文件后刷新到固态硬盘后异步更新索引</li>
+<li>最后删除老文件 以防止在此过程中进程崩溃造成数据丢失</li>
+</ol>
+<h2 id="故障恢复"><a href="#故障恢复" class="headerlink" title="故障恢复"></a>故障恢复</h2><ol>
+<li><p>在wisckey的设计中预写日志就是值日志</p>
+</li>
+<li><p>因此引擎进程只需要定时保存 head和tail的地址即可</p>
+</li>
+<li><p>数据库恢复时需要获取崩溃前最新的地址然后从tail到head将日志进行redo即可</p>
+</li>
+<li><p>同时为了保证一致性在查询key时要做一些必要的一致性检查</p>
+</li>
+<li><p>当前key如果在tail与head索引范围外则忽略</p>
+</li>
+<li><p>当前位置上的值具有的key与查询的key不匹配则忽略</p>
+</li>
+<li><p>发生上述情况时，引擎直接返回错误信息</p>
+</li>
+</ol>
+<h1 id="优化与改进"><a href="#优化与改进" class="headerlink" title="优化与改进"></a>优化与改进</h1><h2 id="写缓冲区"><a href="#写缓冲区" class="headerlink" title="写缓冲区"></a>写缓冲区</h2><p>为减少写入的系统调研次数，多个小key的写入会被缓存在内存中汇聚在一起统一的写入lsm的sstable中，但会优先写入vlog中当作预写日志处理。</p>
+<h2 id="空间放大率"><a href="#空间放大率" class="headerlink" title="空间放大率"></a>空间放大率</h2><p>数据存储的实际的大小与逻辑上的大小比值用来衡量空间放大情况，对于固态硬盘来说其价格昂贵，降低空间放大率会大大的节省存储成本。</p>
+<h2 id="在线垃圾收集"><a href="#在线垃圾收集" class="headerlink" title="在线垃圾收集"></a>在线垃圾收集</h2><p>GC过程会造成引擎的性能尖刺，通过并发的在线的分批次的进行GC操作来对前台读写性能影响。</p>
+<h2 id="小Value的存储"><a href="#小Value的存储" class="headerlink" title="小Value的存储"></a>小Value的存储</h2><p>经论文的测试数据value大于4KB时其读取性能才会有极大的提升，因此可以设置一个阈值，当value大于此阈值时才进行KV分离，而再次之前使用传统lsm-tree模式。</p>
+<h3 id="B-树也不是十全十美的，它的主要缺点有两个："><a href="#B-树也不是十全十美的，它的主要缺点有两个：" class="headerlink" title="B+树也不是十全十美的，它的主要缺点有两个："></a>B+树也不是十全十美的，它的主要缺点有两个：</h3><p>1.如果写入的数据比较离散，那么寻找写入位置时，子节点有很大可能性不会在内存中，最终会产生大量的随机写，性能下降。</p>
+<p>2.如果B+树已经运行了很长时间，写入了很多数据，随着叶子节点分裂，其对应的块会不再顺序存储，而变得分散。这时执行范围查询也会变成随机读，效率降低了</p>
+<p>B+树没有成为主流分布式KV存储？B+树（和B树）是经典的就地更新结构，目标是优化随机读取和范围查询。</p>
+<ol>
+<li><strong>写入性能差。</strong> B+树的更新操作是要找到相应的磁盘页，然后直接覆盖或修改数据。如果发生页分裂，就还要修改父节点，会有大量的随机I&#x2F;O。在高写入负载下，B+树的随机I&#x2F;O和页分裂会放大，严重拖慢写入速度，没法做到分布式KV存储追求的高吞吐量。</li>
+<li>把B+树作为Raft的状态机，写入操作会经历两次持久化：写入操作先顺序写入Raft的日志（WAL）文件； Raft 把操作应用到B+树会执行随机写来更新内部结构，同时B+树引擎自身还要写入Redo Log&#x2F;Undo Log来保证单机事务和崩溃恢复。<strong>双重写入（Raft WAL的顺序写 + B+树的随机写）产生写放大和更差的写入性能，白白浪费 Raft WAL的顺序写优势。</strong></li>
+<li>B+树的分布式代价很高： B+树把一个平衡树结构分散到集群上，保持平衡和一致性的代价非常大，实现难度很高。</li>
+</ol>
+<h1 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h1><ol>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hardcore.feishu.cn/docs/doccn4WRb8aFRznvfyc8hRf9Chf">WiscKey：在SSD存储上的键值分离设计</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hardcore.feishu.cn/docs/doccnKTUS5I0qkqYMg4mhfIVpOd">LSM-论文导读与Leveldb源码解读</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/google/leveldb">google&#x2F;leveldb</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://shimingyah.github.io/2019/08/BadgerDB%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B9%8Bwisckey%E8%AE%BA%E6%96%87/">BadgerDB源码分析之Wisckey论文</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/dgraph-io/badger">dgraph-io&#x2F;badger</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/ym65536/p/10995048.html">[levelDB] Compaction</a></li>
+</ol>
+<hr>
+<h1 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h1><h2 id="1-MemTable-跳表插入——LevelDB-写路径第一步"><a href="#1-MemTable-跳表插入——LevelDB-写路径第一步" class="headerlink" title="1. MemTable 跳表插入——LevelDB 写路径第一步"></a>1. MemTable 跳表插入——LevelDB 写路径第一步</h2><p>LevelDB 写入首先进入内存中的 MemTable（基于跳表），跳表保证 O(logN) 的有序插入和查找。MemTable 满后转为 Immutable MemTable，后台线程 Flush 到磁盘生成 SSTable。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// LevelDB SkipList::Insert —— 写路径的第一步</span></span><br><span class="line"><span class="comment">// db/skiplist.h (LevelDB)</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Key, <span class="keyword">class</span> <span class="title class_">Comparator</span>&gt;</span><br><span class="line"><span class="type">void</span> SkipList&lt;Key, Comparator&gt;::<span class="built_in">Insert</span>(<span class="type">const</span> Key&amp; key) &#123;</span><br><span class="line">    <span class="comment">// prev 数组记录每层的前驱节点</span></span><br><span class="line">    Node* prev[kMaxHeight];</span><br><span class="line">    Node* x = <span class="built_in">FindGreaterOrEqual</span>(key, prev);  <span class="comment">// 查找插入位置</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 随机生成新节点高度（概率递增：第n层的概率为1/2^n）</span></span><br><span class="line">    <span class="type">int</span> height = <span class="built_in">RandomHeight</span>();  <span class="comment">// 典型值：平均1~2层，最大12层</span></span><br><span class="line">    </span><br><span class="line">    Node* new_node = <span class="built_in">NewNode</span>(key, height);</span><br><span class="line">    <span class="comment">// 逐层插入</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; height; i++) &#123;</span><br><span class="line">        new_node-&gt;<span class="built_in">NoBarrier_SetNext</span>(i, prev[i]-&gt;<span class="built_in">NoBarrier_Next</span>(i));</span><br><span class="line">        prev[i]-&gt;<span class="built_in">SetNext</span>(i, new_node);  <span class="comment">// 内存屏障保证可见性</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// MemTable 用 Arena 内存池分配节点，减少碎片</span></span><br><span class="line"><span class="comment">// 插入在用户线程中完成，Flush 在后台线程——双 MemTable 设计避免阻塞写</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="2-SSTable-合并迭代器——Compaction-的核心"><a href="#2-SSTable-合并迭代器——Compaction-的核心" class="headerlink" title="2. SSTable 合并迭代器——Compaction 的核心"></a>2. SSTable 合并迭代器——Compaction 的核心</h2><p>Compaction 是 LSM 引擎的核心：将上层多个有重叠 key 范围的 SSTable 与下层 SSTable 做归并排序，去掉已删除&#x2F;覆盖的旧版本数据，产出新的 SSTable。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// LevelDB Compaction 归并——MergingIterator</span></span><br><span class="line"><span class="comment">// table/merger.cc</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">MergingIterator</span> : <span class="keyword">public</span> Iterator &#123;</span><br><span class="line">    <span class="comment">// 小顶堆，按 key 排序所有子迭代器当前指向的 entry</span></span><br><span class="line">    <span class="comment">// 每次 Next() 弹出最小 key 的迭代器，推进它</span></span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">SeekToFirst</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; child : children_) &#123;</span><br><span class="line">            child-&gt;<span class="built_in">SeekToFirst</span>();</span><br><span class="line">            <span class="keyword">if</span> (child-&gt;<span class="built_in">Valid</span>())</span><br><span class="line">                minHeap_.<span class="built_in">push</span>(child.<span class="built_in">get</span>());  <span class="comment">// 入堆</span></span><br><span class="line">        &#125;</span><br><span class="line">        current_ = minHeap_.<span class="built_in">top</span>();  <span class="comment">// 当前最小</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">Next</span><span class="params">()</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">        current_-&gt;<span class="built_in">Next</span>();        <span class="comment">// 推进当前子迭代器</span></span><br><span class="line">        minHeap_.<span class="built_in">pop</span>();          <span class="comment">// 弹出旧值</span></span><br><span class="line">        <span class="keyword">if</span> (current_-&gt;<span class="built_in">Valid</span>())</span><br><span class="line">            minHeap_.<span class="built_in">push</span>(current_.<span class="built_in">get</span>());  <span class="comment">// 新值入堆</span></span><br><span class="line">        current_ = minHeap_.<span class="built_in">empty</span>() ? <span class="literal">nullptr</span> : minHeap_.<span class="built_in">top</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// Key() 返回 current_ 的 key</span></span><br><span class="line">    <span class="comment">// 归并规则：同 key 时 seq 大（新）的优先，seq=0 代表删除标记</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// Compaction 过滤逻辑：同 key 只保留最新 seq，删除标记被丢弃（若下层无此key）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="3-WiscKey-KV-分离——vLog-垃圾回收"><a href="#3-WiscKey-KV-分离——vLog-垃圾回收" class="headerlink" title="3. WiscKey KV 分离——vLog 垃圾回收"></a>3. WiscKey KV 分离——vLog 垃圾回收</h2><p>WiscKey 将 value 单独存在 vLog 文件中，LSM 树只存 <code>&lt;key, vLog_addr&gt;</code>。GC 线程从 tail 端回收旧 vLog 文件：读其中的有效 key 查询 LSM 确认地址是否仍有效，有效则重新追加到 head，无效则丢弃。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// WiscKey vLog GC 伪代码</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">GarbageCollect</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 选择最旧的 vLog 文件（tail 端）</span></span><br><span class="line">    <span class="keyword">auto</span> vlog_file = <span class="built_in">pick_tail_vlog</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 遍历 vLog 中的每条记录</span></span><br><span class="line">    <span class="keyword">while</span> (<span class="keyword">auto</span> record = vlog_file-&gt;<span class="built_in">next</span>()) &#123;</span><br><span class="line">        <span class="comment">// 查 LSM 树：该 key 的当前 value 地址是否仍指向本记录？</span></span><br><span class="line">        <span class="keyword">auto</span> addr = lsm_tree_-&gt;<span class="built_in">get_addr</span>(record.key);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span> (addr == record.offset) &#123;</span><br><span class="line">            <span class="comment">// 有效记录 → 重新追加到 head 端（追加到活跃 vLog）</span></span><br><span class="line">            <span class="keyword">auto</span> new_addr = active_vlog_-&gt;<span class="built_in">append</span>(record.key, record.value);</span><br><span class="line">            <span class="comment">// 更新 LSM 中的地址映射</span></span><br><span class="line">            lsm_tree_-&gt;<span class="built_in">put</span>(record.key, new_addr);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 若地址不匹配 → 已被覆盖/删除，直接丢弃（GC 回收空间）</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 整个旧 vLog 文件删除</span></span><br><span class="line">    <span class="built_in">delete_vlog_file</span>(vlog_file);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 关键设计：(1) GC 在后台单线程运行，不影响前台读写</span></span><br><span class="line"><span class="comment">// (2) GC 过程中崩溃恢复：新 address 写入前不删旧文件</span></span><br><span class="line"><span class="comment">// (3) 写放大降低：GC 只移动 value（key 不再参与 compaction）</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h2><ol>
+<li><strong>写放大是 LSM 最大的敌人</strong>：一次写入可能经历多次 compaction（写→WAL→MemTable→L0→L1→…）。RocksDB 的 Leveled Compaction 写放大约 10-30 倍，Tiered Compaction 可降低到 4-10 倍。选择策略时需权衡读放大和空间放大。</li>
+<li><strong>LevelDB 的写阻塞点</strong>：L0 文件数达到阈值（<code>kL0_CompactionTrigger=4</code>）触发 compaction，若 compaction 速度跟不上写入速度，L0 文件数达到 <code>kL0_SlowdownWritesTrigger=8</code> 时会主动 sleep 1ms 限速写入，达到 12 时完全阻塞写入。这解释了为什么 LevelDB 在持续高写入下会有尖刺。</li>
+<li><strong>Bloom Filter 对点查询至关重要</strong>：LSM 查询需从 L0 到最底层逐层查找，每层先查 Bloom Filter 判断 key 是否存在，不存在直接跳过该层 SSTable。典型配置 10 bits&#x2F;key 可达到 ~1% 假阳性率，大幅减少无效磁盘 IO。</li>
+<li><strong>WAL 的 fsync 策略决定持久性和性能</strong>：每条写入都 fsync 保证崩溃不丢数据但吞吐量极低；批量提交（group commit）将多个写操作的 fsync 合并为一次，吞吐量可提升 10 倍以上。</li>
+<li><strong>SSD 上 LSM 的 KV 分离才有意义</strong>：HDD 上随机读性能极差（~100 IOPS），KV 分离导致范围查询退化为随机读，得不偿失。SSD 的随机读可达数十万 IOPS，KV 分离的收益远大于代价。Titan（TiKV 的 KV 分离实现）默认 value ≥ 1KB 才分离。</li>
+<li><strong>Compaction 策略直接影响系统表现</strong>：Leveled Compaction 优化读（每层 key 不重叠）+ 空间利用率高；Tiered Compaction 优化写（减少写放大）但空间放大高；Universal Compaction 适合写多读少场景。没有银弹，需根据 workload 选择。</li>
+</ol>
+<hr>
+<h1 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h1><h2 id="面试问答"><a href="#面试问答" class="headerlink" title="面试问答"></a>面试问答</h2><p><strong>Q1: LSM 树和 B+ 树的本质区别？各自适用什么场景？</strong><br>A: LSM 是<strong>非就地更新</strong>（追加写+后台合并），B+ 树是<strong>就地更新</strong>（原地覆盖+页分裂）。LSM 牺牲读性能换取写入吞吐量，适合写密集场景（日志、时序数据、消息队列）；B+ 树读写均衡，适合读密集+范围查询场景（OLTP 数据库）。核心差异：LSM 顺序写 O(1)、随机读 O(N_sstable)；B+ 树随机写 O(logN)、随机读 O(logN)。</p>
+<p><strong>Q2: 什么是写放大（Write Amplification）？LSM 如何导致写放大？</strong><br>A: 写放大 &#x3D; 实际写入存储的字节数 &#x2F; 应用层写入的字节数。LSM 的写放大来源：(1) 同一 key 多次写入需多次 compaction 才能清理旧版本；(2) SSTable 归并时整文件读-合并-写回，不相关的 key 也被重写。例如 L1 合并 L2 时，L2 的一个 SSTable 可能只有部分 key 与 L1 重叠，但整个文件都要重写。WiscKey 通过 KV 分离将写放大从 10x+ 降到 ~2x。</p>
+<p><strong>Q3: LevelDB 为什么采用 Leveled Compaction 而非 Tiered Compaction？</strong><br>A: Leveled Compaction 保证同一层内各 SSTable 的 key 范围不重叠，因此查询时每层最多访问 1 个 SSTable（读放大小）；缺点是每次 compaction 都涉及下层整个文件重写（写放大高）。Tiered Compaction（Cassandra 风格）每层允许多个有重叠的 SSTable，写放大低但读时需要合并更多文件。LevelDB 选择 Leveled 是因为 Google 的典型 workload 读多写少。</p>
+<p><strong>Q4: SSTable（Sorted String Table）的内部结构是怎样的？</strong><br>A: LevelDB SSTable 分四个区域：(1) Data Block——存储实际 key-value，块内排好序，默认 4KB 一块，每块末尾有重启点用于前缀压缩；(2) Filter Block——存储 Bloom Filter，快速判断 key 是否可能在此 SSTable 中；(3) Index Block——存储每个 Data Block 的 last_key → offset，用于二分查找定位目标 Data Block；(4) Footer——48 字节定长尾部，存 Index Block 和 Filter Block 的偏移和大小，以及 Magic Number。</p>
+<p><strong>Q5: WAL（Write-Ahead Log）在 LSM 中的作用？崩溃后如何恢复？</strong><br>A: WAL 是顺序追加的日志文件，写入先落 WAL 再写 MemTable。崩溃恢复时：(1) 从最后一个 checkpoint 开始回放 WAL，重建崩溃前未 flush 的 MemTable；(2) 因为 MemTable 可能已部分 flush 但 WAL 未截断，恢复时跳过已持久化的 key。RocksDB 的 <code>wal_recovery_mode</code> 参数控制恢复严格程度（绝对一致性 vs 容忍丢失最后几条记录）。</p>
+<p><strong>Q6: KV 分离（WiscKey）为什么能降低写放大？有什么代价？</strong><br>A: <strong>降低原因</strong>：compaction 只重排 key（小），不搬运 value（大），写放大从 key+value 的多次重写降为仅 key 的重写。<strong>代价</strong>：(1) 范围查询退化为顺序读 key + 随机读 value（原本一次顺序 IO 的数据现在分散在 vLog 各处）；(2) vLog 需要独立的 GC 线程，GC 过程需要查 LSM 确认有效性；(3) 小 value 分离可能得不偿失（value 比 LSM 的地址元数据还小时分离没意义）。</p>
+<p><strong>Q7: Bloom Filter 在 LSM 中怎么工作？为什么说它是读性能的关键？</strong><br>A: LSM 查询从 L0 开始逐层查找，每层有多个 SSTable。如果 key 不存在，盲目检查每层的 SSTable 会做大量无效 IO。Bloom Filter 以极少的内存（<del>10 bits&#x2F;key）提供”肯定不存在”的判断能力：先查 Bloom Filter，不存在直接跳过该 SSTable，存在（可能误判）才真正读磁盘。将读放大从 O(N_sstable) 降到 O(1</del>2)，假阳性率 ~1% 时内存开销仅为数据量的 0.1%。</p>
+<p><strong>Q8: LSM 的 Compaction 策略有哪些？如何选择？</strong><br>A: (1) <strong>Leveled</strong>（LevelDB&#x2F;RocksDB 默认）：每层 key 不重叠，读放大低，写放大 ~10-30x；(2) <strong>Tiered</strong>（Cassandra&#x2F;HBase）：同层 SSTable 可重叠，写放大低 ~4-10x，但读需合并更多文件；(3) <strong>Universal</strong>（RocksDB）：适合写多读少，一次合并多个连续文件，写放大更低；(4) <strong>FIFO</strong>：旧文件直接删除不做合并，适合 TTL 数据。选择原则：读多选 Leveled，写多选 Tiered&#x2F;Universal，有 TTL 选 FIFO。</p>
+<h2 id="陷阱与反问"><a href="#陷阱与反问" class="headerlink" title="陷阱与反问"></a>陷阱与反问</h2><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>错误认知</th>
+<th>正确理解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LSM 写入没有延迟尖刺</td>
+<td>Compaction 在后台持续运行，与前台写竞争 IO 和 CPU</td>
+<td>RocksDB 的 write stall 机制在 compaction 落后时会主动限速甚至阻塞写入</td>
+</tr>
+<tr>
+<td>LSM 一定比 B+ 树写入快</td>
+<td>当 value 很大时 B+ 树只需修改一个页的几字节，LSM 要完整写一遍</td>
+<td>小更新场景（UPDATE 单字段）B+ 树可能更快，LSM 优势在大批量顺序写入</td>
+</tr>
+<tr>
+<td>层数越多越好</td>
+<td>层数多&#x3D;数据被 compaction 搬运次数多&#x3D;写放大大</td>
+<td>TiKV 默认 max 7 层，更多层数对写放大是灾难</td>
+</tr>
+<tr>
+<td>LevelDB 适合所有场景</td>
+<td>LevelDB 是单机嵌入式引擎，不支持网络访问和分布式事务</td>
+<td>适合本地存储，分布式场景看 TiKV&#x2F;RocksDB-on-Raft</td>
+</tr>
+<tr>
+<td>vLog 满了直接删就行</td>
+<td>删前必须逐个确认 key 是否仍指向此记录，否则会丢失最新数据</td>
+<td>GC 必须走”查询 LSM → 确认 → 重写有效记录”三步</td>
+</tr>
+</tbody></table>
+<h2 id="一句话答案速记表"><a href="#一句话答案速记表" class="headerlink" title="一句话答案速记表"></a>一句话答案速记表</h2><table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LSM 核心思想</td>
+<td>随机写转为顺序写+后台归并排序（compaction），牺牲读换写</td>
+</tr>
+<tr>
+<td>MemTable</td>
+<td>内存中的跳表&#x2F;红黑树，写入先到 MemTable，满后 flush 成 SSTable</td>
+</tr>
+<tr>
+<td>Compaction</td>
+<td>归并排序多层 SSTable，去重去删，是写放大的根源</td>
+</tr>
+<tr>
+<td>写放大</td>
+<td>实际写入磁盘字节 &#x2F; 应用写入字节，Leveled ~10-30x，KV 分离可降至 ~2x</td>
+</tr>
+<tr>
+<td>SSTable</td>
+<td>有序不可变文件，Data Block + Filter Block + Index Block + Footer</td>
+</tr>
+<tr>
+<td>WAL</td>
+<td>预写日志，崩溃恢复回放，保证已 ack 操作不丢</td>
+</tr>
+<tr>
+<td>WiscKey</td>
+<td>键值分离存储：key 在 LSM 树，value 在 vLog，compaction 只排 key</td>
+</tr>
+<tr>
+<td>Bloom Filter</td>
+<td>快速否决 key 不存在，减少无效 SSTable IO，1% 假阳性 10bits&#x2F;key</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/LSM%E6%A0%91/">https://weimo1.github.io/posts/LSM%E6%A0%91/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Leveldb/" title="Leveldb"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Leveldb</div></div><div class="info-2"><div class="info-item-1">Leveldb 适用范围：LevelDB 写放大问题分析与性能调优  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释必须全部保留。 代码块必须标注语言。 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。  一、项目&#x2F;模块概述 模块定位：LevelDB 作为 LSM-Tree 的经典实现，写放大（Write Amplification）是其最核心的性能问题。本笔记分析写放大的四个来源及其优化方向。 技术栈与依赖：LSM-Tree、Compaction、SSTable 模块边界：性能分析与工程调优指导  二、架构设计（≥200字）...</div></div></div></a><a class="pagination-related" href="/posts/Kafka%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1/" title="Kafka核心设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Kafka核心设计</div></div><div class="info-2"><div class="info-item-1">Kafka 核心设计与高吞吐原理 适用范围：Kafka 分布式消息队列——架构设计、高吞吐实现机制、消息可靠性保障、分区与消费组模型。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#LSM%E6%A0%91"><span class="toc-number">1.</span> <span class="toc-text">LSM树</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8%E7%9A%84LSM%E5%AE%9E%E7%8E%B0-LevelDB"><span class="toc-number">2.</span> <span class="toc-text">经典的LSM实现-LevelDB</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9C%BA%E9%81%87%E4%B8%8E%E6%8C%91%E6%88%98"><span class="toc-number">3.</span> <span class="toc-text">机遇与挑战</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#KV%E5%88%86%E7%A6%BB%E5%AF%B9SSD%E7%9A%84%E4%BC%98%E5%8C%96"><span class="toc-number">4.</span> <span class="toc-text">KV分离对SSD的优化</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#KV%E5%88%86%E7%A6%BB%E5%B8%A6%E6%9D%A5%E7%9A%84%E6%8C%91%E6%88%98"><span class="toc-number">5.</span> <span class="toc-text">KV分离带来的挑战</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-number">6.</span> <span class="toc-text">实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%B8%83%E5%B1%80"><span class="toc-number">6.1.</span> <span class="toc-text">数据布局</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#KV%E5%88%86%E7%A6%BB%E8%AE%BE%E8%AE%A1"><span class="toc-number">6.1.1.</span> <span class="toc-text">KV分离设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9A%8F%E6%9C%BA%E6%9F%A5%E8%AF%A2"><span class="toc-number">6.2.</span> <span class="toc-text">随机查询</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%8C%83%E5%9B%B4%E6%9F%A5%E8%AF%A2"><span class="toc-number">6.3.</span> <span class="toc-text">范围查询</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9A%8F%E6%9C%BA-%E9%A1%BA%E5%BA%8F%E5%86%99%E5%85%A5"><span class="toc-number">6.4.</span> <span class="toc-text">随机&#x2F;顺序写入</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%88%E5%B9%B6%E5%8E%8B%E7%BC%A9"><span class="toc-number">6.5.</span> <span class="toc-text">合并压缩</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%85%E9%9A%9C%E6%81%A2%E5%A4%8D"><span class="toc-number">6.6.</span> <span class="toc-text">故障恢复</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BC%98%E5%8C%96%E4%B8%8E%E6%94%B9%E8%BF%9B"><span class="toc-number">7.</span> <span class="toc-text">优化与改进</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E7%BC%93%E5%86%B2%E5%8C%BA"><span class="toc-number">7.1.</span> <span class="toc-text">写缓冲区</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A9%BA%E9%97%B4%E6%94%BE%E5%A4%A7%E7%8E%87"><span class="toc-number">7.2.</span> <span class="toc-text">空间放大率</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%A8%E7%BA%BF%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86"><span class="toc-number">7.3.</span> <span class="toc-text">在线垃圾收集</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%8FValue%E7%9A%84%E5%AD%98%E5%82%A8"><span class="toc-number">7.4.</span> <span class="toc-text">小Value的存储</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#B-%E6%A0%91%E4%B9%9F%E4%B8%8D%E6%98%AF%E5%8D%81%E5%85%A8%E5%8D%81%E7%BE%8E%E7%9A%84%EF%BC%8C%E5%AE%83%E7%9A%84%E4%B8%BB%E8%A6%81%E7%BC%BA%E7%82%B9%E6%9C%89%E4%B8%A4%E4%B8%AA%EF%BC%9A"><span class="toc-number">7.4.1.</span> <span class="toc-text">B+树也不是十全十美的，它的主要缺点有两个：</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">8.</span> <span class="toc-text">参考资料</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">9.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-MemTable-%E8%B7%B3%E8%A1%A8%E6%8F%92%E5%85%A5%E2%80%94%E2%80%94LevelDB-%E5%86%99%E8%B7%AF%E5%BE%84%E7%AC%AC%E4%B8%80%E6%AD%A5"><span class="toc-number">9.1.</span> <span class="toc-text">1. MemTable 跳表插入——LevelDB 写路径第一步</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-SSTable-%E5%90%88%E5%B9%B6%E8%BF%AD%E4%BB%A3%E5%99%A8%E2%80%94%E2%80%94Compaction-%E7%9A%84%E6%A0%B8%E5%BF%83"><span class="toc-number">9.2.</span> <span class="toc-text">2. SSTable 合并迭代器——Compaction 的核心</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-WiscKey-KV-%E5%88%86%E7%A6%BB%E2%80%94%E2%80%94vLog-%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6"><span class="toc-number">9.3.</span> <span class="toc-text">3. WiscKey KV 分离——vLog 垃圾回收</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">9.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">10.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9D%A2%E8%AF%95%E9%97%AE%E7%AD%94"><span class="toc-number">10.1.</span> <span class="toc-text">面试问答</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">10.2.</span> <span class="toc-text">陷阱与反问</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0%E8%A1%A8"><span class="toc-number">10.3.</span> <span class="toc-text">一句话答案速记表</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

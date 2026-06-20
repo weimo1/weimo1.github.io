@@ -1,0 +1,302 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>std__uninitialized_copy_n | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="std::uninitialized_copy_n 参考：https:&#x2F;&#x2F;cloud.tencent.com&#x2F;developer&#x2F;article&#x2F;2541884  一、核心概念 定义：std::uninitialized_copy_n 是 C++ 标准库的未初始化内存算法，将指定数量的元素从源范围拷贝到未初始化的目标内存区域，使用 placement new 逐个构造元素 关键词：未初始化内存、p">
+<meta property="og:type" content="article">
+<meta property="og:title" content="std__uninitialized_copy_n">
+<meta property="og:url" content="https://weimo1.github.io/posts/std__uninitialized_copy_n/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="std::uninitialized_copy_n 参考：https:&#x2F;&#x2F;cloud.tencent.com&#x2F;developer&#x2F;article&#x2F;2541884  一、核心概念 定义：std::uninitialized_copy_n 是 C++ 标准库的未初始化内存算法，将指定数量的元素从源范围拷贝到未初始化的目标内存区域，使用 placement new 逐个构造元素 关键词：未初始化内存、p">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.561Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "std__uninitialized_copy_n",
+  "url": "https://weimo1.github.io/posts/std__uninitialized_copy_n/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.561Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/std__uninitialized_copy_n/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'std__uninitialized_copy_n',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">std__uninitialized_copy_n</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">std__uninitialized_copy_n</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.561Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/">基础概念</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="std-uninitialized-copy-n"><a href="#std-uninitialized-copy-n" class="headerlink" title="std::uninitialized_copy_n"></a>std::uninitialized_copy_n</h1><blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2541884">https://cloud.tencent.com/developer/article/2541884</a></p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::uninitialized_copy_n</code> 是 C++ 标准库的未初始化内存算法，将指定数量的元素从源范围拷贝到未初始化的目标内存区域，使用 placement new 逐个构造元素</li>
+<li><strong>关键词</strong>：未初始化内存、placement new、commit-or-rollback、RAII 守卫、类型平凡优化</li>
+<li><strong>适用场景&#x2F;边界</strong>：自定义容器（vector-like）的底层实现、内存池管理、避免默认构造 + 赋值的二次开销；边界：目标内存必须未初始化（已初始化则双重构造 UB），失败时回滚已构造元素</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——与 <code>std::copy</code> 的区别</strong>：<code>std::copy</code> 用 <code>operator=</code> 赋值，要求目标已初始化；<code>std::uninitialized_copy_n</code> 用 placement new 构造，目标必须是原始未初始化内存。前者快但限制多，后者有构造开销但灵活</li>
+<li><strong>第二层——异常安全保证</strong>：如果第 N 个元素构造时抛出异常，算法会逆序析构前 N-1 个已构造元素（commit-or-rollback），保证不会泄漏。这是通过 RAII 守卫对象实现的</li>
+<li><strong>第三层——平凡类型优化</strong>：对于 <code>std::is_trivially_copyable</code> 的类型（如 int、POD struct），编译器会用 <code>memmove</code> 替代逐个 placement new，性能接近直接内存拷贝</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>std::uninitialized_copy_n(InputIt first, Size count, ForwardIt d_first)</code> 返回指向最后一个构造元素之后的位置</li>
+<li><strong>关键公式</strong>：时间复杂度 O(n)（平凡类型可用 memmove 接近 O(1) 批量拷贝）</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SimpleVec</span> &#123;</span><br><span class="line">    T* data_ = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="type">size_t</span> size_ = <span class="number">0</span>;</span><br><span class="line">    <span class="type">size_t</span> cap_ = <span class="number">0</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">static</span> T* <span class="title">allocate</span><span class="params">(<span class="type">size_t</span> n)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">static_cast</span>&lt;T*&gt;(::<span class="keyword">operator</span> <span class="built_in">new</span>(n * <span class="built_in">sizeof</span>(T)));</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">destroy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        std::<span class="built_in">destroy_n</span>(data_, size_);</span><br><span class="line">        ::<span class="function"><span class="keyword">operator</span> <span class="title">delete</span><span class="params">(data_)</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    ~<span class="built_in">SimpleVec</span>() &#123; <span class="built_in">destroy</span>(); &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// push_back 使用 uninitialized_copy_n 扩容</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">push_back</span><span class="params">(<span class="type">const</span> T&amp; val)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (size_ == cap_) &#123;</span><br><span class="line">            <span class="type">size_t</span> new_cap = cap_ ? cap_ * <span class="number">2</span> : <span class="number">4</span>;</span><br><span class="line">            T* new_data = <span class="built_in">allocate</span>(new_cap);</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// ★ 将已有元素拷贝到新内存（未初始化 → placement new）</span></span><br><span class="line">            std::<span class="built_in">uninitialized_copy_n</span>(data_, size_, new_data);</span><br><span class="line">            </span><br><span class="line">            <span class="built_in">destroy</span>();          <span class="comment">// 释放旧内存</span></span><br><span class="line">            data_ = new_data;</span><br><span class="line">            cap_ = new_cap;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 在新位置构造元素</span></span><br><span class="line">        ::<span class="keyword">new</span> (data_ + size_) <span class="built_in">T</span>(val);</span><br><span class="line">        ++size_;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    T&amp; <span class="keyword">operator</span>[](<span class="type">size_t</span> i) &#123; <span class="keyword">return</span> data_[i]; &#125;</span><br><span class="line">    <span class="function"><span class="type">size_t</span> <span class="title">size</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> size_; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    SimpleVec&lt;std::string&gt; v;</span><br><span class="line">    v.<span class="built_in">push_back</span>(<span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    v.<span class="built_in">push_back</span>(<span class="string">&quot;world&quot;</span>);</span><br><span class="line">    v.<span class="built_in">push_back</span>(<span class="string">&quot;C++&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; v.<span class="built_in">size</span>(); ++i)</span><br><span class="line">        std::cout &lt;&lt; v[i] &lt;&lt; <span class="string">&quot; &quot;</span>;</span><br><span class="line">    <span class="comment">// hello world C++</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>预期</strong>：理解 uninitialized_copy_n 在容器扩容中的核心角色</li>
+<li><strong>补充</strong>：<code>std::uninitialized_move_n</code> 用于移动而非拷贝，可复用源对象资源</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><ul>
+<li><strong>与其他主题的关联</strong>：与自定义容器实现（vector&#x2F;string 底层）、内存管理（原始内存分配 + placement new）、异常安全（commit-or-rollback）、移动语义（uninitialized_move_n 减少拷贝）强相关</li>
+<li><strong>工程中的真实用法</strong>：<ul>
+<li><strong>vector 扩容实现</strong>：<code>std::vector::push_back</code> 扩容时：<code>allocate(new_cap)</code> → <code>uninitialized_copy_n</code> 迁移旧元素 → <code>destroy + deallocate</code> 释放旧内存。这是避免”默认构造+赋值”二次开销的关键</li>
+<li><strong>内存池管理</strong>：从预分配池中构造对象序列，<code>uninitialized_copy_n</code> 批量构造</li>
+<li><strong>平凡类型优化</strong>：对 <code>int</code>&#x2F;<code>double</code> 等 POD 类型，编译器自动用 <code>memmove</code>，扩容效率接近 realloc</li>
+</ul>
+</li>
+<li><strong>相关算法家族</strong>：<ul>
+<li><code>std::uninitialized_copy</code>：拷贝迭代器范围（而非指定数量）</li>
+<li><code>std::uninitialized_move_n</code>：移动而非拷贝，源对象被置于”有效但未指定”状态</li>
+<li><code>std::uninitialized_fill_n</code>：在未初始化内存中构造 N 个相同值</li>
+<li><code>std::uninitialized_default_construct_n</code>：默认构造 N 个元素</li>
+<li><code>std::destroy_n</code>：逆操作——析构指定数量的对象</li>
+</ul>
+</li>
+<li><strong>注意事项</strong>：目标内存必须对齐（<code>alignof(T)</code>），否则 placement new 是 UB；迭代器类型需满足 LegacyInputIterator（源）和 LegacyForwardIterator（目标）</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-异常安全的回滚实现"><a href="#1-异常安全的回滚实现" class="headerlink" title="1. 异常安全的回滚实现"></a>1. 异常安全的回滚实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libstdc++ uninitialized_copy_n 简化实现</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> InputIt, <span class="keyword">typename</span> Size, <span class="keyword">typename</span> ForwardIt&gt;</span></span><br><span class="line"><span class="function">ForwardIt <span class="title">uninitialized_copy_n</span><span class="params">(InputIt first, Size count, ForwardIt d_first)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">using</span> T = <span class="keyword">typename</span> iterator_traits&lt;ForwardIt&gt;::value_type;</span><br><span class="line">    ForwardIt current = d_first;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">for</span> (Size i = <span class="number">0</span>; i &lt; count; ++i, ++first, ++current) &#123;</span><br><span class="line">            ::<span class="keyword">new</span> (<span class="built_in">static_cast</span>&lt;<span class="type">void</span>*&gt;(<span class="built_in">addressof</span>(*current))) <span class="built_in">T</span>(*first);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> current;</span><br><span class="line">    &#125; <span class="built_in">catch</span> (...) &#123;</span><br><span class="line">        <span class="comment">// ★ 异常安全：销毁已构造的元素</span></span><br><span class="line">        <span class="built_in">destroy</span>(d_first, current);</span><br><span class="line">        <span class="keyword">throw</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-平凡类型的-memmove-优化"><a href="#2-平凡类型的-memmove-优化" class="headerlink" title="2. 平凡类型的 memmove 优化"></a>2. 平凡类型的 memmove 优化</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 编译器检测 is_trivially_copyable 时优化为：</span></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_trivially_copyable_v&lt;T&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">memmove</span>(d_first, first, count * <span class="built_in">sizeof</span>(T));</span><br><span class="line">    <span class="keyword">return</span> d_first + count;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 对 int/double/POD struct 跳过逐个 placement new</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong><code>uninitialized_copy</code> vs <code>copy</code></strong>：内存区域未初始化时只能用前者——后者调用 <code>operator=</code> 在垃圾内存上赋值是 UB</li>
+<li><strong>移动优于拷贝</strong>：扩容时优先用 <code>uninitialized_move_n</code>——如果类型有 noexcept 移动构造，完全免拷贝</li>
+<li><strong>对齐要求</strong>：<code>::operator new</code> 分配的内存保证 alignof(std::max_align_t)，但对更高对齐要求需用 <code>aligned_alloc</code></li>
+<li><strong>trivial 优化是自动的</strong>：不需要手动检测 <code>is_trivially_copyable</code>，标准库实现已内置此优化</li>
+<li><strong>与 <code>std::relocate</code>（C++23 提案）对比</strong>：relocate &#x3D; move + destroy，可一次完成元素迁移和析构</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（8题）"><a href="#Q-A（8题）" class="headerlink" title="Q&amp;A（8题）"></a>Q&amp;A（8题）</h3><p><strong>Q1: <code>std::copy</code> 和 <code>std::uninitialized_copy_n</code> 的区别？</strong><br>A: copy 用 operator&#x3D; 赋给已初始化对象；uninitialized_copy_n 用 placement new 在原始内存构造。目标区域状态不同</p>
+<p><strong>Q2: 为什么 vector 扩容用 uninitialized_copy_n 而非 copy？</strong><br>A: 新分配的内存是未初始化的——用 copy&#x3D;赋值会在垃圾数据上调用 operator&#x3D;，是 UB</p>
+<p><strong>Q3: 如果构造中途抛异常怎么办？</strong><br>A: 异常安全保证——逆序析构已构造元素（commit-or-rollback），不泄漏、不破坏未被构造的内存</p>
+<p><strong>Q4: 平凡类型（trivial）有什么优化？</strong><br>A: <code>is_trivially_copyable</code> 的类型用 memmove 批量拷贝，跳过逐个 placement new，性能提升显著</p>
+<p><strong>Q5: uninitialized_copy_n 返回什么？</strong><br>A: 返回指向最后一个构造元素之后位置的迭代器（类似 end 指针）</p>
+<p><strong>Q6: 什么时候该用 uninitialized_move_n？</strong><br>A: 源对象不再需要时——如 vector 扩容可移动旧数据到新内存，避免拷贝</p>
+<p><strong>Q7: <code>destroy_n</code> 的作用？</strong><br>A: 显式调用析构函数销毁 N 个元素，将内存回退到未初始化状态</p>
+<p><strong>Q8: 为什么不直接用 malloc + 循环 placement new？</strong><br>A: 功能相同但需要手动实现异常安全回滚，uninitialized_copy_n 已内置</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：在已初始化内存上调用 uninitialized_copy_n——双重构造，原有元素泄漏且新元素构造在”脏”内存上</li>
+<li><strong>反问</strong>：为什么不用 realloc 扩容？→ realloc 对非平凡类型无法调用拷贝&#x2F;移动构造，行为未定义</li>
+<li><strong>陷阱</strong>：未对齐内存上的 placement new——<code>alignof(T)</code> 不对齐是 UB</li>
+<li><strong>反问</strong>：相比直接用 <code>new T[n]</code> 有什么优势？→ 分离内存分配和对象构造，更灵活（预分配大块内存，延迟构造）</li>
+<li><strong>陷阱</strong>：<code>destroy_n</code> 后忘记释放内存——析构不回收内存，需手动 <code>::operator delete</code></li>
+</ol>
+<h3 id="一句话答案（5个）"><a href="#一句话答案（5个）" class="headerlink" title="一句话答案（5个）"></a>一句话答案（5个）</h3><ol>
+<li><strong>uninitialized_copy_n 本质</strong>：在原始内存中用 placement new 构造 N 个元素</li>
+<li><strong>异常安全</strong>：commit-or-rollback，逆序析构已构造元素</li>
+<li><strong>trivial 优化</strong>：POD 类型自动 memmove</li>
+<li><strong>返回迭代器</strong>：指向最后一个构造元素之后</li>
+<li><strong>适用场景</strong>：vector 扩容、内存池、自定义容器</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/std__uninitialized_copy_n/">https://weimo1.github.io/posts/std__uninitialized_copy_n/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/trace/" title="trace"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">trace</div></div><div class="info-2"><div class="info-item-1">tracehttps://zhuanlan.zhihu.com/p/2002142593505566878 核心定位与层级          工具 作用层级 核心目标 权限要求   strace 用户空间 追踪进程的系统调用 普通用户&#x2F;调试权限   ptrace 用户-内核桥梁 提供进程调试的底层接口 需调试权限   ftrace 内核空间 追踪内核函数执行路径 Root 权限   Ftrace（Function Tracer）定位：Linux 内核内置的轻量级调试工具核心功能：  函数调用追踪：记录内核函数执行路径 事件追踪：捕获调度&#x2F;中断&#x2F;系统调用等事件...</div></div></div></a><a class="pagination-related" href="/posts/string_char/" title="string_char"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">string_char</div></div><div class="info-2"><div class="info-item-1">const char* 与自定义 string 实现 适用范围：C&#x2F;C++ 字符串字面量的类型差异、const char* &#x2F; char const* &#x2F; char* const 辨析、SSO（小字符串优化）的自定义 string 实现。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 代码块必须标注语言：所有代码块必须根据实际语言标注。禁止无语言标注的裸...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#std-uninitialized-copy-n"><span class="toc-number">1.</span> <span class="toc-text">std::uninitialized_copy_n</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%BC%82%E5%B8%B8%E5%AE%89%E5%85%A8%E7%9A%84%E5%9B%9E%E6%BB%9A%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. 异常安全的回滚实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%B9%B3%E5%87%A1%E7%B1%BB%E5%9E%8B%E7%9A%84-memmove-%E4%BC%98%E5%8C%96"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. 平凡类型的 memmove 优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.3.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%888%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（8题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（5个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

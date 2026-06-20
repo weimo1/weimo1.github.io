@@ -1,0 +1,481 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Git | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Git 实用技巧与核心原理 适用范围：Git 版本控制——底层对象模型、常用命令、分支策略、团队协作工作流。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Git">
+<meta property="og:url" content="https://weimo1.github.io/posts/Git/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Git 实用技巧与核心原理 适用范围：Git 版本控制——底层对象模型、常用命令、分支策略、团队协作工作流。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.544Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Git",
+  "url": "https://weimo1.github.io/posts/Git/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.544Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Git/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Git',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Git</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Git</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.544Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%9F%BA%E7%A1%80%E5%BA%93%E4%B8%8E%E5%B7%A5%E5%85%B7/">基础库与工具</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Git-实用技巧与核心原理"><a href="#Git-实用技巧与核心原理" class="headerlink" title="Git 实用技巧与核心原理"></a>Git 实用技巧与核心原理</h1><blockquote>
+<p>适用范围：Git 版本控制——底层对象模型、常用命令、分支策略、团队协作工作流。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备；源码要贴原始代码，有需要可贴汇编。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥10个且带回答，反问点和一句话答案各≥5个。</li>
+<li>先结论后细节，避免长段堆砌。</li>
+<li>每节至少 3 条要点。</li>
+<li><strong>代码块必须标注语言</strong>：shell 代码用 <code>bash</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Git 是一个分布式版本控制系统，用于跟踪文件变更、协调多人协作开发。它通过内容寻址（SHA-1 哈希）和快照机制实现高效的版本管理。</li>
+<li><strong>关键词</strong>：版本控制、分布式、快照、SHA-1、对象模型、分支、合并</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>源代码管理（几乎所有软件项目）</li>
+<li>文档版本控制</li>
+<li>配置文件回溯</li>
+<li>不适合：大二进制文件频繁修改（建议用 Git LFS）；实时协作编辑</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2520356">这才是真正的Git——Git实用技巧 - 腾讯云</a></p>
+</blockquote>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：快照机制 vs 差异存储</strong></p>
+<p>Git 与其他版本控制系统（如 SVN）最本质的区别在于：Git 存储的是文件快照，而非文件差异。每次 <code>commit</code> 时，Git 对整个项目做一次快照，并用 SHA-1 哈希值唯一标识。未修改的文件不重复存储，而是引用上一次快照的哈希。</p>
+<p><strong>第二层：Git 对象模型</strong></p>
+<p>Git 底层有四种核心对象类型：</p>
+<table>
+<thead>
+<tr>
+<th>对象类型</th>
+<th>作用</th>
+<th>标识</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Blob</strong></td>
+<td>存储文件内容（二进制大对象），不含文件名和路径</td>
+<td>SHA-1 哈希</td>
+</tr>
+<tr>
+<td><strong>Tree</strong></td>
+<td>目录快照，记录文件名、权限及对应的 Blob&#x2F;Tree 哈希</td>
+<td>SHA-1 哈希</td>
+</tr>
+<tr>
+<td><strong>Commit</strong></td>
+<td>一次提交，包含 Tree 指针、父 Commit 指针、作者、时间戳、提交信息</td>
+<td>SHA-1 哈希</td>
+</tr>
+<tr>
+<td><strong>Tag</strong></td>
+<td>对某个 Commit 的命名引用（轻量标签&#x2F;附注标签）</td>
+<td>标签名</td>
+</tr>
+</tbody></table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 Git 对象（.git/objects 目录）</span></span><br><span class="line">git cat-file -p HEAD          <span class="comment"># 查看当前 commit 对象内容</span></span><br><span class="line">git cat-file -p HEAD^&#123;tree&#125;   <span class="comment"># 查看当前 tree 对象内容</span></span><br><span class="line">git ls-tree HEAD              <span class="comment"># 列出 tree 中的文件</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/gitblog_00059/article/details/146900897">深入理解 git 对象模型 - CSDN</a></p>
+</blockquote>
+<p><strong>第三层：引用（Ref）与 reflog</strong></p>
+<p>Git 的引用（ref）是指向 commit 哈希的可变指针（如 <code>master</code>、<code>HEAD</code>）。<code>reflog</code> 记录了引用变动的历史，可以理解成”版本控制的版本控制”。只要有 commit 的哈希值，就能找回任何”丢失”的数据——因为 Git 对象一旦创建便不可变更。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git reflog                    <span class="comment"># 查看 HEAD 的移动历史</span></span><br><span class="line">git reflog show master        <span class="comment"># 查看 master 分支的引用变化</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1105427">Git 对象存储结构分析 - 腾讯云</a></p>
+</blockquote>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-压缩多个-commit-为一个"><a href="#3-1-压缩多个-commit-为一个" class="headerlink" title="3.1 压缩多个 commit 为一个"></a>3.1 压缩多个 commit 为一个</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 交互式 rebase，压缩最近 3 个 commit</span></span><br><span class="line">git rebase -i HEAD~3</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在 vim 中将后两个 commit 的 pick 改为 squash（或 s），保存退出</span></span><br><span class="line"><span class="comment"># 或者用 reset 方式</span></span><br><span class="line">git reset --soft HEAD~3 &amp;&amp; git commit -m <span class="string">&#x27;合并的提交信息&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>⚠️ rebase 会产生新的 commit 节点，<strong>不要对多人共用的远端分支执行 rebase</strong>。</p>
+<p>rebase -i 子命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># p, pick    = 保留该 commit</span></span><br><span class="line"><span class="comment"># r, reword  = 保留，但修改 commit 信息</span></span><br><span class="line"><span class="comment"># e, edit    = 保留，但暂停以便修改</span></span><br><span class="line"><span class="comment"># s, squash  = 合并到前一个 commit</span></span><br><span class="line"><span class="comment"># f, fixup   = 合并，且丢弃该 commit 的 log 信息</span></span><br><span class="line"><span class="comment"># d, drop    = 删除该 commit</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-找回丢失的-commit-或分支"><a href="#3-2-找回丢失的-commit-或分支" class="headerlink" title="3.2 找回丢失的 commit 或分支"></a>3.2 找回丢失的 commit 或分支</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 思路：找到目标 commit 的哈希值，然后 git reset</span></span><br><span class="line">git reflog                          <span class="comment"># 查看所有引用变动历史</span></span><br><span class="line">git reset --hard &lt;目标commit哈希&gt;    <span class="comment"># 恢复到指定 commit</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-快速获得干净工作空间"><a href="#3-3-快速获得干净工作空间" class="headerlink" title="3.3 快速获得干净工作空间"></a>3.3 快速获得干净工作空间</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 暂存当前所有修改</span></span><br><span class="line">git stash</span><br><span class="line"><span class="comment"># 或强制恢复（丢弃未提交修改，⚠️ 不可逆）</span></span><br><span class="line">git reset --hard HEAD</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-修改最近一次提交"><a href="#3-4-修改最近一次提交" class="headerlink" title="3.4 修改最近一次提交"></a>3.4 修改最近一次提交</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 补充遗漏文件 / 修改 commit 信息</span></span><br><span class="line">git add 遗漏的文件</span><br><span class="line">git commit --amend --no-edit    <span class="comment"># 不修改 commit 信息</span></span><br><span class="line">git commit --amend -m <span class="string">&quot;新信息&quot;</span>   <span class="comment"># 同时修改 commit 信息</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-提交文件中的部分修改（交互式暂存）"><a href="#3-5-提交文件中的部分修改（交互式暂存）" class="headerlink" title="3.5 提交文件中的部分修改（交互式暂存）"></a>3.5 提交文件中的部分修改（交互式暂存）</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">git add -p    <span class="comment"># 逐个 hunk 确认是否暂存</span></span><br><span class="line"><span class="comment"># y - 暂存此 hunk</span></span><br><span class="line"><span class="comment"># n - 不暂存此 hunk</span></span><br><span class="line"><span class="comment"># s - 拆分成更小的 hunk</span></span><br><span class="line"><span class="comment"># e - 手动编辑此 hunk</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-禁止修改共用远端分支"><a href="#3-6-禁止修改共用远端分支" class="headerlink" title="3.6 禁止修改共用远端分支"></a>3.6 禁止修改共用远端分支</h3><p>如果一条远端分支有多人共用，不要在它上面执行 <code>reset</code>、<code>rebase</code> 等会修改已存在 commit 的命令。可以参考 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.daolf.com/posts/git-series-part-2/">Rebase and the golden rule explained</a>。</p>
+<h3 id="3-7-撤销一个合并"><a href="#3-7-撤销一个合并" class="headerlink" title="3.7 撤销一个合并"></a>3.7 撤销一个合并</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 本地分支（仅本地的合并）</span></span><br><span class="line">git reset --hard &lt;合并前的SHA1&gt;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 已推送的合并（远端分支被他人使用）</span></span><br><span class="line">git revert -m 1 &lt;合并commit的SHA1&gt;</span><br><span class="line"><span class="comment"># -m 1: 保留主线（通常是 master），撤销被合并分支的修改</span></span><br></pre></td></tr></table></figure>
+
+<p>⚠️ 注意：执行 revert 后应删除原特性分支，从 revert 节点新建分支继续开发，否则再次合并时需要再 revert 一次。</p>
+<h3 id="3-8-从整个历史中删除文件"><a href="#3-8-从整个历史中删除文件" class="headerlink" title="3.8 从整个历史中删除文件"></a>3.8 从整个历史中删除文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git filter-branch --tree-filter <span class="string">&#x27;rm -f 敏感文件.txt&#x27;</span> HEAD</span><br></pre></td></tr></table></figure>
+
+<p>⚠️ 高危操作：会修改全部历史记录链，产生全新 commit。执行前必须通知所有开发者，所有开发者需从新分支重新开始开发。</p>
+<h3 id="3-9-其他实用命令"><a href="#3-9-其他实用命令" class="headerlink" title="3.9 其他实用命令"></a>3.9 其他实用命令</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git bisect              <span class="comment"># 二分查找出现问题的 commit（HEAD 不好但 HEAD~10 好时定位）</span></span><br><span class="line">git blame 文件名         <span class="comment"># 查看每行代码最后是谁修改的</span></span><br><span class="line">git show-branch         <span class="comment"># 直观展示多条分支间的关系</span></span><br><span class="line">git subtree             <span class="comment"># 拆分或合并仓库</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="Git-分支策略与团队协作"><a href="#Git-分支策略与团队协作" class="headerlink" title="Git 分支策略与团队协作"></a>Git 分支策略与团队协作</h3><p><strong>GitFlow（经典模型）</strong>：</p>
+<p>GitFlow 定义了严格的分支策略：</p>
+<ul>
+<li><code>master</code>：生产环境，始终保持可部署状态</li>
+<li><code>develop</code>：开发主线</li>
+<li><code>feature/*</code>：新功能分支，从 develop 创建，完成后合并回 develop</li>
+<li><code>release/*</code>：发布准备分支，从 develop 创建，完成后合并到 master 并打 tag</li>
+<li><code>hotfix/*</code>：紧急修复分支，从 master 创建，完成后合并回 master 和 develop</li>
+</ul>
+<p>适用场景：有固定发布周期的传统项目（如 App 发版）。</p>
+<p><strong>GitHub Flow（简化模型）</strong>：</p>
+<ul>
+<li>单一 <code>main</code> 分支始终可部署</li>
+<li>从 main 创建短生命周期的功能分支</li>
+<li>通过 Pull Request 进行代码审查</li>
+<li>合并回 main 后立即部署</li>
+</ul>
+<p>适用场景：持续部署、频繁发布的 Web 服务。</p>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://juejin.cn/post/7587738151658782720">GitHub Flow 工作流详解（2025年推荐实践） - 掘金</a></p>
+</blockquote>
+<h3 id="Merge-vs-Rebase-vs-Cherry-pick"><a href="#Merge-vs-Rebase-vs-Cherry-pick" class="headerlink" title="Merge vs Rebase vs Cherry-pick"></a>Merge vs Rebase vs Cherry-pick</h3><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>特点</th>
+<th>使用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>git merge</strong></td>
+<td>保留完整提交历史，产生合并 commit</td>
+<td>合并功能分支到主分支（需要保留历史）</td>
+</tr>
+<tr>
+<td><strong>git rebase</strong></td>
+<td>将当前分支的提交”变基”到目标分支之上，历史线性干净</td>
+<td>同步主分支更新到功能分支（个人分支）</td>
+</tr>
+<tr>
+<td><strong>git cherry-pick</strong></td>
+<td>选择性地将某个 commit 复制到当前分支</td>
+<td>只移植某个特定修复到其他分支</td>
+</tr>
+</tbody></table>
+<p><strong>核心原则</strong>：永远不要对公开分支执行 rebase（否则会改变已推送的 commit 哈希，导致协作者冲突）。</p>
+<blockquote>
+<p>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1710182">Git Merge, Rebase, Cherry-Pick 对比 - 腾讯云</a></p>
+</blockquote>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong><code>.gitignore</code> 精细化</strong>：排除编译产物、IDE 配置、依赖目录，减小仓库体积</li>
+<li><strong>大文件用 Git LFS</strong>：二进制文件（图片、模型、数据集）不要直接存 Git</li>
+<li><strong>浅克隆</strong>：<code>git clone --depth=1</code> 只拉取最近一次历史，适合 CI&#x2F;CD 场景</li>
+<li><strong><code>git gc</code> 定期垃圾回收</strong>：清理不可达对象，压缩 pack 文件</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="Git-内部对象存储原理"><a href="#Git-内部对象存储原理" class="headerlink" title="Git 内部对象存储原理"></a>Git 内部对象存储原理</h3><p>Git 的所有数据都以对象形式存储在 <code>.git/objects/</code> 目录中。每个对象先计算 SHA-1 哈希，哈希值的前两位作为目录名，后 38 位作为文件名。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建一个 blob 对象并查看</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Hello Git&quot;</span> | git hash-object -w --stdin</span><br><span class="line"><span class="comment"># 返回: 8d0e41234f24b6da822d543a0361ce9f7fc5cb3b</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看存储的文件</span></span><br><span class="line"><span class="built_in">ls</span> .git/objects/8d/</span><br><span class="line"><span class="comment"># 输出: 0e41234f24b6da822d543a0361ce9f7fc5cb3b</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>对象存储格式</strong>：<code>&quot;类型 内容长度\0内容&quot;</code> 经过 zlib 压缩。Git 先计算这个字符串的 SHA-1，再压缩存储。因此相同内容一定产生相同哈希（内容寻址）。</p>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><strong>rebase 后 force push 导致队友丢失提交</strong></li>
+</ol>
+<p>这个错误非常常见：在公共分支上 rebase 后 force push，队友 pull 时发现历史冲突。解决方法是永远不要对多人在用的分支做 rebase，或者使用 <code>git push --force-with-lease</code>（比 <code>--force</code> 安全，会检查远端是否有新提交）。</p>
+<ol start="2">
+<li><strong>detached HEAD 状态</strong></li>
+</ol>
+<p>当 checkout 到一个具体的 commit 而非分支时，进入 detached HEAD 状态。此时提交不会被任何分支引用，一旦 checkout 到别处，这些提交就会”丢失”（实际可通过 reflog 找回）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git checkout &lt;commit-hash&gt;      <span class="comment"># 进入 detached HEAD</span></span><br><span class="line">git switch -c 新分支名           <span class="comment"># 创建分支保存当前工作</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><strong>merge conflict 处理不当</strong></li>
+</ol>
+<p>冲突时常犯的错误：直接删掉对方的代码。正确做法是理解两边修改的意图，选择或合并。推荐使用可视化工具：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git mergetool                    <span class="comment"># 启动配置的合并工具（如 vimdiff、VS Code）</span></span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li><strong>Git 仓库膨胀</strong></li>
+</ol>
+<p>随着时间推移仓库可能变得很大。主要原因：</p>
+<ul>
+<li>不小心 commit 了大文件后又删除（历史中仍保留）</li>
+<li>大量二进制文件频繁修改</li>
+<li>CI 产物的自动 commit</li>
+</ul>
+<p>解决方案：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查找大文件</span></span><br><span class="line">git rev-list --objects --all | git cat-file --batch-check=<span class="string">&#x27;%(objecttype) %(objectname) %(objectsize) %(rest)&#x27;</span> | awk <span class="string">&#x27;/^blob/ &#123;print $3, $4&#125;&#x27;</span> | <span class="built_in">sort</span> -rn | <span class="built_in">head</span> -20</span><br><span class="line"></span><br><span class="line"><span class="comment"># 从历史中彻底删除</span></span><br><span class="line">git filter-branch --tree-filter <span class="string">&#x27;rm -f 大文件.zip&#x27;</span> HEAD</span><br><span class="line"><span class="comment"># 或使用 BFG Repo-Cleaner（更快）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>Git 的哲学是”不丢数据”</strong>：reflog 存在意味着几乎所有操作都是可逆的。理解这一点能极大降低操作恐惧。</li>
+<li><strong>commit 要小而聚焦</strong>：一个 commit 做一件事。好处：容易 review、容易 revert、容易 bisect 定位 bug。</li>
+<li><strong>commit message 规范</strong>：推荐 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.conventionalcommits.org/">Conventional Commits</a> 格式：<code>type(scope): description</code>，如 <code>feat(auth): add OAuth2 login support</code>。</li>
+<li><strong>学会用 <code>--amend</code> 和 <code>rebase -i</code></strong> 在提交前整理历史，保持主线干净。</li>
+<li><strong>push 前先 pull –rebase</strong>：让你的提交在最新代码之上，避免不必要的 merge commit。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：Git 和 SVN 的核心区别是什么？</p>
+<p>A：1) Git 是分布式，每个开发者都有完整仓库；SVN 是集中式，只有一个中央仓库。2) Git 存储快照，SVN 存储文件差异。3) Git 操作绝大多数在本地完成（commit、branch、log），速度快；SVN 需要联网。4) Git 分支是廉价指针，SVN 分支是完整目录拷贝。</p>
+<p>Q2：Git 的四种对象类型分别是什么？</p>
+<p>A：Blob（文件内容）、Tree（目录结构）、Commit（一次提交的快照引用）、Tag（特定 commit 的标签）。它们通过 SHA-1 哈希相互引用，形成有向无环图（DAG）。</p>
+<p>Q3：git merge 和 git rebase 的区别？</p>
+<p>A：merge 保留两条分支的完整历史，产生合并 commit，历史呈分叉状。rebase 将当前分支的 commit 逐一应用到目标分支之上，历史呈线性。merge 适合合并公共分支（保留历史），rebase 适合同步个人分支（保持历史整洁）。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：Git 如何检测文件变更？</p>
+<p>A：Git 通过计算文件内容的 SHA-1 哈希来判断文件是否变更。它比较工作区文件、暂存区（index）中的 blob 和 HEAD commit 中 blob 的三者关系。如果三者哈希一致，说明文件未修改。</p>
+<p>Q5：什么是 fast-forward merge？</p>
+<p>A：当目标分支的 HEAD 是被合并分支的直接祖先时，Git 只需将 HEAD 指针向前移动，无需创建新的 merge commit。用 <code>git merge --no-ff</code> 可以强制创建 merge commit，保留分支历史。</p>
+<p>Q6：<code>git reset</code> 的三种模式（–soft&#x2F;–mixed&#x2F;–hard）区别是什么？</p>
+<p>A：</p>
+<ul>
+<li><code>--soft</code>：只移动 HEAD 指针，暂存区和工作区不变</li>
+<li><code>--mixed</code>（默认）：移动 HEAD + 重置暂存区，工作区不变</li>
+<li><code>--hard</code>：移动 HEAD + 重置暂存区 + 重置工作区（⚠️ 不可逆）</li>
+</ul>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：如何撤销一个已经 push 的 commit？</p>
+<p>A：如果确定没有其他人基于此 commit 工作：<code>git revert &lt;commit-hash&gt;</code>（推荐，新增回滚 commit）或 <code>git reset --hard HEAD~1 &amp;&amp; git push --force-with-lease</code>（慎用）。revert 更安全，不改变历史。</p>
+<p>Q8：.gitignore 不生效了怎么办？</p>
+<p>A：原因是文件在被加入 .gitignore 之前已经被 Git 跟踪了。解决：<code>git rm --cached 文件名</code> 从暂存区移除（不删除本地文件），然后提交。</p>
+<p>Q9：如何将一个 commit 从一个分支复制到另一个分支？</p>
+<p>A：使用 <code>git cherry-pick &lt;commit-hash&gt;</code>。会将该 commit 的改动应用到当前分支，生成一个新的 commit（不同哈希值）。</p>
+<p>Q10：Git stash 的作用是什么？如何恢复特定的 stash？</p>
+<p>A：stash 临时保存工作区和暂存区的改动，让工作目录变干净。<code>git stash list</code> 查看列表，<code>git stash pop stash@{n}</code> 恢复并删除，<code>git stash apply stash@{n}</code> 恢复但保留 stash 记录。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>常见的陷阱问题：</p>
+<ul>
+<li><p><strong>陷阱问题1</strong>：rebase 和 merge 后的 commit 哈希会变化吗？ → merge 保留原 commit 哈希（新增 merge commit），rebase 会为每个 commit 重新生成新哈希（因为 parent 变了，时间戳也可能变）。这就是为什么 rebase 后需要 force push。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：如何安全地修改已推送的 commit？ → 使用 <code>git revert</code>（推荐）或 <code>git commit --amend + git push --force-with-lease</code>（如果确保只有你自己在用该分支）。–force-with-lease 比 –force 安全，因为它会检查远端是否有你本地的之外的更新。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：<code>git reset --hard</code> 误操作后如何恢复？ → 用 <code>git reflog</code> 找到之前的 HEAD 位置，执行 <code>git reset --hard HEAD@{n}</code>。只要数据没有被 git gc 回收，都能找回。</p>
+</li>
+<li><p><strong>陷阱问题4</strong>：fork 和 clone 的区别？ → clone 是从远端仓库拉取完整副本（含所有分支历史），默认 origin 指向源仓库。fork 是平台功能（GitHub&#x2F;GitLab），在服务器端复制仓库，用于贡献开源项目。</p>
+</li>
+<li><p><strong>陷阱问题5</strong>：HEAD、工作区、暂存区（index）三者的关系？ → HEAD 指向当前分支的最新 commit；暂存区（index）存储下次 commit 的内容快照；工作区是当前文件系统状态。<code>git add</code> 将工作区 → 暂存区，<code>git commit</code> 将暂存区 → HEAD。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>Git 的核心是<strong>内容寻址的快照式版本控制系统</strong></li>
+<li>rebase 前记住<strong>黄金法则：不对公共分支变基</strong></li>
+<li>merge 产生合并节点，rebase 产生线性历史，cherry-pick 移植单个提交</li>
+<li>找丢失提交的方法是 <code>git reflog</code> + <code>git reset</code></li>
+<li>修改最近 commit 用 <code>git commit --amend</code>，修改历史用 <code>git rebase -i</code></li>
+</ul>
+<p>情景模拟答案：</p>
+<ul>
+<li><p>当被问到”什么是 Git 的底层存储模型”时，回答：”Git 底层使用内容寻址的对象数据库，包含 Blob（文件内容）、Tree（目录快照）、Commit（提交记录）和 Tag（标签）四种对象，它们通过 SHA-1 哈希互相引用，形成不可变的有向无环图。”</p>
+</li>
+<li><p>当被问到”为什么 Git 分支如此轻量”时，回答：”因为 Git 的’分支’仅仅是一个指向特定 commit 的指针（ref），创建分支只涉及写入一个 41 字节的文件（SHA-1 哈希），几乎零成本。”</p>
+</li>
+<li><p>当被问到”如何做代码审查（Code Review）”时，回答：”通过 Pull Request &#x2F; Merge Request 机制，在合并前进行审查。配合 CI&#x2F;CD 自动运行测试，确保合并的代码质量。使用 squash merge 可以保持主线历史干净。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2520356">这才是真正的Git——Git实用技巧 - 腾讯云开发者社区</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1105427">Git 对象存储结构分析 - 腾讯云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://juejin.cn/post/7587738151658782720">GitHub Flow 工作流详解（2025年推荐实践） - 掘金</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1710182">Git Merge, Rebase, Cherry-Pick 对比 - 腾讯云</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2589917">Git 分支管理最佳实践 - 腾讯云</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Git/">https://weimo1.github.io/posts/Git/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/HTTP%E4%B8%8ETCP%E5%B0%81%E8%A3%85%E5%88%86%E6%9E%90/" title="HTTP与TCP封装分析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">HTTP与TCP封装分析</div></div><div class="info-2"><div class="info-item-1">HTTP与TCP协议封装分析 适用范围：IM项目中GateServer的HTTP服务（Boost.Beast）与ChatServer的TCP长连接（Boost.Asio）的封装设计与对比分析。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节。 代码块必须标注语言：C++ 代码用 c++，禁止无语言标注的裸代码块。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践...</div></div></div></a><a class="pagination-related" href="/posts/HTTP/" title="HTTP"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">HTTP</div></div><div class="info-2"><div class="info-item-1">HTTPHTTP 常见的状态码有哪些？ HTTP 常见字段有哪些？HTTP 请求头HTTP请求头包括以下字段：  Request-line：包含用于描述请求类型、要访问的资源以及所使用的HTTP版本的信息。 Host：指定被请求资源的主机名或IP地址和端口号。 Accept：指定客户端能够接收的媒体类型列表，用逗号分隔，例如 text&#x2F;plain, text&#x2F;html。 User-Agent：客户端使用的浏览器类型和版本号，供服务器统计用户代理信息。 Cookie：如果请求中包含cookie信息，则通过这个字段将cookie信息发送给Web服务器。 Connectio...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Git-%E5%AE%9E%E7%94%A8%E6%8A%80%E5%B7%A7%E4%B8%8E%E6%A0%B8%E5%BF%83%E5%8E%9F%E7%90%86"><span class="toc-number">1.</span> <span class="toc-text">Git 实用技巧与核心原理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8E%8B%E7%BC%A9%E5%A4%9A%E4%B8%AA-commit-%E4%B8%BA%E4%B8%80%E4%B8%AA"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 压缩多个 commit 为一个</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%89%BE%E5%9B%9E%E4%B8%A2%E5%A4%B1%E7%9A%84-commit-%E6%88%96%E5%88%86%E6%94%AF"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 找回丢失的 commit 或分支</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%BF%AB%E9%80%9F%E8%8E%B7%E5%BE%97%E5%B9%B2%E5%87%80%E5%B7%A5%E4%BD%9C%E7%A9%BA%E9%97%B4"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 快速获得干净工作空间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%BF%AE%E6%94%B9%E6%9C%80%E8%BF%91%E4%B8%80%E6%AC%A1%E6%8F%90%E4%BA%A4"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 修改最近一次提交</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%8F%90%E4%BA%A4%E6%96%87%E4%BB%B6%E4%B8%AD%E7%9A%84%E9%83%A8%E5%88%86%E4%BF%AE%E6%94%B9%EF%BC%88%E4%BA%A4%E4%BA%92%E5%BC%8F%E6%9A%82%E5%AD%98%EF%BC%89"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 提交文件中的部分修改（交互式暂存）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E7%A6%81%E6%AD%A2%E4%BF%AE%E6%94%B9%E5%85%B1%E7%94%A8%E8%BF%9C%E7%AB%AF%E5%88%86%E6%94%AF"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 禁止修改共用远端分支</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E6%92%A4%E9%94%80%E4%B8%80%E4%B8%AA%E5%90%88%E5%B9%B6"><span class="toc-number">1.4.7.</span> <span class="toc-text">3.7 撤销一个合并</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-8-%E4%BB%8E%E6%95%B4%E4%B8%AA%E5%8E%86%E5%8F%B2%E4%B8%AD%E5%88%A0%E9%99%A4%E6%96%87%E4%BB%B6"><span class="toc-number">1.4.8.</span> <span class="toc-text">3.8 从整个历史中删除文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-9-%E5%85%B6%E4%BB%96%E5%AE%9E%E7%94%A8%E5%91%BD%E4%BB%A4"><span class="toc-number">1.4.9.</span> <span class="toc-text">3.9 其他实用命令</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Git-%E5%88%86%E6%94%AF%E7%AD%96%E7%95%A5%E4%B8%8E%E5%9B%A2%E9%98%9F%E5%8D%8F%E4%BD%9C"><span class="toc-number">1.5.1.</span> <span class="toc-text">Git 分支策略与团队协作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Merge-vs-Rebase-vs-Cherry-pick"><span class="toc-number">1.5.2.</span> <span class="toc-text">Merge vs Rebase vs Cherry-pick</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Git-%E5%86%85%E9%83%A8%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E5%8E%9F%E7%90%86"><span class="toc-number">1.6.1.</span> <span class="toc-text">Git 内部对象存储原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.1.</span> <span class="toc-text">参考链接</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

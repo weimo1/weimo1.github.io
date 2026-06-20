@@ -1,0 +1,347 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>群聊思路 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="群聊设计思路 群聊是 IM 系统的核心功能之一，其设计难点在于消息的广播分发——如何将一条消息高效推送给群内所有在线成员。同时群聊场景常伴随文件传输（图片、视频），需要断点续传保证大文件可靠送达。  一、核心概念 定义：群聊是消息从单个发送者到多个接收者的通信模式。相比单聊的一对一，群聊的核心挑战是消息的广播分发和成员管理。 关键词：群聊消息广播、消息分发、成员管理、文件传输、断点续传、消息风暴">
+<meta property="og:type" content="article">
+<meta property="og:title" content="群聊思路">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="群聊设计思路 群聊是 IM 系统的核心功能之一，其设计难点在于消息的广播分发——如何将一条消息高效推送给群内所有在线成员。同时群聊场景常伴随文件传输（图片、视频），需要断点续传保证大文件可靠送达。  一、核心概念 定义：群聊是消息从单个发送者到多个接收者的通信模式。相比单聊的一对一，群聊的核心挑战是消息的广播分发和成员管理。 关键词：群聊消息广播、消息分发、成员管理、文件传输、断点续传、消息风暴">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.577Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "群聊思路",
+  "url": "https://weimo1.github.io/posts/%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.577Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '群聊思路',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">群聊思路</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">群聊思路</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.577Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="群聊设计思路"><a href="#群聊设计思路" class="headerlink" title="群聊设计思路"></a>群聊设计思路</h1><blockquote>
+<p>群聊是 IM 系统的核心功能之一，其设计难点在于消息的广播分发——如何将一条消息高效推送给群内所有在线成员。同时群聊场景常伴随文件传输（图片、视频），需要断点续传保证大文件可靠送达。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：群聊是消息从单个发送者到多个接收者的通信模式。相比单聊的一对一，群聊的核心挑战是消息的广播分发和成员管理。</li>
+<li><strong>关键词</strong>：群聊消息广播、消息分发、成员管理、文件传输、断点续传、消息风暴</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>适用：多人群组聊天、频道广播、直播弹幕</li>
+<li>边界：超大群（万人群）需特殊优化避免消息风暴</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：群聊消息如何分发</strong></p>
+<p>群聊消息从发送者到所有群成员的基本流程：</p>
+<ol>
+<li>用户发送消息到服务端</li>
+<li>服务端查询群成员列表</li>
+<li>对每个在线成员进行消息推送</li>
+<li>离线成员存储消息，下次上线后拉取</li>
+</ol>
+<p><strong>第二层：广播策略优化</strong></p>
+<p>对于群成员较多的情况，直接逐个推送效率低下。优化策略：</p>
+<ul>
+<li>合并推送：同一 Gateway 上的多个成员合并为一次批量推送</li>
+<li>异步分发：消息写入后异步推送到各 Gateway，不阻塞发送者</li>
+<li>分层推送：先推在线用户，离线用户使用拉取模式</li>
+</ul>
+<p><strong>第三层：群聊中的文件传输</strong></p>
+<p>群聊图片&#x2F;视频&#x2F;文件的传输流程：</p>
+<ol>
+<li>发送者上传文件到文件服务器</li>
+<li>服务端生成文件元数据（URL、缩略图、大小）</li>
+<li>推送文件元数据给群成员（而非文件本身）</li>
+<li>成员点击后按需下载（支持断点续传）</li>
+</ol>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 群聊消息分发的简化实现</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">GroupChatService</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="comment">// 发送群聊消息</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">SendGroupMessage</span><span class="params">(<span class="type">int64_t</span> group_id, </span></span></span><br><span class="line"><span class="params"><span class="function">                          <span class="type">int64_t</span> sender_id,</span></span></span><br><span class="line"><span class="params"><span class="function">                          <span class="type">const</span> std::string&amp; content)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 1. 存储消息</span></span><br><span class="line">        Message msg = <span class="built_in">SaveMessage</span>(group_id, sender_id, content);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 2. 获取群成员列表</span></span><br><span class="line">        std::vector&lt;<span class="type">int64_t</span>&gt; members = <span class="built_in">GetGroupMembers</span>(group_id);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 3. 异步推送给在线成员</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int64_t</span> member_id : members) &#123;</span><br><span class="line">            <span class="keyword">if</span> (member_id == sender_id) <span class="keyword">continue</span>;</span><br><span class="line">            <span class="built_in">PushToMember</span>(member_id, msg);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="comment">// 推送到单个成员（在线→推送，离线→存储）</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">PushToMember</span><span class="params">(<span class="type">int64_t</span> user_id, <span class="type">const</span> Message&amp; msg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> session = StatusServer::<span class="built_in">GetSession</span>(user_id);</span><br><span class="line">        <span class="keyword">if</span> (session &amp;&amp; session-&gt;<span class="built_in">IsOnline</span>()) &#123;</span><br><span class="line">            <span class="comment">// 在线：直接推送</span></span><br><span class="line">            session-&gt;<span class="built_in">PushMessage</span>(msg);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 离线：存储到离线消息队列</span></span><br><span class="line">            OfflineMessageQueue::<span class="built_in">Store</span>(user_id, msg);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="超大群聊的优化策略"><a href="#超大群聊的优化策略" class="headerlink" title="超大群聊的优化策略"></a>超大群聊的优化策略</h3><p>对于万人群甚至更大规模的群聊：</p>
+<ul>
+<li><strong>消息合并</strong>：短时间内多条消息合并推送</li>
+<li><strong>频率控制</strong>：限制发送频率，防止刷屏</li>
+<li><strong>分级推送</strong>：活跃用户实时推送，非活跃用户降级为拉取</li>
+<li><strong>分片广播</strong>：将群成员按 Gateway 分片，并行推送</li>
+</ul>
+<h3 id="断点续传在群文件中的应用"><a href="#断点续传在群文件中的应用" class="headerlink" title="断点续传在群文件中的应用"></a>断点续传在群文件中的应用</h3><p>群聊文件传输使用断点续传保证可靠性：</p>
+<ul>
+<li>文件分块（每块 256KB-1MB）</li>
+<li>每块有独立的下载状态</li>
+<li>中断后从断点继续，无需重新下载</li>
+<li>支持并发下载（多线程&#x2F;多连接）</li>
+</ul>
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>消息可靠性</strong>：群聊消息需保证至少一次送达</li>
+<li><strong>分布式缓存</strong>：群成员列表可缓存到 Redis 减少 DB 查询</li>
+<li><strong>万人群聊</strong>：超大群的推送策略需要特殊设计</li>
+<li><strong>断点续传</strong>：大文件传输的基础设施</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="群聊-vs-单聊的核心差异"><a href="#群聊-vs-单聊的核心差异" class="headerlink" title="群聊 vs 单聊的核心差异"></a>群聊 vs 单聊的核心差异</h3><p>单聊是一对一的消息投递，路径简单：发送者 → 服务端 → 接收者。群聊是一对多的广播，复杂度随成员数线性增长。</p>
+<h3 id="推送和拉取的平衡"><a href="#推送和拉取的平衡" class="headerlink" title="推送和拉取的平衡"></a>推送和拉取的平衡</h3><p>完全推送的成本 O(n)（n&#x3D;成员数），对于超大群不可接受。混合策略：</p>
+<ul>
+<li>活跃用户（最近 5 分钟内有操作）→ 实时推送</li>
+<li>普通用户 → 延迟推送（30s 合并一批）</li>
+<li>离线用户 → 上线时拉取</li>
+</ul>
+<h3 id="消息风暴的防护"><a href="#消息风暴的防护" class="headerlink" title="消息风暴的防护"></a>消息风暴的防护</h3><p>群聊容易出现”消息风暴”——短时间内大量消息导致系统过载：</p>
+<ul>
+<li>发送端限流（每条消息间隔 ≥ 1s）</li>
+<li>服务端限流（每群每秒最大消息数）</li>
+<li>批量合并推送减少系统调用</li>
+</ul>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>群聊设计的核心挑战不是存储而是分发——如何高效地将一条消息送到 N 个人</li>
+<li>推送 + 拉取混合是必然选择——纯推送无法应对超大群</li>
+<li>文件传输中”传元数据不传文件”是关键优化——节省大量带宽</li>
+<li>限流是群聊的保命符——防止刷屏和恶意攻击</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：群聊消息如何分发给所有成员？</p>
+<p>A：1）存储消息 2）查询群成员列表 3）对在线成员实时推送 4）离线成员写入离线队列。大群采用合并推送和分级策略优化。</p>
+<p>Q2：超大群聊（万人群）如何处理？</p>
+<p>A：1）消息合并批量推送 2）分级策略（活跃实时、普通延迟、离线拉取）3）按 Gateway 分片并行推送 4）发送频率限制。</p>
+<p>Q3：群聊中的文件（图片&#x2F;视频）是如何传输的？</p>
+<p>A：上传到文件服务器（支持断点续传）→ 服务端生成文件元数据（URL、缩略图）→ 推送元数据给成员 → 成员按需下载。</p>
+<p>Q4：群聊消息的可靠性如何保证？</p>
+<p>A：消息先存储再推送；推送失败写入离线队列；客户端 ACK 确认；离线消息上线后拉取补推。</p>
+<p>Q5：群聊和单聊在系统设计上最大的不同是什么？</p>
+<p>A：分发模式——单聊是一对一投递，群聊是一对多广播。群聊的推送成本与成员数成正比，需要额外的合并和分级策略。</p>
+<p>Q6：如何防止群聊消息风暴？</p>
+<p>A：发送端限流（间隔控制）、服务端限流（每群 QPS 上限）、消息合并推送、异常检测和自动禁言。</p>
+<p>Q7：群成员列表如何高效管理？</p>
+<p>A：分布式缓存（Redis Set&#x2F;ZSet）存储群成员 → 变更时更新缓存并异步写 DB → 查询时缓存优先。</p>
+<p>Q8：群聊消息的顺序如何保证？</p>
+<p>A：服务端为每条消息分配递增序列号（群内单调递增）→ 客户端按序列号排序显示 → 保证最终一致而非实时强一致。</p>
+<p>Q9：如何处理群聊中”正在输入”状态的广播？</p>
+<p>A：不应全量广播（成本高）。方案：1）只广播给最近活跃成员 2）客户端按需查询 3）通过 UDP 轻量广播降级。</p>
+<p>Q10：群聊退群后历史消息如何处理？</p>
+<p>A：通常不再推送历史消息；消息仍保留在服务端但该用户不可见（成员关系变更后去权限校验）。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司的群聊系统支持的群成员上限是多少？在接近上限时做过哪些优化？</p>
+</li>
+<li><p>对于跨数据中心的群聊（成员分布在全球），消息分发的延迟如何控制？</p>
+</li>
+<li><p>陷阱 1：”群聊就是单聊的循环”——直接循环推送在成员多时不可行，需要合并推送和分级策略</p>
+</li>
+<li><p>陷阱 2：”所有群成员都应该实时收到消息”——活跃度差异大，全量实时推送成本高</p>
+</li>
+<li><p>陷阱 3：”群文件直接推送给所有人”——应推送元数据而非文件本身，按需下载</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>群聊的本质：一对多的消息分发——存储 + 查询成员 + 在线推送 + 离线存储。</li>
+<li>超大群的关键：合并推送 + 分级策略 + 频率控制 + 分片广播。</li>
+<li>群文件传输的优化：上传到文件服务器 + 推送元数据 + 按需下载 + 断点续传。</li>
+<li>消息风暴的防护：发送端限流 + 服务端限流 + 批量合并 + 异常禁言。</li>
+<li>当被问到”群聊怎么设计”时回答：”按成员数分级——小群直接推送、大群合并推送、超大群活跃优先 + 拉取兜底。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的群聊和文件传输思路，原样保留于此。</p>
+</blockquote>
+<h3 id="原笔记：群聊设计思路"><a href="#原笔记：群聊设计思路" class="headerlink" title="原笔记：群聊设计思路"></a>原笔记：群聊设计思路</h3><p>群聊消息分发的基本流程和成员管理，以及超大群的优化策略。</p>
+<h3 id="原笔记：文件传输与断点续传"><a href="#原笔记：文件传输与断点续传" class="headerlink" title="原笔记：文件传输与断点续传"></a>原笔记：文件传输与断点续传</h3><p>文件传输支持断点续传——大文件分块传输，每块独立下载状态，中断后从断点继续。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF/">https://weimo1.github.io/posts/%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" title="计算机网络"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">计算机网络</div></div><div class="info-2"><div class="info-item-1">计算机网络概述计算机网络是将多个计算机通过通信链路相互连接，实现资源共享和信息传递的系统。网络协议定义了通信的规则和标准，TCP&#x2F;IP 模型是互联网的基础架构。 TCP&#x2F;IP 四层模型网络接口层：负责物理传输和 MAC 寻址，运行以太网（Ethernet）、WiFi（802.11）等协议。数据以帧（frame）为单位传输，帧头包含源和目标 MAC 地址。 网络层：负责路由选择和逻辑寻址。IP 协议提供无连接、尽力交付的数据报服务，IPv4 地址 32 位，IPv6 地址 128 位。ICMP 用于网络诊断（ping&#x2F;traceroute），ARP 将 IP ...</div></div></div></a><a class="pagination-related" href="/posts/%E8%90%83%E5%8F%96/" title="萃取"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">萃取</div></div><div class="info-2"><div class="info-item-1">萃取（Traits）https://en.cppreference.com/w/cpp/meta.html 一、核心概念萃取（Traits）是 C++ 模板元编程的核心技术，通过编译期类型信息提取和转换，让泛型代码根据类型特征自动适应不同行为。本质是：将类型属性映射为编译期常量或类型别名，供模板代码在编译期做出决策。 萃取的三层含义 类型属性查询（如 std::is_pointer&lt;T&gt;::value）：回答”T 是不是指针” 类型变换（如 std::remove_const&lt;T&gt;::type）：从 T 得到”去掉 const 后的类型” 类型特征提取（如 std...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BE%A4%E8%81%8A%E8%AE%BE%E8%AE%A1%E6%80%9D%E8%B7%AF"><span class="toc-number">1.</span> <span class="toc-text">群聊设计思路</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B6%85%E5%A4%A7%E7%BE%A4%E8%81%8A%E7%9A%84%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.1.</span> <span class="toc-text">超大群聊的优化策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0%E5%9C%A8%E7%BE%A4%E6%96%87%E4%BB%B6%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">1.4.2.</span> <span class="toc-text">断点续传在群文件中的应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BE%A4%E8%81%8A-vs-%E5%8D%95%E8%81%8A%E7%9A%84%E6%A0%B8%E5%BF%83%E5%B7%AE%E5%BC%82"><span class="toc-number">1.5.1.</span> <span class="toc-text">群聊 vs 单聊的核心差异</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A8%E9%80%81%E5%92%8C%E6%8B%89%E5%8F%96%E7%9A%84%E5%B9%B3%E8%A1%A1"><span class="toc-number">1.5.2.</span> <span class="toc-text">推送和拉取的平衡</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B6%88%E6%81%AF%E9%A3%8E%E6%9A%B4%E7%9A%84%E9%98%B2%E6%8A%A4"><span class="toc-number">1.5.3.</span> <span class="toc-text">消息风暴的防护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.4.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E7%BE%A4%E8%81%8A%E8%AE%BE%E8%AE%A1%E6%80%9D%E8%B7%AF"><span class="toc-number">1.7.1.</span> <span class="toc-text">原笔记：群聊设计思路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%96%87%E4%BB%B6%E4%BC%A0%E8%BE%93%E4%B8%8E%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0"><span class="toc-number">1.7.2.</span> <span class="toc-text">原笔记：文件传输与断点续传</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

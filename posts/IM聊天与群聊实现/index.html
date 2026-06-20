@@ -1,0 +1,443 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>IM聊天与群聊实现 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="IM聊天与群聊实现 适用范围：即时通讯系统中聊天消息的客户端展示、服务端收发处理、群聊广播方案。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IM聊天与群聊实现">
+<meta property="og:url" content="https://weimo1.github.io/posts/IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="IM聊天与群聊实现 适用范围：即时通讯系统中聊天消息的客户端展示、服务端收发处理、群聊广播方案。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.545Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "IM聊天与群聊实现",
+  "url": "https://weimo1.github.io/posts/IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.545Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'IM聊天与群聊实现',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">IM聊天与群聊实现</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">IM聊天与群聊实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.545Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">5.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>18分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="IM聊天与群聊实现"><a href="#IM聊天与群聊实现" class="headerlink" title="IM聊天与群聊实现"></a>IM聊天与群聊实现</h1><blockquote>
+<p>适用范围：即时通讯系统中聊天消息的客户端展示、服务端收发处理、群聊广播方案。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。</li>
+<li><strong>动笔前先搜索</strong>：做相关知识准备；源码要贴原始代码，有需要可贴汇编。</li>
+<li><strong>字数硬指标</strong>：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。</li>
+<li>先结论后细节，避免长段堆砌。</li>
+<li>每节至少 3 条要点。</li>
+<li>代码必须可运行或可推导，配清楚输入&#x2F;输出或预期。</li>
+<li><strong>代码块必须标注语言</strong>：所有代码块必须根据实际语言标注，C++ 代码用 <code>c++</code>（不可用 <code>cpp</code> 或 <code>c</code>），Python 用 <code>python</code>，汇编用 <code>asm</code>&#x2F;<code>x86asm</code>，shell 用 <code>bash</code> 等。禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：聊天消息处理模块负责IM系统中文本消息的客户端展示、服务端接收存储与转发，以及群聊消息的广播分发。</li>
+<li><strong>技术栈与依赖</strong>：Qt QMap&#x2F;QVector（客户端数据管理）、MySQL（会话表&#x2F;聊天记录表持久化）、Redis（在线状态查询）、gRPC（跨服转发）、JsonCpp（消息序列化）</li>
+<li><strong>模块边界</strong>：<ul>
+<li>输入：客户端聊天文本输入、服务端TLV消息体</li>
+<li>输出：会话列表更新、聊天记录展示、消息推送通知</li>
+<li>上下游：客户端UI层 ↔ TcpMgr ↔ ChatServer LogicSystem ↔ 数据库</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="第一层：整体架构与模块划分"><a href="#第一层：整体架构与模块划分" class="headerlink" title="第一层：整体架构与模块划分"></a>第一层：整体架构与模块划分</h3><p>聊天消息模块分为客户端数据管理层和服务端处理层：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">graph TB</span><br><span class="line">    subgraph 客户端</span><br><span class="line">        A[ChatDlg聊天界面] --&gt; B[消息列表 SessionData]</span><br><span class="line">        A --&gt; C[聊天记录 LineChatRecord]</span><br><span class="line">        A --&gt; D[TcpMgr发送]</span><br><span class="line">    end</span><br><span class="line">    subgraph 服务端</span><br><span class="line">        D --&gt; E[CSession TLV解析]</span><br><span class="line">        E --&gt; F[LogicSystem::handle_ChatText]</span><br><span class="line">        F --&gt; G[MySQL 会话表/记录表]</span><br><span class="line">        F --&gt; H&#123;接收方在线?&#125;</span><br><span class="line">        H --&gt;|同服| I[TCP直推]</span><br><span class="line">        H --&gt;|跨服| J[gRPC转发]</span><br><span class="line">        H --&gt;|离线| K[标记未读 等上线拉取]</span><br><span class="line">    end</span><br></pre></td></tr></table></figure>
+
+<h3 id="第二层：关键流程与数据流"><a href="#第二层：关键流程与数据流" class="headerlink" title="第二层：关键流程与数据流"></a>第二层：关键流程与数据流</h3><ol>
+<li>用户输入文本 → 创建时间记录项（可选） → 更新本地会话列表 → TLV封装发送</li>
+<li>服务端CSession解析TLV → LogicSystem::handle_ChatText处理</li>
+<li>时间类型：仅插入聊天记录表</li>
+<li>文本类型：插入&#x2F;更新会话表 → 判断接收方在线状态 → 同服TCP推送 &#x2F; 跨服RPC转发 &#x2F; 离线标记未读</li>
+<li>转发成功后插入聊天记录表标记已读</li>
+</ol>
+<h3 id="第三层：关键设计决策与权衡"><a href="#第三层：关键设计决策与权衡" class="headerlink" title="第三层：关键设计决策与权衡"></a>第三层：关键设计决策与权衡</h3><ul>
+<li><strong>为什么Time和Text分开处理</strong>：时间记录仅用于UI展示时间分割线，无需通知对方，只需本地持久化。文本记录需要通知对方并更新会话列表。</li>
+<li><strong>为什么会话表用INSERT OR UPDATE</strong>：避免为每个消息查询会话是否存在，直接ON DUPLICATE KEY UPDATE减少一次查询。</li>
+<li><strong>为什么离线消息标记Unread而不是丢弃</strong>：保证消息可靠性，用户上线后可通过拉取未读消息获取。</li>
+</ul>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><h3 id="3-1-客户端数据模型"><a href="#3-1-客户端数据模型" class="headerlink" title="3.1 客户端数据模型"></a>3.1 客户端数据模型</h3><p><strong>聊天消息列表</strong>：</p>
+<ul>
+<li>在消息列表类中，为便于查找聊天项，用一个<code>QMap</code>，<code>friend_id</code>作为键，方便我们查找（比如想添加一个好友消息项，判断是否已有记录，知道<code>friend_id</code>，自然是在<code>QMap</code>里直接找键比较方便），值为消息项结构体数据<code>SessionData</code>。</li>
+<li>一个好友一个会话，会话ID随机生成。</li>
+<li>全局的消息列表，一个<code>vector</code>（保证顺序），存放消息项结构体数据<code>SessionData</code>。</li>
+<li><code>SessionData</code>内部主要包括：session_id、friend_id、friend_icon、last_msg、time。（其实就是消息列表项需要的必要的控件信息，再带上对应的会话ID）至于备注等信息，看情况再说。</li>
+</ul>
+<p><strong>聊天记录列表</strong>：</p>
+<ul>
+<li>全局的列表，依旧是一个<code>vector</code>（保证顺序），存放各个聊天记录<code>LineChatRecord</code></li>
+<li>单个聊天记录<code>LineChatRecord</code>内部主要包括：text_id、record_type（时间或文本）、sender_id、receiver_id、text_content、time。</li>
+<li>全局列表或许依旧可以维护两个，一个用于初始分批加载，一个用于总数据。后面再看了（这些都是离线加载时要考虑的，在线聊天先不考虑这些）</li>
+</ul>
+<p><strong>输入文本内容流程</strong>：</p>
+<ol>
+<li>添加添加聊天记录项（先添加时间项，可选）</li>
+<li>通知左侧消息列表，更新时间点和消息（最后一条，即最新）</li>
+<li>向后端发送数据</li>
+</ol>
+<p><strong>收到对方的回应流程</strong>：</p>
+<ol>
+<li>左侧消息列表，更新时间点和消息（最后一条，即最新）</li>
+<li>添加添加聊天记录项（先添加时间项，可选）</li>
+</ol>
+<p>至于存储到全局的记录列表之类的，后期做离线时再考虑。</p>
+<p><strong>数据库表设计</strong>：</p>
+<p><strong>会话列表 t_session</strong>：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://gitee.com/violet_sakura/violet-chat/raw/client/document/23_%E5%AE%9E%E7%8E%B0%E8%81%8A%E5%A4%A9%E9%80%9A%E4%BF%A1%E5%8A%9F%E8%83%BD.assets/image-20250227151823080.png" alt="image-20250227151823080"></p>
+<p><strong>聊天记录表 t_chat_record</strong>：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://gitee.com/violet_sakura/violet-chat/raw/client/document/23_%E5%AE%9E%E7%8E%B0%E8%81%8A%E5%A4%A9%E9%80%9A%E4%BF%A1%E5%8A%9F%E8%83%BD.assets/image-20250227160815898.png" alt="image-20250227160815898"></p>
+<h3 id="3-2-数据存储方案"><a href="#3-2-数据存储方案" class="headerlink" title="3.2 数据存储方案"></a>3.2 数据存储方案</h3><p>若是时间类型，只在聊天记录表中存下即可，毕竟紧接着就会是文本类型，没必要向会话表中先存再更新。</p>
+<p>若是文本类型，在会话表中插入记录，若已存在，则更新记录。在聊天记录中插入记录。（判断对方是否在线，在线-已读，不在线-未读）</p>
+<h3 id="3-3-服务端处理请求"><a href="#3-3-服务端处理请求" class="headerlink" title="3.3 服务端处理请求"></a>3.3 服务端处理请求</h3><p><strong>消息ID定义</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ID_CHAT_TEXT_RECORD_REQ = 1022, //聊天 文本记录 请求</span><br><span class="line">ID_CHAT_TEXT_RECORD_RSP = 1023, //聊天 文本记录 响应</span><br></pre></td></tr></table></figure>
+
+<p><strong>事件注册</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">_handler.<span class="built_in">insert</span>(&#123; MsgId::ID_CHAT_TEXT_RECORD_REQ, std::<span class="built_in">bind</span>(&amp;LogicSystem::handle_ChatText, <span class="keyword">this</span>, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) &#125;);</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-核心事件处理——文本聊天"><a href="#3-4-核心事件处理——文本聊天" class="headerlink" title="3.4 核心事件处理——文本聊天"></a>3.4 核心事件处理——文本聊天</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 【逻辑处理回调】文本聊天</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">LogicSystem::handle_ChatText</span><span class="params">(std::shared_ptr&lt;CSession&gt; session, <span class="type">const</span> <span class="type">short</span> msg_id, <span class="type">const</span> std::string &amp; data)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 1.初始解析请求数据，反序列化为json对象</span></span><br><span class="line">    Json::Value src_js; Json::Value dst_js;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">InitParseQuest</span>(data, src_js, dst_js, session, MsgId::ID_CHAT_TEXT_RECORD_RSP) == <span class="literal">false</span>) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2.定义Defer对象，在对象结束时，自动将响应数据及数据ID序列化并发送给客户端</span></span><br><span class="line">    <span class="function">Defer <span class="title">defer</span><span class="params">([&amp;dst_js, session]() &#123;</span></span></span><br><span class="line"><span class="params"><span class="function">        std::string dst_str = dst_js.toStyledString();</span></span></span><br><span class="line"><span class="params"><span class="function">        session-&gt;Send(dst_str, MsgId::ID_CHAT_TEXT_RECORD_RSP);</span></span></span><br><span class="line"><span class="params"><span class="function">    &#125;)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3.数据解析成功，获取各字段信息</span></span><br><span class="line">    std::string session_id = src_js[<span class="string">&quot;session_id&quot;</span>].<span class="built_in">asString</span>();</span><br><span class="line">    std::string record_id = src_js[<span class="string">&quot;record_id&quot;</span>].<span class="built_in">asString</span>();</span><br><span class="line">    <span class="type">int</span> sender_id = src_js[<span class="string">&quot;sender_id&quot;</span>].<span class="built_in">asInt</span>();</span><br><span class="line">    <span class="type">int</span> receiver_id = src_js[<span class="string">&quot;receiver_id&quot;</span>].<span class="built_in">asInt</span>();</span><br><span class="line">    RecordType record_type = <span class="built_in">RecordType</span>(src_js[<span class="string">&quot;record_type&quot;</span>].<span class="built_in">asInt</span>());</span><br><span class="line">    <span class="type">long</span> <span class="type">long</span> timestamp = src_js[<span class="string">&quot;timestamp&quot;</span>].<span class="built_in">asInt64</span>();</span><br><span class="line">    std::string text_content&#123;&#125;;</span><br><span class="line">    <span class="keyword">if</span> (src_js.<span class="built_in">isMember</span>(<span class="string">&quot;text_content&quot;</span>)) text_content = src_js[<span class="string">&quot;text_content&quot;</span>].<span class="built_in">asString</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4.业务处理</span></span><br><span class="line">    <span class="keyword">switch</span> (record_type) &#123;</span><br><span class="line">        <span class="keyword">case</span> RecordType::Type_Time: &#123; <span class="comment">// 时间类型</span></span><br><span class="line">            <span class="comment">// 4.1 若是时间类型，访问MySQL，只需插入聊天记录表即可。</span></span><br><span class="line">            std::shared_ptr&lt;T_ChatRecord&gt; t_chat_record = std::<span class="built_in">make_shared</span>&lt;T_ChatRecord&gt;(<span class="number">0</span>, session_id, sender_id, receiver_id, record_id, record_type, timestamp);</span><br><span class="line">            <span class="type">int</span> insert_chatrecord_errcode = RdbMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">InsertChatRecord</span>(t_chat_record);</span><br><span class="line">            <span class="keyword">if</span> (insert_chatrecord_errcode != ErrorCodes::Success) &#123;</span><br><span class="line">                logfile.<span class="built_in">write</span>(LL::ERROR, <span class="string">&quot;【文本聊天】【时间类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)失败！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">                dst_js[<span class="string">&quot;error&quot;</span>] = ErrorCodes::InsertChatRecord_Failed;</span><br><span class="line">                <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">            &#125;</span><br><span class="line">            logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【时间类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)成功！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">        &#125;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> RecordType::Type_Text: &#123; <span class="comment">// 文本类型</span></span><br><span class="line">            <span class="comment">// 4.2 若是文本类型，访问MySQL，先插入会话表(记录存在则更新)</span></span><br><span class="line">            std::shared_ptr&lt;T_Session&gt; t_session = std::<span class="built_in">make_shared</span>&lt;T_Session&gt;(<span class="number">0</span>, session_id, sender_id, receiver_id, text_content, timestamp);</span><br><span class="line">            <span class="type">int</span> insert_session_errcode = RdbMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">InsertSession</span>(t_session);</span><br><span class="line">            <span class="keyword">if</span> (insert_session_errcode != ErrorCodes::Success) &#123;</span><br><span class="line">                logfile.<span class="built_in">write</span>(LL::ERROR, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入会话表(sender_id = %d, receiver_id = %d)失败！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">                dst_js[<span class="string">&quot;error&quot;</span>] = ErrorCodes::InsertSession_Failed;</span><br><span class="line">                <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">            &#125;</span><br><span class="line">            logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入会话表(sender_id = %d, receiver_id = %d)成功！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 4.3 判断对方是否在线 获取双方的服务器(己方-解析配置；对方-访问Redis)</span></span><br><span class="line">            <span class="type">const</span> std::string self_server_name = ConfigMgr::<span class="built_in">GetInstance</span>().<span class="built_in">GetConfig</span>(<span class="string">&quot;SelfServer&quot;</span>, <span class="string">&quot;Name&quot;</span>);</span><br><span class="line">            <span class="type">const</span> std::string receiver_server_name = RedisMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">HGet</span>(Hash_UserId_Server, std::<span class="built_in">to_string</span>(receiver_id));</span><br><span class="line">            <span class="comment">// 4.4 若不在线，访问MySQL，插入聊天记录表且标记为未读</span></span><br><span class="line">            <span class="keyword">if</span> (receiver_server_name.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">                logfile.<span class="built_in">write</span>(LL::INFO, <span class="string">&quot;【文本聊天】【文本类型】访问Redis，查询接收方所在的服务器失败！对方(即接收方，receiver_id = %d)可能不在线！\n&quot;</span>, receiver_id);</span><br><span class="line"></span><br><span class="line">                std::shared_ptr&lt;T_ChatRecord&gt; t_chat_record = std::<span class="built_in">make_shared</span>&lt;T_ChatRecord&gt;(<span class="number">0</span>, session_id, sender_id, receiver_id, record_id, record_type, timestamp, text_content, ReadStatus::Unread);</span><br><span class="line">                <span class="type">int</span> insert_record_errcode = RdbMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">InsertChatRecord</span>(t_chat_record);</span><br><span class="line">                <span class="keyword">if</span> (insert_record_errcode != ErrorCodes::Success) &#123;</span><br><span class="line">                    logfile.<span class="built_in">write</span>(LL::ERROR, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)失败！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">                    dst_js[<span class="string">&quot;error&quot;</span>] = ErrorCodes::InsertChatRecord_Failed;</span><br><span class="line">                    <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">                &#125;</span><br><span class="line">                logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)成功！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 4.5 若同服，直接转发给接收方(使用接收方的TCP连接)，设置响应信息</span></span><br><span class="line">                <span class="type">bool</span> notify_success = <span class="literal">false</span>; <span class="comment">// 转发成功标志</span></span><br><span class="line">                <span class="keyword">if</span> (self_server_name == receiver_server_name) &#123;</span><br><span class="line">                    logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【文本类型】同服，直接转发给接收方(使用接收方的TCP连接)。\n&quot;</span>);</span><br><span class="line">                    notify_success = <span class="built_in">TcpNotifyChatText</span>(src_js, dst_js);</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 4.6 若不同服，转发给接收者所在的服务器(使用RPC通信)，设置响应信息</span></span><br><span class="line">                <span class="keyword">else</span> &#123;</span><br><span class="line">                    logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【文本类型】不同服，转发给接收方所在的服务器(使用RPC通信)。\n&quot;</span>);</span><br><span class="line">                    notify_success = <span class="built_in">RpcNotifyChatText</span>(src_js, receiver_server_name, dst_js);</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 4.7 若转发失败，设置响应信息，返回(前端提示发送失败)</span></span><br><span class="line">                <span class="keyword">if</span> (!notify_success) &#123;</span><br><span class="line">                    logfile.<span class="built_in">write</span>(LL::ERROR, <span class="string">&quot;【文本聊天】【文本类型】转发失败！(sender_id = %d, receiver_id = %d)\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">                    <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 4.8 若转发成功，访问MySQL，插入聊天记录表且标记为已读</span></span><br><span class="line">                std::shared_ptr&lt;T_ChatRecord&gt; t_chat_record = std::<span class="built_in">make_shared</span>&lt;T_ChatRecord&gt;(<span class="number">0</span>, session_id, sender_id, receiver_id, record_id, record_type, timestamp, text_content, ReadStatus::Read);</span><br><span class="line">                <span class="type">int</span> insert_record_errcode = RdbMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">InsertChatRecord</span>(t_chat_record);</span><br><span class="line">                <span class="keyword">if</span> (insert_record_errcode != ErrorCodes::Success) &#123;</span><br><span class="line">                    logfile.<span class="built_in">write</span>(LL::ERROR, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)失败！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">                    dst_js[<span class="string">&quot;error&quot;</span>] = ErrorCodes::InsertChatRecord_Failed;</span><br><span class="line">                    <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">                &#125;</span><br><span class="line">                logfile.<span class="built_in">write</span>(LL::DEBUG, <span class="string">&quot;【文本聊天】【文本类型】访问MySQL，插入聊天记录表(sender_id = %d, receiver_id = %d)成功！\n&quot;</span>, sender_id, receiver_id);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 5.准备响应数据，返回响应信息</span></span><br><span class="line">    dst_js[<span class="string">&quot;error&quot;</span>] = ErrorCodes::Success;</span><br><span class="line">    dst_js[<span class="string">&quot;receiver_id&quot;</span>] = receiver_id;</span><br><span class="line">    dst_js[<span class="string">&quot;session_id&quot;</span>] = session_id;</span><br><span class="line">    dst_js[<span class="string">&quot;record_id&quot;</span>] = record_id;</span><br><span class="line">    dst_js[<span class="string">&quot;record_type&quot;</span>] = <span class="built_in">static_cast</span>&lt;<span class="type">int</span>&gt;(record_type);</span><br><span class="line">    <span class="keyword">return</span>; <span class="comment">// defer</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-群聊设计思路"><a href="#3-5-群聊设计思路" class="headerlink" title="3.5 群聊设计思路"></a>3.5 群聊设计思路</h3><p><strong>群聊核心设计</strong>：</p>
+<ul>
+<li>群聊的唯一ID</li>
+<li>建一张表：群聊id关联信息相关的更改（名字、状态、数量）</li>
+<li>每个用户也有一张表，关联很多群聊，两张表做匹配</li>
+<li>发信息时，发到server，server会查群聊的所有用户，实现广播，找到其他用户的server</li>
+</ul>
+<p><strong>扩展功能</strong>：</p>
+<ul>
+<li>文件传输：资源服务器（ResourceServer），大文件分小文件传输，最后汇成一个，断电续传（分组交换思想）</li>
+<li>Web RTC：实时音视频通话</li>
+</ul>
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="与项目中其他模块的集成方式"><a href="#与项目中其他模块的集成方式" class="headerlink" title="与项目中其他模块的集成方式"></a>与项目中其他模块的集成方式</h3><ul>
+<li><strong>客户端TcpMgr ↔ ChatServer CSession</strong>：通过TLV协议通信，msg_id区分消息类型（1022文本记录请求&#x2F;1023文本记录响应）</li>
+<li><strong>LogicSystem ↔ RedisMgr</strong>：通过HGet查询接收方所在服务器（Hash_UserId_Server），判断在线状态</li>
+<li><strong>LogicSystem ↔ RdbMgr（MySQL）</strong>：InsertSession（会话表）、InsertChatRecord（聊天记录表），区分时间&#x2F;文本类型</li>
+<li><strong>LogicSystem ↔ ChatGrpcClient</strong>：跨服文本消息转发</li>
+</ul>
+<h3 id="生产环境考量"><a href="#生产环境考量" class="headerlink" title="生产环境考量"></a>生产环境考量</h3><p><strong>错误处理与容错策略</strong>：</p>
+<ul>
+<li>每条SQL操作后检查errcode，失败时记录日志+设置响应错误码</li>
+<li>转发失败时设置对应error信息，前端显示”发送失败”</li>
+<li>对方离线时不丢弃消息，标记未读等待上线拉取</li>
+</ul>
+<p><strong>监控与日志</strong>：</p>
+<ul>
+<li>每个处理步骤记录DEBUG级别日志（含sender_id、receiver_id）</li>
+<li>错误操作记录ERROR级别，包含完整上下文（如”插入聊天记录表(sender_id&#x3D;X, receiver_id&#x3D;Y)失败”）</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><p><strong>批量处理</strong>：</p>
+<ul>
+<li>发送队列批量发送：减少系统调用次数</li>
+<li>聊天记录分批加载：初始加载最近N条，滚动时按需加载更多</li>
+</ul>
+<p><strong>缓存策略</strong>：</p>
+<ul>
+<li>用户信息内存缓存：避免重复查MySQL</li>
+<li>Redis缓存用户在线状态和所在服务器</li>
+</ul>
+<p><strong>群聊优化</strong>：</p>
+<ul>
+<li>群聊广播时批量查询所有成员所在的Server，按Server分组后批量RPC转发</li>
+<li>大群（如万人群）采用消息队列异步推送，避免阻塞主线程</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong>会话表与聊天记录表的分离设计</strong>：</p>
+<p>会话表（t_session）存储每个对话的最新一条消息和会话元信息，类似于微信的消息列表。聊天记录表（t_chat_record）存储完整的聊天历史。两者分离的好处：</p>
+<ol>
+<li>消息列表只需查会话表（数据量小、速度快）</li>
+<li>点击进入聊天界面时才查聊天记录表</li>
+<li>会话表的更新频率远低于记录表（每个会话每天可能几百条消息，但会话表只更新最后一条）</li>
+</ol>
+<p><strong>时间记录的巧妙处理</strong>：</p>
+<ul>
+<li>Type_Time类型只存储到本地聊天记录表，不需要通知对方</li>
+<li>时间记录紧挨着文本记录，起到UI分割线的作用（”今天 14:30”）</li>
+<li>不向会话表插入时间记录，因为会话表只需展示最后一条真实消息</li>
+</ul>
+<p><strong>同服&#x2F;跨服判断的精准路由</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> std::string self_server_name = ConfigMgr::<span class="built_in">GetInstance</span>().<span class="built_in">GetConfig</span>(<span class="string">&quot;SelfServer&quot;</span>, <span class="string">&quot;Name&quot;</span>);</span><br><span class="line"><span class="type">const</span> std::string receiver_server_name = RedisMgr::<span class="built_in">GetInstance</span>()-&gt;<span class="built_in">HGet</span>(Hash_UserId_Server, std::<span class="built_in">to_string</span>(receiver_id));</span><br></pre></td></tr></table></figure>
+
+<p>关键设计：</p>
+<ul>
+<li>己方服务器名从配置文件读取（静态信息）</li>
+<li>对方服务器名从Redis查询（动态信息，用户登录时写入）</li>
+<li>若receiver_server_name为空 → 对方不在线 → 标记未读</li>
+<li>若相等 → 同服TCP直推（延迟最低）</li>
+<li>否则 → 跨服gRPC转发</li>
+</ul>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><p><strong>会话表重复插入问题</strong>：若两个用户互相发消息，会有两条会话记录（sender_id和receiver_id交换）。解决方案：INSERT … ON DUPLICATE KEY UPDATE。</p>
+</li>
+<li><p><strong>群聊广播的性能问题</strong>：群成员可能分布在多个ChatServer上，需要逐个RPC调用。解决方案：先按Server分组，然后每组批量发送，减少RPC次数。</p>
+</li>
+<li><p><strong>大文件传输的断点续传</strong>：将大文件切分为小块（如1MB），逐块传输并记录进度。接收方按序号组装。传输中断后从断点继续。类似分组交换中”分组”的思想。</p>
+</li>
+<li><p><strong>消息顺序性问题</strong>：TCP保证单连接内消息有序，但跨服转发时两条消息可能经不同路径到达。解决方案：消息携带序列号或时间戳，接收方按序排列。</p>
+</li>
+</ol>
+<h3 id="经验总结（补充）"><a href="#经验总结（补充）" class="headerlink" title="经验总结（补充）"></a>经验总结（补充）</h3><ul>
+<li><strong>数据库设计先于编码</strong>：聊天系统的核心是数据模型。先确定会话表、记录表、群聊表的结构和索引，再写业务逻辑。</li>
+<li><strong>读写分离思想</strong>：会话表是”热”数据（频繁更新），聊天记录表是”温”数据（频繁插入），离线消息是”冷”数据。不同热度可采用不同存储策略。</li>
+<li><strong>协议字段预留</strong>：TLV消息体中应预留扩展字段，避免后续新增功能时协议不兼容。</li>
+</ul>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>基础理解</strong>：</p>
+<p>Q1：请介绍聊天消息的完整收发流程？</p>
+<p>A：用户输入文本 → 客户端创建时间记录+文本记录 → TLV封装发送 → ChatServer CSession解析 → LogicSystem::handle_ChatText → 写入MySQL会话表+记录表 → Redis查询对方所在Server → 同服TCP推送&#x2F;跨服gRPC转发&#x2F;离线标记未读 → 返回ACK给发送方。</p>
+<p>Q2：会话表和聊天记录表为什么要分开设计？</p>
+<p>A：会话表存储每个对话的最后一条消息，用于消息列表展示（数据量小、查询快）。聊天记录表存储完整历史，按需加载。分离设计避免每次打开消息列表都扫描海量记录。</p>
+<p>Q3：文本聊天中Time类型和Text类型的区别是什么？</p>
+<p>A：Time类型仅用于UI时间分割线展示，只存入本地记录表不通知对方。Text类型是真正的聊天内容，需存入会话表+记录表并通知对方。</p>
+<p><strong>原理深入</strong>：</p>
+<p>Q4：同服和跨服消息转发的判断逻辑是怎样的？</p>
+<p>A：通过Redis HGet查询接收方user_id对应的server_name。server_name为空→对方离线；与己方server_name相同→同服TCP直推；不同→跨服gRPC转发。</p>
+<p>Q5：群聊广播如何高效实现？</p>
+<p>A：查询群成员列表 → 按所在Server分组 → 每组批量RPC转发 → 各ChatServer收到后通过本地Session TCP推送。大群可采用消息队列异步推送。</p>
+<p>Q6：大文件分块传输的断点续传如何设计？</p>
+<p>A：发送方将文件切分为固定大小块（如1MB），每块带序号和总块数。接收方按序号写入临时文件，记录已接收块号。传输中断后从最后一个成功的块号继续。全部接收完毕后校验完整性。</p>
+<p><strong>实践应用</strong>：</p>
+<p>Q7：如果系统需要支持消息已读&#x2F;未读状态，如何设计？</p>
+<p>A：在聊天记录表中增加read_status字段。发送方发消息时默认Unread。接收方打开聊天界面时批量更新read_status为Read，并通过ACK通知发送方更新UI。群聊需要记录每个成员的已读状态（可用位图或独立表）。</p>
+<p>Q8：如何处理消息发送失败的情况？</p>
+<p>A：1) 客户端本地持久化消息（状态SENDING）；2) 指数退避重试（1s→2s→4s→…最多5次）；3) 超过重试次数标记FAILED，显示红色感叹号；4) 用户可手动重试。</p>
+<p>Q9：消息ID的生成策略有哪些选择？</p>
+<p>A：1) UUID（简单但无序，不利于数据库索引）；2) 雪花算法（趋势递增，适合分布式）；3) 数据库自增（单点瓶颈）。推荐雪花算法：局部自增+全局唯一。</p>
+<p>Q10：如何保证消息不丢失？</p>
+<p>A：客户端：本地持久化+重试机制；服务端：写入MySQL后再返回ACK；接收方离线：标记未读等待上线拉取。三重保障确保消息可靠性。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><p>针对面试官的深度问题：</p>
+<ul>
+<li>贵团队在群聊消息的存储上是如何做冷热分离的？比如超过3个月的群聊历史消息如何归档？</li>
+<li>在高并发场景下，数据库写入成为瓶颈时有哪些优化手段？</li>
+<li>跨服消息转发时如果接收方服务器宕机，消息如何处理？</li>
+</ul>
+<p>常见的陷阱问题：</p>
+<ul>
+<li><strong>陷阱问题1</strong>：会话表用INSERT OR UPDATE，并发场景下两个发送方同时发消息会丢失更新吗？ → INSERT … ON DUPLICATE KEY UPDATE是原子操作（在InnoDB的行锁保护下），不会丢失，但后到达的消息会覆盖先到达的消息（last write wins）。</li>
+<li><strong>陷阱问题2</strong>：如果Redis中查不到接收方的server_name，一定是对方离线吗？ → 不一定。可能Redis数据过期、服务器重启导致数据丢失。需要结合心跳机制综合判断。</li>
+<li><strong>陷阱问题3</strong>：群聊广播时，如果某个成员的Session已断开但Redis尚未更新，消息会发给谁？ → 会发送失败（TCP write error），该成员的消息应标记为未读，等其重连后拉取。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><p>快速记忆要点：</p>
+<ul>
+<li>聊天模块的核心设计是<strong>会话表与记录表分离</strong>，热数据小表快速查询，冷数据大表按需加载。</li>
+<li>消息转发最关键的判断是<strong>Redis中receiver_server_name</strong>，空&#x3D;离线、相等&#x3D;同服、否则&#x3D;跨服。</li>
+<li>群聊广播的优化关键在<strong>按Server分组批量发送</strong>，减少RPC调用次数。</li>
+<li>避免的常见错误是<strong>Time类型也推送给了对方</strong>，造成对方界面出现多余时间线。</li>
+<li>这个设计的最大优点是<strong>清晰的路由策略</strong>（同服&#x2F;跨服&#x2F;离线三态），最大代价是<strong>跨服消息延迟高于同服</strong>。</li>
+</ul>
+<p>情景模拟答案：</p>
+<ul>
+<li>当被问到”聊天系统的核心是什么”时，回答：”核心是消息的可靠存储与精准路由，通过MySQL保证持久化，通过Redis+TCP&#x2F;gRPC保证送达。”</li>
+<li>当被问到”为什么要用Redis查在线状态”时，回答：”因为Redis是内存数据库，查询延迟在微秒级，远快于MySQL，适合高频的在线状态查询。”</li>
+<li>当被问到”这个模块的不足”时，回答：”主要不足是群聊广播的线性扩展问题，当群成员数极大时，广播开销线性增长。可通过消息队列异步化+分级推送缓解。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中不直接适配六大段结构、但仍有价值的内容，原样保留于此。</p>
+</blockquote>
+<h3 id="群聊思路原文"><a href="#群聊思路原文" class="headerlink" title="群聊思路原文"></a>群聊思路原文</h3><p>群聊的唯一id。建一张表，群聊id关联信息相关的更改（名字、状态、数量）。每个用户也有一张表，关联很多群聊，两张表做匹配。发信息时，发到server，server会查群聊的所有用户，实现广播，找到其他用户的server。</p>
+<p>语言方面：文件传输使用资源服务器（ResourceServer），大文件分小文件传输，最后汇成一个，断电续传，分组交换。Web RTC。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0/">https://weimo1.github.io/posts/IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/IP-Config-Server/" title="IP Config  Server"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">IP Config  Server</div></div><div class="info-2"><div class="info-item-1">IP Config Server IP Config Server 是 IM 接入层的调度中枢，负责根据长连接网关的实时负载状态，为客户端分配最优的长连接服务器 IP 地址列表，实现长连接层面的智能负载均衡。  一、核心概念 定义：IP Config Server 是 IM 系统的旁路调度服务，客户端在建立长连接前先请求 IP Config Server 获取可用的 Gateway 地址列表（Top 5），然后按优先级建立连接。 关键词：长连接调度、负载均衡、融合分、动态分（活跃状态）、静态分（静态状态）、加权平均、etcd、旁路调度 适用场景&#x2F;边界： 长连接 Gateway ...</div></div></div></a><a class="pagination-related" href="/posts/IM%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94/" title="IM面试高频问答"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">IM面试高频问答</div></div><div class="info-2"><div class="info-item-1">IM面试高频问答 适用范围：IM即时通讯项目的面试准备，涵盖技术选型（Boost.Beast、Asio TCP、gRPC）、架构设计（消息队列、Reactor模式）、状态服务、数据备份等核心问题。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#IM%E8%81%8A%E5%A4%A9%E4%B8%8E%E7%BE%A4%E8%81%8A%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">IM聊天与群聊实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9A%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84%E4%B8%8E%E6%A8%A1%E5%9D%97%E5%88%92%E5%88%86"><span class="toc-number">1.3.1.</span> <span class="toc-text">第一层：整体架构与模块划分</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E6%B5%81%E7%A8%8B%E4%B8%8E%E6%95%B0%E6%8D%AE%E6%B5%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">第二层：关键流程与数据流</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96%E4%B8%8E%E6%9D%83%E8%A1%A1"><span class="toc-number">1.3.3.</span> <span class="toc-text">第三层：关键设计决策与权衡</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 客户端数据模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%95%B0%E6%8D%AE%E5%AD%98%E5%82%A8%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 数据存储方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 服务端处理请求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%A0%B8%E5%BF%83%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E2%80%94%E2%80%94%E6%96%87%E6%9C%AC%E8%81%8A%E5%A4%A9"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 核心事件处理——文本聊天</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E7%BE%A4%E8%81%8A%E8%AE%BE%E8%AE%A1%E6%80%9D%E8%B7%AF"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 群聊设计思路</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E9%A1%B9%E7%9B%AE%E4%B8%AD%E5%85%B6%E4%BB%96%E6%A8%A1%E5%9D%97%E7%9A%84%E9%9B%86%E6%88%90%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">与项目中其他模块的集成方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E8%80%83%E9%87%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">生产环境考量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.6.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93%EF%BC%88%E8%A1%A5%E5%85%85%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">经验总结（补充）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BE%A4%E8%81%8A%E6%80%9D%E8%B7%AF%E5%8E%9F%E6%96%87"><span class="toc-number">1.8.1.</span> <span class="toc-text">群聊思路原文</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

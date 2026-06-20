@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>muduo | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Muduo 网络库核心架构 Muduo 是陈硕开发的基于 Reactor 模式的多线程 C++ 网络库，代码精简（约1万行），是学习 Linux 网络编程和 Reactor 模式的绝佳教材。本文梳理其核心组件：Reactor 事件循环、EventLoopThread、Channel、Poller&#x2F;Epoller、Socket&#x2F;Acceptor、TcpConnection 等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="muduo">
+<meta property="og:url" content="https://weimo1.github.io/posts/muduo/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Muduo 网络库核心架构 Muduo 是陈硕开发的基于 Reactor 模式的多线程 C++ 网络库，代码精简（约1万行），是学习 Linux 网络编程和 Reactor 模式的绝佳教材。本文梳理其核心组件：Reactor 事件循环、EventLoopThread、Channel、Poller&#x2F;Epoller、Socket&#x2F;Acceptor、TcpConnection 等。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.559Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "muduo",
+  "url": "https://weimo1.github.io/posts/muduo/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.559Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/muduo/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'muduo',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">muduo</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">muduo</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.559Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE/">开源项目</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Muduo-网络库核心架构"><a href="#Muduo-网络库核心架构" class="headerlink" title="Muduo 网络库核心架构"></a>Muduo 网络库核心架构</h1><blockquote>
+<p>Muduo 是陈硕开发的基于 Reactor 模式的多线程 C++ 网络库，代码精简（约1万行），是学习 Linux 网络编程和 Reactor 模式的绝佳教材。本文梳理其核心组件：Reactor 事件循环、EventLoopThread、Channel、Poller&#x2F;Epoller、Socket&#x2F;Acceptor、TcpConnection 等。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Muduo 是一个基于 Reactor 模式的 C++ 网络库，核心设计理念是 one loop per thread——每个线程一个事件循环，通过 epoll 实现 I&#x2F;O 多路复用，支持高并发 TCP 连接。</li>
+<li><strong>关键词</strong>：Reactor 模式、one loop per thread、EventLoop、Poller&#x2F;epoll、Channel、TcpConnection、Acceptor、eventfd 唤醒、非阻塞 I&#x2F;O</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>适用：Linux 高性能 TCP 服务器、学习 Reactor 模式和 C++ 网络编程</li>
+<li>边界：仅支持 Linux（依赖 epoll）；不适用于 UDP 密集型或 Windows 平台</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：Reactor 模式概述</strong></p>
+<p>Reactor 模式的核心是事件驱动——一个或多个线程循环等待 I&#x2F;O 事件，事件到达后分发到对应的处理函数。Muduo 实现的是 Multiple Reactors 模式（主从 Reactor）：mainReactor 负责 accept 新连接，subReactor 负责已建立连接的读写事件。</p>
+<p><strong>第二层：核心组件关系</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">TcpServer → Acceptor → 有新连接通过 accept 拿到 connfd</span><br><span class="line">    → TcpConnection 设置回调 → 设置到 Channel</span><br><span class="line">    → Channel 注册到 Poller → Poller 监听事件</span><br><span class="line">    → 事件触发 → Channel 回调处理函数</span><br></pre></td></tr></table></figure>
+
+<p><strong>第三层：one loop per thread 的实现</strong></p>
+<p>EventLoopThread 将线程和 EventLoop 绑定在一起：初始化成员函数 → 绑定线程回调 → 注册初始化回调 → 开启线程 → 绑定 loop → 开启 Poller 的 poll() 循环。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// EventLoopThread：将线程和 EventLoop 绑定</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">EventLoopThread::threadFunc</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    EventLoop loop; <span class="comment">// 创建一个独立的 EventLoop 对象</span></span><br><span class="line">                     <span class="comment">// 和上面的线程一一对应，即 one loop per thread</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (callback_)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">callback_</span>(&amp;loop);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">        loop_ = &amp;loop;</span><br><span class="line">        cond_.<span class="built_in">notify_one</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    loop.<span class="built_in">loop</span>();    <span class="comment">// 执行 EventLoop 的 loop()，开启底层 Poller 的 poll()</span></span><br><span class="line">    <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">    loop_ = <span class="literal">nullptr</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="Socket-和-Address-封装"><a href="#Socket-和-Address-封装" class="headerlink" title="Socket 和 Address 封装"></a>Socket 和 Address 封装</h3><p><strong>Address 类</strong>：封装 IP 和端口，提供格式化函数，对 sockaddr 进行初始化：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">::<span class="built_in">memset</span>(&amp;addr_, <span class="number">0</span>, <span class="built_in">sizeof</span>(addr_));</span><br><span class="line">addr_.sin_family = AF_INET;</span><br><span class="line">addr_.sin_port = ::<span class="built_in">htons</span>(port); <span class="comment">// 本地字节序转为网络字节序</span></span><br><span class="line">addr_.sin_addr.s_addr = ::<span class="built_in">inet_addr</span>(ip.<span class="built_in">c_str</span>());</span><br></pre></td></tr></table></figure>
+
+<p><strong>Socket 类</strong>：封装 bindAddress、listen、accept 等函数，以及 socket 选项设置（如 TCP Nagle 算法控制）。</p>
+<h3 id="Epoller-和-Poller-的设计"><a href="#Epoller-和-Poller-的设计" class="headerlink" title="Epoller 和 Poller 的设计"></a>Epoller 和 Poller 的设计</h3><p><strong>Epoller</strong>：重写 I&#x2F;O 复用接口，将活跃事件填充到 Channel 中，封装 epoll 的 add&#x2F;mod&#x2F;del 操作：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">using</span> EventList = std::vector&lt;epoll_event&gt;;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> epollfd_;      <span class="comment">// epoll_create 返回的 fd</span></span><br><span class="line">EventList events_; <span class="comment">// epoll_wait 返回的事件集</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Poller 基类</strong>：为所有 I&#x2F;O 复用保留统一接口，实现多态。定义所属的 loop 以及 <code>map&lt;socket, channel&gt;</code> 映射。</p>
+<h3 id="Acceptor-类"><a href="#Acceptor-类" class="headerlink" title="Acceptor 类"></a>Acceptor 类</h3><p>指向 baseLoop，初始化 socket，绑定事件发生时的回调函数。有请求到来时调用读回调 → 调用 socket 的 accept → 执行回调函数（创建 TcpConnection）。</p>
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>epoll</strong>：Linux 下高效的 I&#x2F;O 多路复用机制，ET&#x2F;LT 模式选择</li>
+<li><strong>RAII</strong>：socket fd 通过 Socket 类 RAII 管理，析构时自动 close</li>
+<li><strong>智能指针</strong>：shared_ptr 管理 TcpConnection 生命周期，enable_shared_from_this 保证异步回调安全</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="TcpConnection-的完整建立流程"><a href="#TcpConnection-的完整建立流程" class="headerlink" title="TcpConnection 的完整建立流程"></a>TcpConnection 的完整建立流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">TcpServer → Acceptor → 有新用户连接</span><br><span class="line">    → accept 函数拿到 connfd</span><br><span class="line">    → 创建 TcpConnection 对象并设置回调</span><br><span class="line">    → 将回调设置到 Channel</span><br><span class="line">    → Channel 注册到 Poller</span><br><span class="line">    → Poller 监听事件 → 事件触发 → Channel 回调处理</span><br></pre></td></tr></table></figure>
+
+<p>给 Channel 设置相应的回调函数后，Poller 通知 Channel 感兴趣的事件发生了，Channel 会回调相应的处理函数。</p>
+<h3 id="EventLoop-的事件循环机制"><a href="#EventLoop-的事件循环机制" class="headerlink" title="EventLoop 的事件循环机制"></a>EventLoop 的事件循环机制</h3><p>一个 Reactor 模型包含一个事件循环：</p>
+<ul>
+<li>成员：一个 Channel 列表、一个 Poller 智能指针、存放回调的队列</li>
+<li>初始化：创建 epoll 对象、初始化成员变量、创建 wakeupFd（用于唤醒下层 Reactor）</li>
+<li>开启循环 loop：epoll 监听事件 → Channel 处理事件</li>
+<li>回调机制：在 loop 中就回调；不在则注册事件、唤醒、回调</li>
+<li>回调队列：写入列表 → 上锁交换 → 执行</li>
+</ul>
+<h3 id="wakeup-唤醒机制"><a href="#wakeup-唤醒机制" class="headerlink" title="wakeup() 唤醒机制"></a>wakeup() 唤醒机制</h3><p>主 Reactor 想要注册回调函数到子 Reactor，但子 Reactor 阻塞在 epoll_wait。使用 wakeupFd 唤醒：</p>
+<ul>
+<li>给 eventfd 返回的文件描述符 wakeupFd_ 绑定事件回调</li>
+<li>当 wakeup() 时，向 wakeupFd_ 写入 8 字节</li>
+<li>触发可读事件，调用 handleRead() 读走数据</li>
+<li>同时唤醒阻塞的 epoll_wait</li>
+<li>执行 doPendingFunctors() 完成上层回调</li>
+</ul>
+<h3 id="Channel-的设计"><a href="#Channel-的设计" class="headerlink" title="Channel 的设计"></a>Channel 的设计</h3><p>Channel 对 socket 事件进行封装——发生读写等事件时调用封装的回调函数。将 Channel 和 fd 绑定在一起，通过 EventLoop 调用 poll。</p>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>one loop per thread 是多线程 Reactor 的最佳实践——避免线程间竞态，简化编程模型</li>
+<li>Poller 的抽象基类设计（多态）让 Muduo 能支持多种 I&#x2F;O 复用机制（epoll&#x2F;poll）</li>
+<li>eventfd 是 Linux 下线程唤醒的最优方案——单 fd、内核开销小、语义清晰</li>
+<li>Channel 的回调封装让事件处理变得清晰——可读&#x2F;可写&#x2F;关闭&#x2F;错误，各回调用独立回调</li>
+<li>RAII 管理 fd 资源是 C++ 网络编程的基本素养——Socket 对象析构自动 close，避免泄漏</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：Muduo 的 Reactor 模型是如何设计的？</p>
+<p>A：主从 Reactor 模式。mainReactor（一个 EventLoop）负责 accept 新连接，subReactor（多个 EventLoop，通常 CPU 核数）负责已建立连接的读写。通过 Round-Robin 分配新连接到 subReactor。</p>
+<p>Q2：EventLoopThread 如何实现 one loop per thread？</p>
+<p>A：构造函数绑定线程回调 threadFunc。threadFunc 中创建局部 EventLoop 对象，与线程一一对应。通过条件变量通知外部 loop 已就绪。</p>
+<p>Q3：Poller 和 Epoller 的关系？</p>
+<p>A：Poller 是抽象基类，定义 I&#x2F;O 复用的统一接口（poll、updateChannel、removeChannel）。Epoller 是 epoll 的具体实现。通过多态支持扩展。</p>
+<p>Q4：Channel 的作用是什么？</p>
+<p>A：Channel 封装 fd 和其事件回调。每个 Channel 绑定一个 fd，注册到 Poller。Poller 返回活跃事件后，Channel 调用对应的回调（读&#x2F;写&#x2F;关闭&#x2F;错误）。</p>
+<p>Q5：Acceptor 的工作流程？</p>
+<p>A：Acceptor 持有 acceptSocket_，注册到 baseLoop 的 Poller。新连接到达时触发可读回调 → 调用 accept 获取 connfd → 执行 newConnectionCallback_（由 TcpServer 设置，创建 TcpConnection）。</p>
+<p>Q6：wakeup() 为什么需要？如何实现？</p>
+<p>A：主 Reactor 需要向子 Reactor 的 pendingFunctors_ 添加回调，但子 Reactor 阻塞在 epoll_wait。wakeup() 向 eventfd 写入数据触发可读事件，唤醒子 Reactor 执行回调。</p>
+<p>Q7：TcpConnection 如何从 Acceptor 建立？</p>
+<p>A：TcpServer 设置 Acceptor 的 newConnectionCallback_。新连接时 Acceptor 调用该回调 → TcpServer 创建 TcpConnection → 设置消息&#x2F;关闭等回调 → 将 TcpConnection 的 Channel 注册到 subReactor 的 Poller。</p>
+<p>Q8：Socket 类封装了哪些操作？</p>
+<p>A：bindAddress、listen、accept、setTcpNoDelay（Nagle 算法）、setReuseAddr、setKeepAlive 等。通过 RAII 管理 fd 生命周期。</p>
+<p>Q9：Muduo 如何处理粘包问题？</p>
+<p>A：Muduo 本身不处理粘包（库的职责是 I&#x2F;O 而非协议）。用户在 TcpConnection 的消息回调中自行处理——常见方案有 TLV 协议、长度前缀、分隔符等。</p>
+<p>Q10：为什么要用 Poller 基类而非直接用 Epoller？</p>
+<p>A：面向接口编程——Poller 基类定义统一接口，具体实现可替换。虽然 Muduo 目前只实现了 Epoller，但架构上支持扩展 poll&#x2F;select。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵团队的网络框架中，Reactor 是主从模式还是多主模式？EventLoop 数量如何确定？</p>
+</li>
+<li><p>Muduo 没有实现 UDP 支持，贵团队在需要 UDP 的场景下是如何扩展的？</p>
+</li>
+<li><p>陷阱 1：”多线程 Reactor 越多性能越好”——EventLoop 数量通常等于 CPU 核数，超过则上下文切换开销增加</p>
+</li>
+<li><p>陷阱 2：”Acceptor 可以放到 subReactor”——Acceptor 必须在 mainReactor，因为 accept 惊群问题需要单线程处理</p>
+</li>
+<li><p>陷阱 3：”Channel 的回调可以直接删除 Channel”——Channel 回调中可能析构自身，需要 tie 指针保护生命周期</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>Muduo 的核心架构：主从 Reactor + one loop per thread + Poller&#x2F;Channel 事件分发。</li>
+<li>EventLoopThread 的精髓：线程和 EventLoop 一一绑定，条件变量同步就绪状态。</li>
+<li>Channel 的本质：fd + 事件回调的封装体，将 I&#x2F;O 事件转化为函数调用。</li>
+<li>Acceptor 的职责：在 mainReactor 中 accept 新连接，通过回调创建 TcpConnection。</li>
+<li>当被问到”Muduo 的核心组件关系”时回答：”TcpServer → Acceptor → accept → TcpConnection → Channel → Poller → 事件分发 → Channel 回调。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的链接和图片，原样保留于此。</p>
+</blockquote>
+<h3 id="原笔记参考链接"><a href="#原笔记参考链接" class="headerlink" title="原笔记参考链接"></a>原笔记参考链接</h3><ul>
+<li>Muduo 网络库概述：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/636167841">https://zhuanlan.zhihu.com/p/636167841</a></li>
+<li>万字长文梳理 Muduo 库核心代码：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/495016351">https://zhuanlan.zhihu.com/p/495016351</a></li>
+</ul>
+<h3 id="原笔记图片"><a href="#原笔记图片" class="headerlink" title="原笔记图片"></a>原笔记图片</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/%E7%9F%A5%E8%AF%86%E5%BA%93/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/07-%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE/%E5%BB%BA%E7%AB%8B%E8%BF%9E%E6%8E%A5.png" alt="建立连接"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/%E7%9F%A5%E8%AF%86%E5%BA%93/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/07-%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE/%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86.png" alt="数据处理"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/muduo/">https://weimo1.github.io/posts/muduo/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/mutex/" title="mutex"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">mutex</div></div><div class="info-2"><div class="info-item-1">mutex — pthread_mutex 底层实现深度剖析 适用范围：glibc pthread_mutex 源码走读、多平台互斥锁实现对比、自适应自旋与 futex 机制分析。  一、项目&#x2F;模块概述 模块定位：深度解析 Linux glibc 中 pthread_mutex_t 的底层数据结构、自适应自旋算法、futex 系统调用协作机制，并横向对比 Windows SRWLock 和 macOS os_unfair_lock 的实现差异。 技术栈与依赖：glibc 2.31 源码、Linux futex 系统调用、x86 cmpxchg&#x2F;pause 指令、ARM...</div></div></div></a><a class="pagination-related" href="/posts/moodycamel__ConcurrentQueue-%E5%8E%9F%E7%90%86%E8%A7%A3%E6%9E%90/" title="moodycamel__ConcurrentQueue 原理解析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">moodycamel__ConcurrentQueue 原理解析</div></div><div class="info-2"><div class="info-item-1">moodycamel::ConcurrentQueue 原理解析 moodycamel::ConcurrentQueue 是一个工业级的多生产者-多消费者无锁并发队列，以极致性能著称。本文从传统锁队列的瓶颈出发，深入解析其块链表架构、原子门票系统和令牌优化等核心设计。  一、核心概念 定义：moodycamel::ConcurrentQueue 是一个 C++11 Lock-Free 并发队列库，支持 MPMC。 关键词：无锁队列、Lock-Free、MPMC、原子操作、块链表、门票系统、令牌优化。 适用场景&#x2F;边界：线程间高效传递数据；不提供任务调度能力。 补充：该队列强调吞吐...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Muduo-%E7%BD%91%E7%BB%9C%E5%BA%93%E6%A0%B8%E5%BF%83%E6%9E%B6%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">Muduo 网络库核心架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Socket-%E5%92%8C-Address-%E5%B0%81%E8%A3%85"><span class="toc-number">1.4.1.</span> <span class="toc-text">Socket 和 Address 封装</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Epoller-%E5%92%8C-Poller-%E7%9A%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.4.2.</span> <span class="toc-text">Epoller 和 Poller 的设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Acceptor-%E7%B1%BB"><span class="toc-number">1.4.3.</span> <span class="toc-text">Acceptor 类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.4.</span> <span class="toc-text">与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TcpConnection-%E7%9A%84%E5%AE%8C%E6%95%B4%E5%BB%BA%E7%AB%8B%E6%B5%81%E7%A8%8B"><span class="toc-number">1.5.1.</span> <span class="toc-text">TcpConnection 的完整建立流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#EventLoop-%E7%9A%84%E4%BA%8B%E4%BB%B6%E5%BE%AA%E7%8E%AF%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.2.</span> <span class="toc-text">EventLoop 的事件循环机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#wakeup-%E5%94%A4%E9%86%92%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.3.</span> <span class="toc-text">wakeup() 唤醒机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Channel-%E7%9A%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.5.4.</span> <span class="toc-text">Channel 的设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.5.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">原笔记参考链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%E5%9B%BE%E7%89%87"><span class="toc-number">1.7.2.</span> <span class="toc-text">原笔记图片</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

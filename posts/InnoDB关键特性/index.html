@@ -1,0 +1,414 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>InnoDB关键特性 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="InnoDB 关键特性 适用范围：InnoDB 存储引擎核心特性——Insert Buffer&#x2F;Change Buffer、Doublewrite、自适应哈希索引（AHI）、异步 I&#x2F;O、刷新邻接页。  一、核心概念 定义：InnoDB 是 MySQL 默认存储引擎，其关键特性（Change Buffer、Doublewrite、自适应哈希索引等）通过精巧的工程设计保证了高性能">
+<meta property="og:type" content="article">
+<meta property="og:title" content="InnoDB关键特性">
+<meta property="og:url" content="https://weimo1.github.io/posts/InnoDB%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="InnoDB 关键特性 适用范围：InnoDB 存储引擎核心特性——Insert Buffer&#x2F;Change Buffer、Doublewrite、自适应哈希索引（AHI）、异步 I&#x2F;O、刷新邻接页。  一、核心概念 定义：InnoDB 是 MySQL 默认存储引擎，其关键特性（Change Buffer、Doublewrite、自适应哈希索引等）通过精巧的工程设计保证了高性能">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.546Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "InnoDB关键特性",
+  "url": "https://weimo1.github.io/posts/InnoDB%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.546Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/InnoDB%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'InnoDB关键特性',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">InnoDB关键特性</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">InnoDB关键特性</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.546Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="InnoDB-关键特性"><a href="#InnoDB-关键特性" class="headerlink" title="InnoDB 关键特性"></a>InnoDB 关键特性</h1><blockquote>
+<p>适用范围：InnoDB 存储引擎核心特性——Insert Buffer&#x2F;Change Buffer、Doublewrite、自适应哈希索引（AHI）、异步 I&#x2F;O、刷新邻接页。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：InnoDB 是 MySQL 默认存储引擎，其关键特性（Change Buffer、Doublewrite、自适应哈希索引等）通过精巧的工程设计保证了高性能写和高可靠性，是 MySQL 在 OLTP 场景称霸的底层根基。</li>
+<li><strong>关键词</strong>：Change Buffer（插入缓冲）、Insert Buffer Bitmap、Doublewrite（两次写）、自适应哈希索引（AHI）、异步 I&#x2F;O（AIO）、刷新邻接页、IO Merge</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>Change Buffer：非唯一二级索引的写密集型场景（批量插入、大量二级索引的表）</li>
+<li>Doublewrite：防止页断裂（partial page write），所有写入场景的安全兜底</li>
+<li>AHI：等值查询为主的热点页加速（范围查询不适用）</li>
+<li>边界：聚焦 InnoDB 存储引擎层特性，不涉及 SQL 层优化器</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（五层递进）"><a href="#原理拆解（五层递进）" class="headerlink" title="原理拆解（五层递进）"></a>原理拆解（五层递进）</h3><p><strong>第一层：Change Buffer（插入缓冲）——延迟合并的非唯一索引写</strong></p>
+<p>当要插入数据时，对于唯一索引：如果内存中不存在该索引页，必须先从磁盘加载到内存，判断有无冲突后才能插入。对于普通索引则不同：</p>
+<ul>
+<li><strong>普通索引，内存中存在该索引页</strong> → 直接插入，写 redo</li>
+<li><strong>普通索引，内存中不存在该索引页</strong> → 将”插入一条数据”这个信息记录到 <strong>Insert Buffer</strong> 中（实际是个 B+树），同时将”新增一条 Insert Buffer 记录”这个动作写 redo。<strong>整个操作没有磁盘 IO！</strong></li>
+</ul>
+<p>Change Buffer 是从 InnoDB 1.0.x 版本引入的 Insert Buffer 升级版，额外包含了 Delete Buffer（将记录标为删除）和 Purge Buffer（真正将记录删除）。Change Buffer 不仅可以缓冲 insert 操作，update 和 delete 也可以。它位于 buffer pool 中，大小由 <code>innodb_change_buffer_max_size</code> 决定，默认 25（最多占用 buffer pool 的 25%），最大有效值 50。</p>
+<p>Insert Buffer 中有个位图 <strong>Insert Buffer Bitmap</strong>，用于追踪每个辅助索引页的可用空间。</p>
+<p><strong>Change Buffer 合并时机</strong>：</p>
+<ol>
+<li>辅助索引页被读到缓冲池时 → 检查 Insert Buffer Bitmap → 确认有缓存记录 → 合并</li>
+<li>Insert Buffer Bitmap 发现某辅助索引页空间 &lt; 1&#x2F;32 → 强制从磁盘读取该页合并</li>
+<li>Master Thread 每十秒合并一次</li>
+<li>数据库正常关闭时</li>
+</ol>
+<p><strong>Change Buffer 落盘时机</strong>：</p>
+<ul>
+<li>数据库空闲时后台线程落盘</li>
+<li>缓冲池不够用时</li>
+<li>数据库正常关闭时</li>
+<li>redo 写满时</li>
+</ul>
+<p><strong>第二层：为什么 Change Buffer 还要写 redo？</strong></p>
+<p>当使用 Change Buffer 时，说明内存中不存在该页。如果宕机了，Change Buffer 又没及时落盘，数据就丢了。但因为写了 redo，宕机重启可以恢复：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">宕机恢复流程：先看事务是否提交 → 未提交直接回滚 → 已提交则看 Change Buffer 有没有落盘</span><br><span class="line">  → 有：直接用 Change Buffer 做数据恢复</span><br><span class="line">  → 无：通过 redo 恢复 Change Buffer → 再用 Change Buffer 做恢复</span><br></pre></td></tr></table></figure>
+
+<p>不可以只靠 redo 不用 Change Buffer。因为 Change Buffer 维护了 Insert Buffer Bitmap，可以快速追踪哪些页需要合并。当这些页加载到内存时就能直接合并。如果只靠 redo，被合并的页加载到内存时无法被感知——redo 是循环记载，写入磁盘前必须先合并，会加重 redo 负担。</p>
+<p><strong>Change Buffer 落盘 + redo 双写的原因</strong>：缓冲池大小有限，如果需要 insert 的页一直不被读取加载，Insert Buffer 会积累，所以需要及时落盘腾出空间。非主键索引的恢复靠 Change Buffer，但主键索引恢复、已在 Buffer Pool 中的数据恢复仍需 redo。</p>
+<p><strong>第三层：Doublewrite（两次写）——防止页断裂</strong></p>
+<p>Doublewrite 由两部分组成：内存中的 doublewrite buffer（2MB）和磁盘上的 doublewrite 区（2MB）。</p>
+<p>刷新脏页流程：</p>
+<ol>
+<li>脏页 <strong>memcpy</strong> 复制到内存中的 doublewrite buffer</li>
+<li>从 doublewrite buffer 分两次（每次 1MB）<strong>顺序写入</strong>到磁盘 doublewrite 区</li>
+<li>从 doublewrite buffer 将脏页 <strong>fsync</strong> 写入磁盘实际位置</li>
+</ol>
+<p>相比直接刷脏页多了：<strong>一次内存复制 + 一次磁盘顺序写</strong>。</p>
+<p><strong>为什么大费周章</strong>？如果直接将脏页刷入磁盘时宕机，可能出现部分写入（如 16KB 的页只写了前 4KB）。redo 是物理日志，记录的是”对 xx 页偏移量 500 写入 aaa”，页已经损坏，重做没有意义。Doublewrite 保证了宕机恢复后脏页有一份完整副本在磁盘中，可以根据副本恢复数据。</p>
+<p>如果脏页从内存 doublewrite buffer 写入磁盘 doublewrite 区时宕机：无影响——说明还没向磁盘刷脏页，磁盘中的数据是完整的，重启后根据 redo 恢复即可。</p>
+<p>为什么先把脏页复制到内存 doublewrite buffer？防止在刷盘过程中脏页被修改导致数据不一致。而且将多个脏页有组织地放到一块内存中再刷盘更优雅，否则需要到处寻址逐个刷入磁盘 doublewrite 区。</p>
+<p>两次写默认打开，可通过 <code>innodb_doublewrite</code> 关闭。</p>
+<p><strong>第四层：自适应哈希索引（AHI）</strong></p>
+<p>InnoDB 自动根据<strong>访问的频率和模式</strong>为某些热点页建立哈希索引。对等值查询（<code>WHERE id=xxx</code>）可实现 O(1) 哈希查找，绕过 B+树二分搜索。</p>
+<p><strong>第五层：异步 IO 与刷新邻接页</strong></p>
+<ul>
+<li><strong>异步 IO</strong>：脏页刷新和磁盘读取均由异步 IO 完成。支持 <strong>IO Merge</strong>：发现要读取的页是连续的，一次性读取连续页而非分多次</li>
+<li><strong>刷新邻接页</strong>：刷新脏页时检测该页所在区的所有页，如果是脏页一起刷新，多次 IO 合并为一个。但 SSD 有较高的 IOPS，此特性可能把不脏的页也刷了、很快又变脏。InnoDB 1.2.x 起 <code>innodb_flush_neighbors</code> 默认为 0（不启动）</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 查看 Change Buffer 使用情况</span></span><br><span class="line"><span class="keyword">SHOW</span> ENGINE INNODB STATUS\G</span><br><span class="line"><span class="comment">-- 关注 &quot;INSERT BUFFER AND ADAPTIVE HASH INDEX&quot; 段：</span></span><br><span class="line"><span class="comment">--   seg size: Change Buffer B+树节点数</span></span><br><span class="line"><span class="comment">--   inserts: 已合并的插入操作数</span></span><br><span class="line"><span class="comment">--   merged recs: 合并的记录数</span></span><br><span class="line"><span class="comment">--   merges: 合并次数</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看 Doublewrite 状态</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">GLOBAL</span> STATUS <span class="keyword">LIKE</span> <span class="string">&#x27;innodb_dblwr%&#x27;</span>;</span><br><span class="line"><span class="comment">-- Innodb_dblwr_pages_written: 已写入 doublewrite 的页数</span></span><br><span class="line"><span class="comment">-- Innodb_dblwr_writes: doublewrite 写操作次数</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 查看 AHI 命中率</span></span><br><span class="line"><span class="keyword">SHOW</span> ENGINE INNODB STATUS\G</span><br><span class="line"><span class="comment">-- 关注 &quot;INSERT BUFFER AND ADAPTIVE HASH INDEX&quot; 段：</span></span><br><span class="line"><span class="comment">--   hash searches: 哈希查找次数</span></span><br><span class="line"><span class="comment">--   non-hash searches: 非哈希查找次数（回退 B+树）</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 双击写配置调整</span></span><br><span class="line"><span class="comment"># /etc/my.cnf</span></span><br><span class="line">innodb_doublewrite = ON          <span class="comment"># 默认开启，保障数据安全</span></span><br><span class="line">innodb_change_buffer_max_size = 25  <span class="comment"># Change Buffer 占 buffer pool 比例（%）</span></span><br><span class="line">innodb_change_buffering = all    <span class="comment"># 缓冲类型：inserts/deletes/purges/all/none</span></span><br><span class="line">innodb_adaptive_hash_index = ON  <span class="comment"># AHI 开关</span></span><br><span class="line">innodb_flush_neighbors = 0       <span class="comment"># SSD 推荐关闭，HDD 推荐 1</span></span><br><span class="line">innodb_use_native_aio = ON       <span class="comment"># Linux Native AIO</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>Buffer Pool</strong>：Change Buffer 位于 Buffer Pool 中，<code>innodb_change_buffer_max_size</code> 直接约束其在 BP 中的占比。BP 不足时 Change Buffer 也会被挤出。</li>
+<li><strong>Redo Log</strong>：Change Buffer 的操作记录写入 redo log，宕机恢复需先恢复 redo → Change Buffer → 二级索引页</li>
+<li><strong>MVCC</strong>：Purge Buffer 负责真正删除标记为 delete_mask 的行，是 MVCC 的物理清理环节</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><p><strong>Change Buffer 配置策略</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>建议</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>写多读少（日志、埋点）</td>
+<td><code>innodb_change_buffer_max_size = 40-50</code></td>
+<td>大量写入可缓冲，合并频率低</td>
+</tr>
+<tr>
+<td>读写均衡（常规 OLTP）</td>
+<td>默认 25</td>
+<td>中庸之选</td>
+</tr>
+<tr>
+<td>读多写少（报表查询）</td>
+<td>10 或关闭</td>
+<td>Change Buffer 合并时有额外开销</td>
+</tr>
+</tbody></table>
+<p><strong>Doublewrite 关闭场景</strong>：</p>
+<ul>
+<li>文件系统支持原子写（ZFS、Btrfs 支持 16KB 原子写）→ 可安全关闭</li>
+<li>使用支持原子写的 SSD（Fusion-io、Intel Optane）→ 可安全关闭</li>
+<li>从库或非核心业务 → 可关闭以换取性能</li>
+<li><strong>其他场景强烈不建议关闭</strong></li>
+</ul>
+<p><strong>AHI 调优</strong>：</p>
+<ul>
+<li><code>SHOW ENGINE INNODB STATUS</code> 看 AHI 命中率（hash searches &#x2F; total searches）</li>
+<li>命中率 &gt; 80%：AHI 有益，保持开启</li>
+<li>命中率 &lt; 50% 或范围扫描为主：考虑关闭</li>
+<li>高并发写场景可能出现 AHI 锁竞争（rw-lock），此时关闭可提升写入性能</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>批量插入</strong>：利用 Change Buffer 大幅减少二级索引的随机 IO，单次 INSERT 改为批量 INSERT 效果翻倍</li>
+<li><strong>SSD 下关闭刷新邻接页</strong>：<code>innodb_flush_neighbors=0</code> 避免写放大</li>
+<li><strong>定期 ANALYZE TABLE</strong>：合并 Change Buffer 中的记录到索引，同时更新统计信息</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-Change-Buffer-写入与合并（源码级）"><a href="#5-1-Change-Buffer-写入与合并（源码级）" class="headerlink" title="5.1 Change Buffer 写入与合并（源码级）"></a>5.1 Change Buffer 写入与合并（源码级）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// InnoDB ibuf/ibuf0ibuf.cc — Insert Buffer 写入路径</span></span><br><span class="line"><span class="comment">// 当二级索引页不在 buffer pool 中时，把插入操作缓存到 change buffer</span></span><br><span class="line"><span class="type">ib_err_t</span> <span class="title function_">ibuf_insert</span><span class="params">(<span class="type">ibuf_op_t</span> op, <span class="type">dtuple_t</span> *entry, <span class="type">dict_index_t</span> *index, ...)</span> &#123;</span><br><span class="line">    <span class="comment">// 检查 change buffer 是否满（受 innodb_change_buffer_max_size 控制）</span></span><br><span class="line">    <span class="keyword">if</span> (ibuf-&gt;size &gt; ibuf_max_size) &#123;</span><br><span class="line">        <span class="keyword">return</span> DB_STRONG_FAIL;  <span class="comment">// 放弃缓存，直接读盘执行</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 构建 Insert Buffer 记录：&#123;space_id, page_no, [entry data]&#125;</span></span><br><span class="line">    ibuf_entry = ibuf_entry_build(op, index, entry, entry_ext);</span><br><span class="line">    <span class="comment">// 插入到 change buffer B+树（一棵特殊的内部索引树）</span></span><br><span class="line">    btr_pcur_open(ibuf-&gt;index, ibuf_entry, PAGE_CUR_LE, BTR_MODIFY_LEAF, &amp;pcur);</span><br><span class="line">    btr_cur_optimistic_insert(..., &amp;pcur);</span><br><span class="line">    <span class="comment">// 更新 Insert Buffer Bitmap（追踪每个辅助索引页的可用空间和 IBUF 记录数）</span></span><br><span class="line">    ibuf_update_free_bits_low(space, page_no, max_size);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// change buffer 合并 — 当缓冲页被载入 pool 时触发</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">ibuf_merge_or_delete_for_page</span><span class="params">(<span class="type">buf_block_t</span> *block, ...)</span> &#123;</span><br><span class="line">    <span class="comment">// 读取 Insert Buffer Bitmap 中该页的记录</span></span><br><span class="line">    ulint n_recs = ibuf_bitmap_page_get_bits(bitmap, page_no, IBUF_BITS_ENTRIES, ...);</span><br><span class="line">    <span class="keyword">if</span> (n_recs == <span class="number">0</span>) <span class="keyword">return</span>;  <span class="comment">// 无缓存记录</span></span><br><span class="line">    <span class="comment">// 遍历 change buffer 树，将属于该页的所有操作应用到页上</span></span><br><span class="line">    ibuf_merge_pages(space, page_no);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-Doublewrite-Buffer-实现"><a href="#5-2-Doublewrite-Buffer-实现" class="headerlink" title="5.2 Doublewrite Buffer 实现"></a>5.2 Doublewrite Buffer 实现</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// InnoDB buf/buf0dblwr.cc — doublewrite 分段顺序写</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">buf_dblwr_add_to_batch</span><span class="params">(<span class="type">buf_page_t</span> *bpage, <span class="type">bool</span> is_LRU)</span> &#123;</span><br><span class="line">    <span class="comment">// 从 doublewrite batch 中取两个 slot（每个 1MB = 64 个 16KB 页）</span></span><br><span class="line">    ulint len = ut_min(DBLWR_BATCH_SIZE, srv_doublewrite_batch_size);</span><br><span class="line">    <span class="comment">// 将脏页 memcpy 到内存 doublewrite buffer（buf_dblwr-&gt;buf_block）</span></span><br><span class="line">    <span class="built_in">memcpy</span>(buf_dblwr-&gt;write_buf + buf_dblwr-&gt;first_free * UNIV_PAGE_SIZE,</span><br><span class="line">           frame, UNIV_PAGE_SIZE);</span><br><span class="line">    buf_dblwr-&gt;first_free++;</span><br><span class="line">    <span class="comment">// 当 batch 满或刷盘时，异步写入磁盘 doublewrite 区域</span></span><br><span class="line">    <span class="keyword">if</span> (buf_dblwr-&gt;first_free == len) &#123;</span><br><span class="line">        fil_io(IORequest(IORequest::WRITE), ..., buf_dblwr-&gt;block_no,</span><br><span class="line">               buf_dblwr-&gt;write_buf, len * UNIV_PAGE_SIZE, ...);</span><br><span class="line">        <span class="comment">// 写入成功后，再执行真正的 fsync 写入各数据页</span></span><br><span class="line">        buf_dblwr_flush();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 恢复时：先检查 doublewrite 区数据完整性，必要时用副本修复坏页</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">buf_dblwr_process</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> (page in doublewrite_area) &#123;</span><br><span class="line">        <span class="keyword">if</span> (corrupted(page_on_disk))  <span class="comment">// 页损坏</span></span><br><span class="line">            <span class="built_in">memcpy</span>(page_on_disk, page_in_dblwr, UNIV_PAGE_SIZE);  <span class="comment">// 用副本恢复</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-自适应哈希索引（AHI）构造"><a href="#5-3-自适应哈希索引（AHI）构造" class="headerlink" title="5.3 自适应哈希索引（AHI）构造"></a>5.3 自适应哈希索引（AHI）构造</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// InnoDB btr/btr0sea.cc — AHI 的插入与查询</span></span><br><span class="line"><span class="comment">// 当某个 B+树页被连续访问 N 次后，自动为其中的记录建立哈希索引</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">btr_search_guess_on_hash</span><span class="params">(<span class="type">dict_index_t</span> *index, <span class="type">btr_search_t</span> *info,</span></span><br><span class="line"><span class="params">                               <span class="type">const</span> <span class="type">dtuple_t</span> *tuple, ...)</span> &#123;</span><br><span class="line">    <span class="comment">// 用索引 id + 折叠后的键值作为 hash key</span></span><br><span class="line">    ulint fold = ut_fold_ull(rec_fold(rec, index));</span><br><span class="line">    <span class="type">ha_node_t</span> *node = ha_search_and_get_data(index, fold);</span><br><span class="line">    <span class="keyword">if</span> (node &amp;&amp; rec_offs_comp(rec, node-&gt;rec)) &#123;</span><br><span class="line">        <span class="comment">// 命中 AHI → 直接通过哈希定位记录，跳过 B+树二分搜索</span></span><br><span class="line">        *rec = node-&gt;rec;</span><br><span class="line">        <span class="keyword">return</span> TRUE;  <span class="comment">// O(1) 哈希查找</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> FALSE;  <span class="comment">// 未命中 → 回退 B+树搜索</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// AHI 的开关由 innodb_adaptive_hash_index 控制，默认 ON</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践感悟"><a href="#实践感悟" class="headerlink" title="实践感悟"></a>实践感悟</h3><ol>
+<li><strong>Change Buffer 对写密集型场景收益巨大</strong>：大批量插入 + 多个二级索引时，change buffer 把随机 IO 变成顺序 IO + 延迟合并，TPS 提升可达 30-50%。但读密集型场景反而不利（合并时额外开销）。</li>
+<li><strong>Doublewrite 是数据安全的代价</strong>：每次刷脏页多一次 memcpy（内存）+ 一次顺序写（磁盘 doublewrite 区），约 5-10% 性能损失。但 SSD 的原子写（Fusion-io 等）可安全关闭 doublewrite。</li>
+<li><strong>AHI 适合等值查询模式，不适合范围扫描</strong>：AHI 只对等值查询（<code>WHERE id=xxx</code>）加速，范围查询（<code>WHERE id&gt;xxx</code>）回退 B+树。如果工作负载主要是范围扫描，AHI 维护开销 &gt; 收益。</li>
+<li><strong>刷新邻接页对 HDD 是优化，对 SSD 是副作用</strong>：HDD 下合并多个随机 IO 为顺序 IO 收益大；SSD 随机 IO 延迟低，合并反而可能刷新了不必要的冷页，<code>innodb_flush_neighbors</code> 默认关闭正是为此。</li>
+<li><strong>AIO + IO Merge 是隐藏性能优化</strong>：InnoDB 的异步 IO 子系统会将多个相邻的 IO 请求合并为一个大请求，减少 3-5 倍 IO 次数。Linux Native AIO 模式下这个优化由内核完成。</li>
+<li><strong>Change Buffer 是易出错的诊断盲区</strong>：当二级索引数据与缓存不一致时，change buffer 的合并延迟可能导致 <code>SHOW TABLE STATUS</code> 中索引统计信息失误；定期手动触发合并（如读一次全表）可纠正。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥8个）"><a href="#6-1-高频问法（≥8个）" class="headerlink" title="6.1 高频问法（≥8个）"></a>6.1 高频问法（≥8个）</h3><p><strong>Q1: Insert Buffer 和 Change Buffer 的区别？</strong><br>答：Insert Buffer 是 InnoDB 1.0.x 之前的概念，仅缓冲 INSERT 操作。Change Buffer 是升级版，额外缓冲 DELETE（标记删除）和 PURGE（物理删除）操作，通过 <code>innodb_change_buffering</code> 可配置缓冲哪些操作（inserts&#x2F;deletes&#x2F;purges&#x2F;all&#x2F;none）。</p>
+<p><strong>Q2: Change Buffer 什么情况下不生效？</strong><br>答：① 唯一索引（需检查唯一性，必须读盘）；② 缓冲池已满（change buffer 大小达 <code>innodb_change_buffer_max_size</code> 上限）；③ 目标页已载入缓冲池（可直接操作，无需缓存）。</p>
+<p><strong>Q3: Doublewrite 解决了什么问题？为什么不直接用 redo 恢复？</strong><br>答：页部分写入（partial page write）——16KB 页只写入前 4KB 后宕机，页损坏后 redo 无法恢复（redo 记录的是对完整页的修改日志）。Doublewrite 保存了页的完整副本，恢复时可用副本替换坏页。</p>
+<p><strong>Q4: 什么场景可以安全关闭 Doublewrite？</strong><br>答：① 文件系统本身保证原子写入（ZFS、Btrfs 支持 16KB 原子写）；② 使用支持原子写的 SSD（Fusion-io、Intel Optane）；③ 数据可接受丢失（从库或非核心业务）。其他场景强烈不建议关闭。</p>
+<p><strong>Q5: 自适应哈希索引（AHI）什么时候该关闭？</strong><br>答：① 工作负载主要是范围扫描&#x2F;JOIN 时（AHI 对等值查询有效）；② 高并发写入场景（AHI 维护竞争 rw-lock）；③ 内存受限时（AHI 本身占用 buffer pool 空间）。通过 <code>SHOW ENGINE INNODB STATUS</code> 中 AHI 的命中率判断是否值得保留。</p>
+<p><strong>Q6: Change Buffer 的数据怎么保障不丢失？</strong><br>答：Change Buffer 的操作记录会写 redo log。宕机恢复时：先恢复 redo 到 change buffer，再从 change buffer 恢复到二级索引页。同时 change buffer 本身会定期落盘（Master Thread、缓冲池不够用、正常关闭时）。</p>
+<p><strong>Q7: 为什么刷新邻接页在 SSD 上默认关闭？</strong><br>答：SSD 的随机 IO 性能远高于 HDD，合并操作带来的额外刷新量（可能把不脏的页也刷了）反而增加写放大，得不偿失。<code>innodb_flush_neighbors=0</code> 是 SSD 时代的合理默认值。</p>
+<p><strong>Q8: Native AIO 和 simulated AIO 的区别？</strong><br>答：Linux 下 InnoDB 默认使用 Native AIO（libaio），由内核异步 IO 子系统完成，支持 IO Merge。Windows 和旧版 Linux 使用 simulated AIO（用多线程模拟异步，每个 IO 请求一个线程），效率较低。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ol>
+<li><strong>「Insert Buffer 就是 Change Buffer」</strong> → 不完全对！Insert Buffer 只缓冲 INSERT，Change Buffer 还缓冲 DELETE 和 PURGE。面试时说 Change Buffer 更准确。</li>
+<li><strong>「Doublewrite 是写两遍数据」</strong> → 误导！第一遍是顺序写到 doublewrite 区（连续 2MB），第二遍是随机写到数据页真实位置。两遍不是重复写同一位置。</li>
+<li><strong>「AHI 是无条件加速」</strong> → 错！AHI 对范围查询无效，高并发写时反而有锁竞争。看命中率才能决定开还是关。</li>
+<li><strong>「Change Buffer 越大越好」</strong> → 错！上限 50% buffer pool，过大会挤占数据页缓冲空间，反而降低缓存命中率。</li>
+<li><strong>「AIO 一定比同步 IO 快」</strong> → 不一定！如果 IO 队列深度不够、合并效果差，AIO 的上下文切换开销可能反而增大延迟。</li>
+</ol>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><table>
+<thead>
+<tr>
+<th>关键词</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Insert Buffer</td>
+<td>仅缓冲 INSERT；升级版 Change Buffer 支持 INSERT+DELETE+PURGE</td>
+</tr>
+<tr>
+<td>Change Buffer 条件</td>
+<td>非唯一索引 + 目标页不在缓冲池</td>
+</tr>
+<tr>
+<td>Doublewrite</td>
+<td>先顺序写 2MB doublewrite 区，再随机写数据页</td>
+</tr>
+<tr>
+<td>Doublewrite 关闭条件</td>
+<td>文件系统&#x2F;ZFS&#x2F;原子写 SSD 支持，否则别关</td>
+</tr>
+<tr>
+<td>AHI</td>
+<td>等值查询 O(1) 哈希加速，范围查询&#x2F;高并发写不适用</td>
+</tr>
+<tr>
+<td>刷新邻接页</td>
+<td>HDD 打开合并 IO，SSD 关闭避免写放大</td>
+</tr>
+<tr>
+<td>Native AIO</td>
+<td>libaio 内核异步 IO，支持 IO Merge</td>
+</tr>
+<tr>
+<td>宕机恢复双写</td>
+<td>redo→change buffer→二级索引页</td>
+</tr>
+</tbody></table>
+<h2 id="附录（原笔记内容归档）"><a href="#附录（原笔记内容归档）" class="headerlink" title="附录（原笔记内容归档）"></a>附录（原笔记内容归档）</h2><h3 id="原笔记-InnoDB-关键特性问答"><a href="#原笔记-InnoDB-关键特性问答" class="headerlink" title="原笔记 InnoDB 关键特性问答"></a>原笔记 InnoDB 关键特性问答</h3><p><strong>Q：为什么要将对 Change Buffer 中的记录写入 redo？</strong><br>A：当使用 Change Buffer 时说明内存中不存在该页，宕机时 Change Buffer 若未落盘则数据丢失。写了 redo 后，宕机重启可先恢复 redo → Change Buffer → 数据恢复。</p>
+<p><strong>Q：可以不使用 Change Buffer，只靠 redo 记录吗？</strong><br>A：不行。Change Buffer 维护了 Insert Buffer Bitmap 可快速追踪需要合并的页；redo 是循环记载，写入磁盘前必须合并，会加重 redo 负担。</p>
+<p><strong>Q：为什么 Change Buffer 落盘了还要写 redo？</strong><br>A：缓冲池有限，Change Buffer 需要及时落盘腾出空间。非主键索引恢复靠 Change Buffer，但主键索引和在 BP 中的数据的恢复仍需 redo。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/InnoDB%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7/">https://weimo1.github.io/posts/InnoDB%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/InnoDB%E9%80%BB%E8%BE%91%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84/" title="InnoDB逻辑存储结构"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">InnoDB逻辑存储结构</div></div><div class="info-2"><div class="info-item-1">InnoDB 逻辑存储结构 适用范围：InnoDB 存储引擎的表空间、段、区、页、行五个层次的逻辑存储结构，以及 Compact&#x2F;Dynamic 行格式、行溢出机制和数据页内部结构。  一、核心概念 定义：InnoDB 将所有数据逻辑地存放在表空间（Tablespace）中，表空间由段（Segment）、区（Extent）、页（Page）、行（Row）四级组成。页是磁盘管理的最小单位（默认 16KB），行是数据存储的最小逻辑单元。 关键词：表空间、段（数据段&#x2F;索引段&#x2F;回滚段）、区（64页&#x2F;1MB）、页（16KB）、Compact行格式、Dynami...</div></div></div></a><a class="pagination-related" href="/posts/IOC-AOP/" title="IOC  AOP"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">IOC  AOP</div></div><div class="info-2"><div class="info-item-1">IOC  AOP 适用范围：控制反转(IoC)与面向切面编程(AOP)设计思想、C++中IoC容器实现、AOP在日志&#x2F;鉴权中的应用  一、核心概念 定义：IoC（控制反转）将对象创建和管理的控制权从程序代码转移到外部容器；AOP（面向切面编程）将横切关注点（日志、鉴权、事务）从业务逻辑中分离为独立”切面” 关键词：IoC容器、依赖注入(DI)、切面(Aspect)、切入点(Pointcut)、横切关注点、代理模式 适用场景&#x2F;边界： IoC：大型项目中解耦组件依赖、单元测试中注入Mock对象 AOP：统一日志记录、权限校验、事务管理、性能监控 边界：过度使用IoC会降低...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#InnoDB-%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7"><span class="toc-number">1.</span> <span class="toc-text">InnoDB 关键特性</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%BA%94%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（五层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Change-Buffer-%E5%86%99%E5%85%A5%E4%B8%8E%E5%90%88%E5%B9%B6%EF%BC%88%E6%BA%90%E7%A0%81%E7%BA%A7%EF%BC%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 Change Buffer 写入与合并（源码级）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-Doublewrite-Buffer-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 Doublewrite Buffer 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E8%87%AA%E9%80%82%E5%BA%94%E5%93%88%E5%B8%8C%E7%B4%A2%E5%BC%95%EF%BC%88AHI%EF%BC%89%E6%9E%84%E9%80%A0"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 自适应哈希索引（AHI）构造</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.4.</span> <span class="toc-text">实践感悟</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E7%AC%94%E8%AE%B0%E5%86%85%E5%AE%B9%E5%BD%92%E6%A1%A3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（原笔记内容归档）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0-InnoDB-%E5%85%B3%E9%94%AE%E7%89%B9%E6%80%A7%E9%97%AE%E7%AD%94"><span class="toc-number">1.7.1.</span> <span class="toc-text">原笔记 InnoDB 关键特性问答</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>长连接 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="长连接 长连接是 IM 系统实时通信的基础设施。通过维护客户端与服务端的持久连接，实现消息的实时推送，避免轮询带来的延迟和带宽浪费。  一、核心概念 定义：长连接是指基于 TCP&#x2F;UDP&#x2F;QUIC&#x2F;WebSocket 等协议建立的、可以持续收发消息的数据通路。区别于短连接的”请求-响应-关闭”模式，长连接在建立后长时间保持，支持全双工通信。 关键词：持久连接、全双工、">
+<meta property="og:type" content="article">
+<meta property="og:title" content="长连接">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E9%95%BF%E8%BF%9E%E6%8E%A5/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="长连接 长连接是 IM 系统实时通信的基础设施。通过维护客户端与服务端的持久连接，实现消息的实时推送，避免轮询带来的延迟和带宽浪费。  一、核心概念 定义：长连接是指基于 TCP&#x2F;UDP&#x2F;QUIC&#x2F;WebSocket 等协议建立的、可以持续收发消息的数据通路。区别于短连接的”请求-响应-关闭”模式，长连接在建立后长时间保持，支持全双工通信。 关键词：持久连接、全双工、">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.579Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "长连接",
+  "url": "https://weimo1.github.io/posts/%E9%95%BF%E8%BF%9E%E6%8E%A5/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.579Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E9%95%BF%E8%BF%9E%E6%8E%A5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '长连接',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">长连接</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">长连接</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.579Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%8D%B3%E6%97%B6%E9%80%9A%E8%AE%AF-IM/">即时通讯(IM)</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="长连接"><a href="#长连接" class="headerlink" title="长连接"></a>长连接</h1><blockquote>
+<p>长连接是 IM 系统实时通信的基础设施。通过维护客户端与服务端的持久连接，实现消息的实时推送，避免轮询带来的延迟和带宽浪费。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li>定义：长连接是指基于 TCP&#x2F;UDP&#x2F;QUIC&#x2F;WebSocket 等协议建立的、可以持续收发消息的数据通路。区别于短连接的”请求-响应-关闭”模式，长连接在建立后长时间保持，支持全双工通信。</li>
+<li>关键词：持久连接、全双工、数据推送、长轮询、QUIC、WebSocket、Mars、心跳保活</li>
+<li>适用场景&#x2F;边界：<ul>
+<li>IM 消息实时推送</li>
+<li>实时数据同步（协作编辑、游戏状态）</li>
+<li>消息通知推送</li>
+<li>不适合：低频请求场景（长连接维护有成本）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：为什么需要长连接</strong></p>
+<p>主要解决数据实时性问题。数据推送的演进：</p>
+<ol>
+<li><strong>周期性轮询（Polling）</strong>：启动定时器周期性请求接口。间隔太短→无效查询多，间隔太长→实时性差</li>
+<li><strong>长轮询（Long Polling）</strong>：发送 HTTP 请求后，服务端无新数据则挂起不返回。减少无效查询，但频繁连接建立关闭</li>
+<li><strong>全双工数据通道</strong>：浏览器 WebSocket，移动端 TCP&#x2F;UDP&#x2F;QUIC。一次建立，持续收发</li>
+</ol>
+<p><strong>第二层：协议选择与性能对比</strong></p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>首次连接</th>
+<th>连接复用</th>
+<th>代表</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TCP + TLS 1.2</td>
+<td>3RTT (~600ms)</td>
+<td>2RTT (~400ms)</td>
+<td>传统 HTTPS</td>
+</tr>
+<tr>
+<td>TCP + TLS 1.3</td>
+<td>2RTT (~400ms)</td>
+<td>1RTT (~200ms)</td>
+<td>现代 HTTPS</td>
+</tr>
+<tr>
+<td>QUIC</td>
+<td>1RTT (~200ms)</td>
+<td>0RTT (0ms)</td>
+<td>HTTP&#x2F;3</td>
+</tr>
+</tbody></table>
+<p>以 RTT&#x3D;200ms 为例：</p>
+<ul>
+<li>TCP + TLS 1.2 首次需要 600ms（TCP 握手 + TLS 握手）</li>
+<li>TLS 1.3 减少为 400ms（减少一次握手）</li>
+<li>QUIC 首次仅需 200ms（QUIC 握手），连接复用为 0ms</li>
+</ul>
+<p><strong>第三层：请求优化——代理 HTTP 请求</strong></p>
+<p>在海量用户场景下，一次完整 HTTPS 请求涉及 DNS 解析、TCP 握手、TLS 握手、HTTP 请求&#x2F;响应等步骤。移动端弱网下任何环节都可能出错。</p>
+<p>优化方案：</p>
+<ul>
+<li><strong>复用底层连接</strong>：将 HTTP 请求封装，通过全双工通道发送，网关在内网组装 HTTP 请求</li>
+<li><strong>直接用 IP 连接</strong>：通过长连接下发域名 IP，绕过 DNS 解析（防 DNS 污染）</li>
+<li><strong>使用更高版本 TLS 或 QUIC</strong>：减少握手次数</li>
+</ul>
+<h3 id="长连接模块划分"><a href="#长连接模块划分" class="headerlink" title="长连接模块划分"></a>长连接模块划分</h3><p>客户端长连接模块（如微信 Mars）：</p>
+<ul>
+<li>连接管理（建立&#x2F;断开&#x2F;重连）</li>
+<li>协议编解码</li>
+<li>心跳保活</li>
+<li>弱网优化（智能心跳、多 IP 竞速）</li>
+<li>数据压缩和加密</li>
+</ul>
+<p>服务端长连接网关：</p>
+<ul>
+<li>TCP socket 管理（epoll 多路复用）</li>
+<li>连接状态维护</li>
+<li>消息路由和转发</li>
+<li>负载均衡和故障转移</li>
+</ul>
+<p>参考：微信 2017 年开源的 Mars 长连接库。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 简化长连接客户端</span></span><br><span class="line"><span class="keyword">type</span> LongConnClient <span class="keyword">struct</span> &#123;</span><br><span class="line">    conn      net.Conn</span><br><span class="line">    serverIPs []<span class="type">string</span></span><br><span class="line">    heartbeat time.Duration</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *LongConnClient)</span></span> Connect() <span class="type">error</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> _, ip := <span class="keyword">range</span> c.serverIPs &#123;</span><br><span class="line">        conn, err := net.DialTimeout(<span class="string">&quot;tcp&quot;</span>, ip, <span class="number">5</span>*time.Second)</span><br><span class="line">        <span class="keyword">if</span> err == <span class="literal">nil</span> &#123;</span><br><span class="line">            c.conn = conn</span><br><span class="line">            <span class="keyword">go</span> c.heartbeatLoop()</span><br><span class="line">            <span class="keyword">go</span> c.readLoop()</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> fmt.Errorf(<span class="string">&quot;all servers unreachable&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *LongConnClient)</span></span> heartbeatLoop() &#123;</span><br><span class="line">    ticker := time.NewTicker(c.heartbeat)</span><br><span class="line">    <span class="keyword">defer</span> ticker.Stop()</span><br><span class="line">    <span class="keyword">for</span> <span class="keyword">range</span> ticker.C &#123;</span><br><span class="line">        c.conn.SetWriteDeadline(time.Now().Add(<span class="number">5</span> * time.Second))</span><br><span class="line">        _, err := c.conn.Write([]<span class="type">byte</span>&#123;<span class="number">0x01</span>&#125;)  <span class="comment">// 心跳包</span></span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            c.reconnect()</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(c *LongConnClient)</span></span> reconnect() &#123;</span><br><span class="line">    c.conn.Close()</span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">3</span>; i++ &#123;</span><br><span class="line">        <span class="keyword">if</span> err := c.Connect(); err == <span class="literal">nil</span> &#123;</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        &#125;</span><br><span class="line">        time.Sleep(time.Duration(i+<span class="number">1</span>) * time.Second)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>QUIC 协议</strong>：基于 UDP 的传输协议，解决 TCP 的队头阻塞问题，弱网环境下性能更优</li>
+<li><strong>WebSocket</strong>：浏览器端长连接的标准方案</li>
+<li><strong>心跳保活</strong>：应用层维持长连接的核心机制</li>
+<li><strong>Mars</strong>：腾讯开源的跨平台长连接库</li>
+</ul>
+<h3 id="工程中的真实用法"><a href="#工程中的真实用法" class="headerlink" title="工程中的真实用法"></a>工程中的真实用法</h3><ul>
+<li><strong>微信 Mars</strong>：TCP 长连接 + 智能心跳 + 多 IP 竞速（赛马机制）</li>
+<li><strong>钉钉&#x2F;飞书</strong>：WebSocket + TCP 混合方案</li>
+<li><strong>Telegram</strong>：自研 MTProto 协议，支持多数据中心</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>智能心跳</strong>：前台短间隔（如 30s），后台探测 NAT 超时后自适应</li>
+<li><strong>多 IP 竞速（赛马机制）</strong>：并发连接多个 IP，取最快响应的连接</li>
+<li><strong>协议降级</strong>：TCP → QUIC → 短轮询逐级降级</li>
+<li><strong>数据压缩</strong>：Protobuf 序列化 + gzip&#x2F;zstd 压缩</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="运营商-NAT-对长连接的影响"><a href="#运营商-NAT-对长连接的影响" class="headerlink" title="运营商 NAT 对长连接的影响"></a>运营商 NAT 对长连接的影响</h3><p>移动网络环境下，运营商 NAT 会对空闲连接进行回收，超时时间各运营商不同（通常 5-30 分钟）。心跳间隔必须小于 NAT 超时时间，否则连接被回收后服务端无法 push 消息。</p>
+<p><strong>自适应心跳策略：</strong></p>
+<ul>
+<li>前台：固定心跳（如 30s）</li>
+<li>后台：逐步增加心跳间隔（如 30s → 1min → 2min → 4min），探测 NAT 超时</li>
+<li>发现 NAT 超时后，回退到安全间隔</li>
+</ul>
+<h3 id="长连接-vs-短连接的资源权衡"><a href="#长连接-vs-短连接的资源权衡" class="headerlink" title="长连接 vs 短连接的资源权衡"></a>长连接 vs 短连接的资源权衡</h3><p>长连接的优势（高频通信）：</p>
+<ul>
+<li>避免 TCP&#x2F;TLS 握手开销</li>
+<li>全双工实时推送</li>
+<li>减少连接数（连接池复用）</li>
+</ul>
+<p>长连接的代价：</p>
+<ul>
+<li>内存占用（每连接维持 socket buffer、协议状态）</li>
+<li>心跳带宽（每连接周期性发送心跳包）</li>
+<li>有状态服务（扩容难、优雅关闭难）</li>
+</ul>
+<p><strong>何时用长连接？</strong></p>
+<ul>
+<li>消息频率 &gt; 1条&#x2F;分钟 → 长连接</li>
+<li>消息频率 &lt; 1条&#x2F;小时 → 短连接 + 推送通知唤醒</li>
+</ul>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>TCP 的 KeepAlive 不够用：默认 2 小时，远大于运营商 NAT 超时。必须应用层心跳</li>
+<li>心跳是双刃剑：太短 → 心跳潮汐、耗电、带宽浪费。太长 → 断线感知慢</li>
+<li>弱网场景的终极方案：多 IP 竞速 + QUIC + pull 兜底</li>
+<li>QUIC 的 0RTT 重连是移动端弱网的杀手锏，但 0RTT 有重放攻击风险，需要应用层做幂等</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：长连接和短连接的区别是什么？</p>
+<p>A：短连接是”请求-响应-关闭”，每次请求建立新连接。长连接建立后长久保持，支持全双工通信和服务端 push。长连接适合高频实时通信，短连接适合低频请求。</p>
+<p>Q2：为什么 QQ 用 UDP 而不是 TCP？</p>
+<p>A：1) UDP 无连接开销，弱网更灵活 2) 自建可靠传输机制比 TCP 更可控 3) 减少资源消耗。但现代方案更多用 QUIC（基于 UDP 但内置可靠传输）。</p>
+<p>Q3：长轮询和 WebSocket 各有什么优缺点？</p>
+<p>A：长轮询兼容性好（普通 HTTP），但服务端挂起连接消耗资源，频繁新数据时不断重建连接。WebSocket 全双工高效，但需要浏览器和代理支持。</p>
+<p>Q4：QUIC 相比 TCP+TLS 有什么优势？</p>
+<p>A：1) 0RTT 重连（TCP+TLS 至少 1-2RTT）2) 无队头阻塞（UDP 多流独立）3) 连接迁移（切换网络不需重连）4) 内置加密。</p>
+<p>Q5：心跳机制如何设计？</p>
+<p>A：应用层心跳（TCP KeepAlive 不够用）。自适应策略：前台固定间隔（如 30s），后台探测 NAT 超时。心跳包尽量小（&lt;500byte），随机打散避免潮汐。</p>
+<p>Q6：运营商 NAT 对长连接有什么影响？</p>
+<p>A：运营商 NAT 会回收空闲连接（通常 5-30 分钟）。心跳间隔必须小于 NAT 超时，否则连接被回收服务端无法 push 消息。</p>
+<p>Q7：多 IP 竞速（赛马机制）的原理是什么？</p>
+<p>A：客户端同时&#x2F;串行连接多个 IP 地址，取最先成功建立连接的 IP 使用。在弱网环境下可有效降低连接建立延迟。</p>
+<p>Q8：长连接代理 HTTP 请求有什么好处？</p>
+<p>A：复用底层 TCP 连接避免 DNS 解析和 TLS 握手开销；绕过 DNS 污染；内网转发降低整体延迟。</p>
+<p>Q9：如何选择 TCP、UDP 还是 QUIC？</p>
+<p>A：TCP：稳定可靠、兼容好。UDP：灵活但需自建可靠传输。QUIC：综合二者优势，弱网和移动端推荐。实际中通常 TCP 为主 + QUIC 为备。</p>
+<p>Q10：长连接服务的资源开销主要有哪些？</p>
+<p>A：1) 内存：每连接 socket buffer（~4KB×2）+ 协议状态 2) FD：每连接占用一个文件描述符 3) CPU：epoll 事件处理 + 心跳处理 4) 带宽：心跳包周期性消耗。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司在选择长连接协议时，是如何权衡 TCP 的可靠性和 QUIC 的 0RTT 优势的？</p>
+</li>
+<li><p>在面对海外用户（高延迟、弱网）时，长连接做了哪些特殊优化？</p>
+</li>
+<li><p>陷阱 1：”TCP KeepAlive 心跳就够了？” — 不够。默认 2 小时间隔远大于运营商 NAT 超时。且 TCP KeepAlive 只能检测连接是否存活，无法检测应用层是否正常。</p>
+</li>
+<li><p>陷阱 2：”长连接越多越好？” — 不是。每个长连接有维护成本（内存&#x2F;FD&#x2F;heartbeat），低频用户用短连接 + push notification 更经济。</p>
+</li>
+<li><p>陷阱 3：”WebSocket 一定能穿透所有代理？” — 不一定。某些企业代理不支持 WebSocket 升级，需要 fallback 到长轮询。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>长连接的核心是：一条连接持续使用，服务端主动 push 消息，避免频繁建立连接和轮询延迟。</li>
+<li>心跳的本质是：在运营商 NAT 回收连接之前发送数据保活——是”给运营商看的”，不是给自己看的。</li>
+<li>QUIC 优于 TCP+TLS 的关键是：0RTT 重连和无队头阻塞，特别适合移动端弱网场景。</li>
+<li>多 IP 竞速的核心是：并行连接多个 IP，谁快用谁——简单粗暴但极有效。</li>
+<li>当被问到”长连接如何保活”时回答：”应用层心跳（TCP KeepAlive 不够）+ 自适应间隔 + 随机打散防止潮汐 + 断线重连兜底。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的图片，原样保留于此。</p>
+</blockquote>
+<h3 id="一、什么是长连接？"><a href="#一、什么是长连接？" class="headerlink" title="一、什么是长连接？"></a>一、什么是长连接？</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757652198240-12df1979-f7d2-46ea-a4c1-1831ee2921b6.png"></p>
+<h3 id="二、长连接解决的问题"><a href="#二、长连接解决的问题" class="headerlink" title="二、长连接解决的问题"></a>二、长连接解决的问题</h3><p><strong>数据推送演进：</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757652214656-30422a2b-ab4d-4e1e-bf62-06324d00b2c7.png"></p>
+<p><strong>请求优化——一次完整 HTTPS 请求步骤：</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757652214965-141b6dda-363d-43dc-a032-553d3e686c4a.png"></p>
+<p><strong>协议选择（RTT&#x3D;200ms 举例）：</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/1757652215078-15778c38-8adf-4037-97da-a311ab284185.png"></p>
+<blockquote>
+<p>参考资料：</p>
+<ul>
+<li>Mars：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/Tencent/mars">https://github.com/Tencent/mars</a></li>
+<li>QQ 为何用 UDP：<a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/thread-279-1-1.html">http://www.52im.net/thread-279-1-1.html</a></li>
+</ul>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E9%95%BF%E8%BF%9E%E6%8E%A5/">https://weimo1.github.io/posts/%E9%95%BF%E8%BF%9E%E6%8E%A5/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E9%97%AD%E5%8C%85%EF%BC%9A%E4%BB%BF%E5%87%BD%E6%95%B0operator()-&amp;&amp;-%E7%BB%91%E5%AE%9A%E5%99%A8bind-&amp;&amp;-%E5%8C%85%E8%A3%85%E5%99%A8function-&amp;&amp;-lambda%E8%A1%A8%E8%BE%BE%E5%BC%8F&amp;&amp;-%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88/" title="闭包：仿函数operator() &amp;&amp; 绑定器bind &amp;&amp; 包装器function &amp;&amp; lambda表达式&amp;&amp; 函数指针"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">闭包：仿函数operator() && 绑定器bind && 包装器function && lambda表达式&& 函数指针</div></div><div class="info-2"><div class="info-item-1">闭包：仿函数operator() &amp;&amp; 绑定器bind &amp;&amp; 包装器function &amp;&amp; lambda表达式&amp;&amp; 函数指针 适用范围：C++ 闭包——仿函数、std::bind、std::function、lambda 表达式、函数指针的统一理解。  参考：https://cloud.tencent.com/developer/article/2513972 一、核心概念 定义：闭包有很多种定义，一种说法是，闭包是带有上下文的函数。说白了，就是有状态的函数，就是有自己的变量。更直接一些，就是一个类换了个名字而已。一个函数，...</div></div></div></a><a class="pagination-related" href="/posts/%E9%94%81%E7%9A%84%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/" title="锁的底层原理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">锁的底层原理</div></div><div class="info-2"><div class="info-item-1">锁的底层原理 适用范围：CAS 原子操作硬件实现、MESI 缓存一致性协议、内存屏障、操作系统并发原语（mutex&#x2F;semaphore&#x2F;condition variable）的底层机制。  一、项目&#x2F;模块概述 模块定位：从 CPU 指令级（CMPXCHG&#x2F;LDREX-STREX）到缓存一致性协议（MESI）再到操作系统原语（futex&#x2F;semaphore）的完整纵向解析，构建”锁为何能工作”的底层认知。 技术栈与依赖：x86 lock cmpxchg 指令、ARM LDREX/STREX 指令对、MESI 缓存一致性协议、Linux fu...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%95%BF%E8%BF%9E%E6%8E%A5"><span class="toc-number">1.</span> <span class="toc-text">长连接</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%BF%E8%BF%9E%E6%8E%A5%E6%A8%A1%E5%9D%97%E5%88%92%E5%88%86"><span class="toc-number">1.2.2.</span> <span class="toc-text">长连接模块划分</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.1.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E7%9C%9F%E5%AE%9E%E7%94%A8%E6%B3%95"><span class="toc-number">1.4.2.</span> <span class="toc-text">工程中的真实用法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%90%E8%90%A5%E5%95%86-NAT-%E5%AF%B9%E9%95%BF%E8%BF%9E%E6%8E%A5%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.5.1.</span> <span class="toc-text">运营商 NAT 对长连接的影响</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%BF%E8%BF%9E%E6%8E%A5-vs-%E7%9F%AD%E8%BF%9E%E6%8E%A5%E7%9A%84%E8%B5%84%E6%BA%90%E6%9D%83%E8%A1%A1"><span class="toc-number">1.5.2.</span> <span class="toc-text">长连接 vs 短连接的资源权衡</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF%E9%95%BF%E8%BF%9E%E6%8E%A5%EF%BC%9F"><span class="toc-number">1.7.1.</span> <span class="toc-text">一、什么是长连接？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%95%BF%E8%BF%9E%E6%8E%A5%E8%A7%A3%E5%86%B3%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.7.2.</span> <span class="toc-text">二、长连接解决的问题</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

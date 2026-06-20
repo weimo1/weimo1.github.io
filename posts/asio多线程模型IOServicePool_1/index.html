@@ -1,0 +1,352 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>asio多线程模型IOServicePool | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="IOServicePool实现IOServicePool本质上是一个线程池，基本功能就是根据构造函数传入的数量创建n个线程和iocontext，然后每个线程跑一个iocontext，这样就可以并发处理不同iocontext读写事件了。 IOServicePool: 1234567891011121314151617181920class AsioIOServicePool:public Singl">
+<meta property="og:type" content="article">
+<meta property="og:title" content="asio多线程模型IOServicePool">
+<meta property="og:url" content="https://weimo1.github.io/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="IOServicePool实现IOServicePool本质上是一个线程池，基本功能就是根据构造函数传入的数量创建n个线程和iocontext，然后每个线程跑一个iocontext，这样就可以并发处理不同iocontext读写事件了。 IOServicePool: 1234567891011121314151617181920class AsioIOServicePool:public Singl">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.555Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "asio多线程模型IOServicePool",
+  "url": "https://weimo1.github.io/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.555Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'asio多线程模型IOServicePool',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">asio多线程模型IOServicePool</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">asio多线程模型IOServicePool</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.555Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>10分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h2 id="IOServicePool实现"><a href="#IOServicePool实现" class="headerlink" title="IOServicePool实现"></a>IOServicePool实现</h2><p>IOServicePool本质上是一个线程池，基本功能就是根据构造函数传入的数量创建n个线程和iocontext，然后每个线程跑一个iocontext，这样就可以并发处理不同iocontext读写事件了。</p>
+<p>IOServicePool:</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">AsioIOServicePool</span>:<span class="keyword">public</span> Singleton&lt;AsioIOServicePool&gt;</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">friend</span> Singleton&lt;AsioIOServicePool&gt;;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">using</span> IOService = boost::asio::io_context;</span><br><span class="line">    <span class="keyword">using</span> Work = boost::asio::io_context::work;</span><br><span class="line">    <span class="keyword">using</span> WorkPtr = std::unique_ptr&lt;Work&gt;;</span><br><span class="line">    ~<span class="built_in">AsioIOServicePool</span>();</span><br><span class="line">    <span class="built_in">AsioIOServicePool</span>(<span class="type">const</span> AsioIOServicePool&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    AsioIOServicePool&amp; <span class="keyword">operator</span>=(<span class="type">const</span> AsioIOServicePool&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    <span class="comment">// 使用 round-robin 的方式返回一个 io_service</span></span><br><span class="line">    boost::<span class="function">asio::io_context&amp; <span class="title">GetIOService</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">Stop</span><span class="params">()</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">AsioIOServicePool</span>(std::<span class="type">size_t</span> size = std::thread::<span class="built_in">hardware_concurrency</span>());</span><br><span class="line">    std::vector&lt;IOService&gt; _ioServices;</span><br><span class="line">    std::vector&lt;WorkPtr&gt; _works;</span><br><span class="line">    std::vector&lt;std::thread&gt; _threads;</span><br><span class="line">    std::<span class="type">size_t</span>   _nextIOService;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>1   <code>_ioServices</code>是一个IOService的vector变量，用来存储初始化的多个IOService。</p>
+<p>2   <code>WorkPtr</code>是<code>boost::asio::io_context::work</code>类型的unique指针。<br>在实际使用中，我们通常会将一些异步操作提交给<code>io_context</code>进行处理，然后该操作会被异步执行，而不会立即返回结果。如果没有其他任务需要执行，那么<code>io_context</code>就会停止工作，导致所有正在进行的异步操作都被取消。这时，我们需要使用<code>boost::asio::io_context::work</code>对象来防止<code>io_context</code>停止工作。</p>
+<p><code>boost::asio::io_context::work</code>的作用是持有一个指向<code>io_context</code>的引用，并通过创建一个”工作”项来保证<code>io_context</code>不会停止工作，直到work对象被销毁或者调用<code>reset()</code>方法为止。当所有异步操作完成后，程序可以使用<code>work.reset()</code>方法来释放<code>io_context</code>，从而让其正常退出。</p>
+<p>3   <code>_threads</code>是一个线程vector,管理我们开辟的所有线程。</p>
+<p>4   <code>_nextIOService</code>是一个轮询索引，我们用最简单的轮询算法为每个新创建的连接分配io_context.</p>
+<p>5   因为IOServicePool不允许被copy构造，所以我们将其拷贝构造和拷贝复制函数置为delete</p>
+<h3 id="IOServicePool构造函数"><a href="#IOServicePool构造函数" class="headerlink" title="IOServicePool构造函数"></a>IOServicePool构造函数</h3><p>接下来我们实现构造函数</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">AsioIOServicePool::<span class="built_in">AsioIOServicePool</span>(std::<span class="type">size_t</span> size):_ioServices(size),</span><br><span class="line">_works(size), _nextIOService(<span class="number">0</span>)&#123;</span><br><span class="line">    <span class="keyword">for</span> (std::<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; size; ++i) &#123;</span><br><span class="line">        _works[i] = std::<span class="built_in">unique_ptr</span>&lt;Work&gt;(<span class="keyword">new</span> <span class="built_in">Work</span>(_ioServices[i]));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//遍历多个ioservice，创建多个线程，每个线程内部启动ioservice</span></span><br><span class="line">    <span class="keyword">for</span> (std::<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; _ioServices.<span class="built_in">size</span>(); ++i) &#123;</span><br><span class="line">        _threads.<span class="built_in">emplace_back</span>([<span class="keyword">this</span>, i]() &#123;</span><br><span class="line">            _ioServices[i].<span class="built_in">run</span>();</span><br><span class="line">            &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>_works是unique_ptr的vector类型，所以初始化时要么放在构造函数初始化列表里初始化，要么通过一个临时的<code>std::unique_ptr</code>右值初始化，我们采取的是第二种。</p>
+<h3 id="GetIOService"><a href="#GetIOService" class="headerlink" title="GetIOService()"></a>GetIOService()</h3><p>实现获取<code>io_context&amp;</code>的函数</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">boost::<span class="function">asio::io_context&amp; <span class="title">AsioIOServicePool::GetIOService</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span>&amp; service = _ioServices[_nextIOService++];</span><br><span class="line">    <span class="keyword">if</span> (_nextIOService == _ioServices.<span class="built_in">size</span>()) &#123;</span><br><span class="line">        _nextIOService = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> service;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们根据<code>_nextIOService</code>作为索引，轮询获取<code>io_context&amp;</code>。</p>
+<p>同样我们要实现Stop函数，控制<code>AsioIOServicePool</code>停止的行为。因为我们要保证每个线程安全退出后再让<code>AsioIOServicePool</code>停止。</p>
+<h3 id="Stop"><a href="#Stop" class="headerlink" title="Stop()"></a>Stop()</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">AsioIOServicePool::Stop</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; work : _works) &#123;</span><br><span class="line">        work.<span class="built_in">reset</span>();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; t : _threads) &#123;</span><br><span class="line">        t.<span class="built_in">join</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中<code>work.reset()</code>是让unique指针置空并释放，那么work的析构函数就会被调用，work被析构，其管理的io_service在没有事件监听时就会被释放。</p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：IOServicePool 是 Boost.Asio 的多 Reactor 线程池实现，创建 N 个 <code>io_context</code> 各绑一线程，新连接通过 round-robin 轮询分配到不同 <code>io_context</code>，充分利用多核 CPU、避免单 io_context 的锁竞争</li>
+<li><strong>关键词</strong>：多 Reactor 模式、<code>io_context::work</code> 防止退出、round-robin 负载均衡、单例模式、<code>unique_ptr</code> 生命周期管理</li>
+<li><strong>适用场景&#x2F;边界</strong>：高并发网络服务器（C10K+）。单 io_context 适合低并发；IOServicePool 适合多核 + 高吞吐</li>
+</ul>
+<h2 id="二、详细解析"><a href="#二、详细解析" class="headerlink" title="二、详细解析"></a>二、详细解析</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——<code>io_context::work</code> 的必要性</strong>：<code>io_context</code> 在没有待处理异步操作时 <code>run()</code> 会自动返回。<code>work</code> 对象持有 io_context 引用，即使当前无异步操作，<code>run()</code> 也会保持阻塞等待。<code>work.reset()</code> 或 work 析构时 io_context 才允许退出</li>
+<li><strong>第二层——round-robin 负载均衡</strong>：<code>GetIOService()</code> 返回 <code>_ioServices[_nextIOService++]</code>，索引递增并回绕到 0。新连接调用 <code>GetIOService()</code> 获取 io_context 创建 socket，保证连接均匀分布。简单高效，无需额外锁</li>
+<li><strong>第三层——Stop() 的优雅退出</strong>：先 <code>work.reset()</code> 释放所有 work 对象（允许各 io_context 退出），再 <code>thread.join()</code> 等待所有线程结束。<strong>顺序不能反</strong>——先 join 会死锁（线程在 io_context::run() 中阻塞而 work 未释放）</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>vector&lt;IOService&gt;</code> N 个 io_context；<code>vector&lt;WorkPtr&gt;</code> N 个 <code>unique_ptr&lt;work&gt;</code>（保证 io_context 不退出）；<code>vector&lt;thread&gt;</code> N 个工作线程；<code>_nextIOService</code> 轮询索引（原子操作优化）</li>
+<li><strong>关键公式</strong>：池大小 &#x3D; <code>std::thread::hardware_concurrency()</code>（默认充分利用 CPU）；线程数 &#x3D; io_context 数；连接分布 ≈ 总连接 &#x2F; 池大小</li>
+</ul>
+<h2 id="三、动手实践"><a href="#三、动手实践" class="headerlink" title="三、动手实践"></a>三、动手实践</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;boost/asio.hpp&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> boost::asio;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">IOPool</span> &#123;</span><br><span class="line">    <span class="keyword">using</span> work_guard = executor_work_guard&lt;io_context::executor_type&gt;;</span><br><span class="line">    std::vector&lt;io_context&gt; iocs_;</span><br><span class="line">    std::vector&lt;work_guard&gt; guards_;</span><br><span class="line">    std::vector&lt;std::thread&gt; threads_;</span><br><span class="line">    <span class="type">size_t</span> next_ = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">explicit</span> <span class="title">IOPool</span><span class="params">(<span class="type">size_t</span> n = std::thread::hardware_concurrency())</span> : iocs_(n) &#123;</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; ioc : iocs_) guards_.<span class="built_in">push_back</span>(<span class="built_in">make_work_guard</span>(ioc));</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; ioc : iocs_) threads_.<span class="built_in">emplace_back</span>([&amp;ioc]&#123; ioc.<span class="built_in">run</span>(); &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function">io_context&amp; <span class="title">get</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span>&amp; ioc = iocs_[next_++ % iocs_.<span class="built_in">size</span>()];</span><br><span class="line">        <span class="keyword">return</span> ioc;</span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">IOPool</span>() &#123;</span><br><span class="line">        guards_.<span class="built_in">clear</span>();  <span class="comment">// 释放 work</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; t : threads_) t.<span class="built_in">join</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用"><a href="#四、进阶应用" class="headerlink" title="四、进阶应用"></a>四、进阶应用</h2><h3 id="多-Reactor-vs-单-Reactor-多线程"><a href="#多-Reactor-vs-单-Reactor-多线程" class="headerlink" title="多 Reactor vs 单 Reactor 多线程"></a>多 Reactor vs 单 Reactor 多线程</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>单 Reactor 多线程</th>
+<th>多 Reactor（IOServicePool）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>epoll 实例数</td>
+<td>1</td>
+<td>N</td>
+</tr>
+<tr>
+<td>锁竞争</td>
+<td>每次事件分发需加锁</td>
+<td>无竞争</td>
+</tr>
+<tr>
+<td>连接分布</td>
+<td>按线程空闲度（随机）</td>
+<td>round-robin（可控）</td>
+</tr>
+<tr>
+<td>CPU cache</td>
+<td>跨线程迁移 penalty</td>
+<td>连接+线程绑定，cache 友好</td>
+</tr>
+</tbody></table>
+<h3 id="nextIOService-的线程安全"><a href="#nextIOService-的线程安全" class="headerlink" title="_nextIOService 的线程安全"></a><code>_nextIOService</code> 的线程安全</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 简单版：单线程 acceptor 不需原子操作</span></span><br><span class="line"><span class="comment">// 多线程 acceptor 需改为：</span></span><br><span class="line">std::atomic&lt;<span class="type">size_t</span>&gt; _nextIOService&#123;<span class="number">0</span>&#125;;</span><br><span class="line"><span class="keyword">auto</span> idx = _nextIOService.<span class="built_in">fetch_add</span>(<span class="number">1</span>) % _ioServices.<span class="built_in">size</span>();</span><br></pre></td></tr></table></figure>
+
+<h3 id="连接与-io-context-的亲和性绑定"><a href="#连接与-io-context-的亲和性绑定" class="headerlink" title="连接与 io_context 的亲和性绑定"></a>连接与 io_context 的亲和性绑定</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// accept 时绑定 socket 到固定 io_context，后续该连接所有操作在同一 io_context</span></span><br><span class="line"><span class="comment">// 避免跨 io_context 迁移带来的锁和缓存问题</span></span><br><span class="line"><span class="keyword">auto</span>&amp; ioc = pool.<span class="built_in">get</span>();</span><br><span class="line"><span class="keyword">auto</span> sock = <span class="built_in">make_shared</span>&lt;tcp::socket&gt;(ioc);  <span class="comment">// socket 终生绑定此 ioc</span></span><br><span class="line">acceptor.<span class="built_in">async_accept</span>(*sock, handler);</span><br></pre></td></tr></table></figure>
+
+<p><strong>工程经验</strong>：(1) IOServicePool 是 asio 生产环境的标配——单 io_context 的多线程锁竞争是隐式瓶颈；(2) <code>work.reset()</code> 必须在 <code>thread.join()</code> 之前，顺序错误导致死锁；(3) 池大小通常设为 <code>std::thread::hardware_concurrency()</code>，I&#x2F;O 密集型可设为核数 × 2。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="Round-Robin-调度的原子性隐患"><a href="#Round-Robin-调度的原子性隐患" class="headerlink" title="Round-Robin 调度的原子性隐患"></a>Round-Robin 调度的原子性隐患</h4><p><code>GetIOService()</code> 中的轮询逻辑看似简单，实际有并发安全问题：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">boost::<span class="function">asio::io_context&amp; <span class="title">AsioIOServicePool::GetIOService</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span>&amp; service = _ioServices[_nextIOService++];</span><br><span class="line">    <span class="keyword">if</span> (_nextIOService == _ioServices.<span class="built_in">size</span>()) &#123;</span><br><span class="line">        _nextIOService = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> service;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_nextIOService++</code> 不是原子操作（读-改-写三步），多线程同时调用可能导致两个线程分到同一个 <code>io_context</code>（饿汉模式）或跳过某些 <code>io_context</code>。生产环境应改用 <code>std::atomic&lt;size_t&gt;</code> + <code>fetch_add</code>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">std::atomic&lt;<span class="type">size_t</span>&gt; _nextIOService&#123;<span class="number">0</span>&#125;;</span><br><span class="line">boost::<span class="function">asio::io_context&amp; <span class="title">GetIOService</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">size_t</span> idx = _nextIOService.<span class="built_in">fetch_add</span>(<span class="number">1</span>, std::memory_order_relaxed) % _ioServices.<span class="built_in">size</span>();</span><br><span class="line">    <span class="keyword">return</span> _ioServices[idx];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Work-守卫的内部机制"><a href="#Work-守卫的内部机制" class="headerlink" title="Work 守卫的内部机制"></a>Work 守卫的内部机制</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">io_context</span>::work &#123;</span><br><span class="line">    io_context&amp; _ctx;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">explicit</span> <span class="title">work</span><span class="params">(io_context&amp; ctx)</span> : _ctx(ctx) &#123;</span></span><br><span class="line">        _ctx._outstanding_work_++;  <span class="comment">// 增加待处理计数</span></span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">work</span>() &#123;</span><br><span class="line">        _ctx._outstanding_work_--;  <span class="comment">// 减少计数</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>io_context::run()</code> 内部检查 <code>_outstanding_work_</code> 计数器，当计数器归零且就绪队列为空时退出循环。<code>work</code> 对象通过增加计数器阻止退出。</p>
+<h4 id="thread-join-的顺序保证"><a href="#thread-join-的顺序保证" class="headerlink" title="thread.join() 的顺序保证"></a>thread.join() 的顺序保证</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">AsioIOServicePool::Stop</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; work : _works) &#123;</span><br><span class="line">        work.<span class="built_in">reset</span>();  <span class="comment">// ① 先让所有 io_context 退出 run()</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; t : _threads) &#123;</span><br><span class="line">        t.<span class="built_in">join</span>();      <span class="comment">// ② 再等待所有线程结束</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>必须先 <code>work.reset()</code> 后 <code>join()</code>——如果顺序反了，线程可能永远阻塞在 <code>run()</code> 中。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>pool 大小选择</strong>：通常设为 <code>std::thread::hardware_concurrency()</code>，但 CPU 密集型业务应小于核心数（给其他任务留核），IO 密集型可大于核心数</li>
+<li><strong>连接亲和性</strong>：分配连接后尽量保持同一连接在同一 <code>io_context</code> 处理（减少跨线程同步），除非连接负载极度不均</li>
+<li><strong>与 strand 配合</strong>：当多个 <code>io_context</code> 的回调可能操作同一数据时，用 <code>strand</code> 而非全局锁保证串行化</li>
+<li><strong>work 的 C++17 替代</strong>：C++17 起 <code>io_context</code> 自带 <code>executor_work_guard</code>，可通过 <code>make_work_guard()</code> 获得</li>
+<li><strong>优雅停机的完整流程</strong>：<code>Stop()</code> → <code>reset work</code> → <code>join 线程</code> → 清理资源，缺一不可</li>
+<li><strong>监控每个 io_context 的负载</strong>：实际项目中建议为每个 <code>io_context</code> 添加指标（待处理回调数、耗时统计）便于调优</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：IOServicePool 解决什么问题？</strong></p>
+<p>A：单线程 <code>io_context</code> 无法充分利用多核 CPU。IOServicePool 创建 N 个 <code>io_context</code>（每个绑定一个线程），将新连接轮询分配到不同 <code>io_context</code>，实现多核并行处理。</p>
+<p><strong>Q2：为什么每线程一个 io_context 而不是多线程共享一个？</strong></p>
+<p>A：多线程共享一个 <code>io_context</code> 时回调并发执行需加锁，且 epoll 事件分发由内核控制，可能出现负载不均。每线程独立 <code>io_context</code> 消除了锁竞争，负载均衡由应用层控制。</p>
+<p><strong>Q3：work.reset() 和 work &#x3D; nullptr 有区别吗？</strong></p>
+<p>A：功能相同——都会销毁原 <code>work</code> 对象，减少 <code>_outstanding_work_</code> 计数。但 <code>reset()</code> 语义更明确（”重置守卫”），代码可读性更好。</p>
+<p><strong>Q4：如果 <code>_threads.emplace_back</code> 的 lambda 中忘了捕获 <code>this</code>，会怎样？</strong></p>
+<p>A：无法访问 <code>_ioServices</code> 成员，编译错误。实际代码中用了 <code>[this, i]</code> 捕获 <code>this</code> 指针和索引。</p>
+<p><strong>Q5：为什么 IOServicePool 用单例模式？</strong></p>
+<p>A：全局只需一个 I&#x2F;O 线程池管理所有网络操作，单例避免重复创建、方便全局访问、简化资源管理。</p>
+<p><strong>Q6：GetIOService() 的 Round-Robin 调度有什么问题？</strong></p>
+<p>A：<code>_nextIOService++</code> 非原子操作，多线程并发不安全。生产环境需 <code>std::atomic</code> + <code>fetch_add</code> 替代。</p>
+<p><strong>Q7：Stop() 中 work.reset() 后线程还在 run() 中阻塞怎么办？</strong></p>
+<p>A：<code>reset()</code> 后 <code>_outstanding_work_</code> 归零，<code>run()</code> 在处理完当前就绪事件后会退出循环，线程返回。如果线程正阻塞在 <code>epoll_wait</code> 等系统调用上，操作系统的信号或超时机制会唤醒它。</p>
+<p><strong>Q8：如果某个 io_context 负载特别重怎么办？</strong></p>
+<p>A：Round-Robin 只是均匀分配新连接，不感知负载。改进方案：(1) 最少连接数调度；(2) 动态任务窃取；(3) 过载保护（拒绝新连接）。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：<code>_nextIOService++</code> 的并发竞争——多线程 <code>GetIOService()</code> 时产生数据竞争</p>
+<p><strong>陷阱2</strong>：<code>Stop()</code> 中先 <code>join()</code> 后 <code>work.reset()</code>——线程永远阻塞在 <code>run()</code> 中，死锁</p>
+<p><strong>陷阱3</strong>：忘记在析构函数中调用 <code>Stop()</code>——线程还未退出就销毁了 <code>io_context</code>，未定义行为</p>
+<p><strong>陷阱4</strong>：拷贝构造被 <code>delete</code> 但移动构造未显式定义——编译器可能隐式生成导致资源双重释放</p>
+<p><strong>陷阱5</strong>：pool 大小为 0 的边界情况——<code>hardware_concurrency()</code> 在极端环境可能返回 0</p>
+<p><strong>反问</strong>：如果让你设计一个支持动态扩容的 IOServicePool，你会怎么做？</p>
+<p><em>答案要点：将 <code>_ioServices</code> 改为 <code>vector&lt;unique_ptr&lt;IOService&gt;&gt;</code>（允许动态增长），扩容时创建新 <code>io_context</code> + <code>work</code> + <code>thread</code>，通过原子索引更新调度范围。缩容需等待目标 <code>io_context</code> 上所有连接迁移完成。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>IOServicePool</strong>：N 个 <code>io_context</code> 各绑一个线程的线程池，轮询分配连接</li>
+<li><strong>Work 守卫</strong>：<code>io_context::work</code> 通过增加引用计数阻止 <code>run()</code> 退出</li>
+<li><strong>Round-Robin</strong>：环形轮询分配到不同 <code>io_context</code>，简单但需原子变量保证线程安全</li>
+<li><strong>Stop() 两步法</strong>：先 <code>work.reset()</code> 释放守卫，再 <code>thread.join()</code> 等待线程退出</li>
+<li><strong>每线程一 io_context</strong>：消除锁竞争，应用层控制负载均衡</li>
+<li><strong>atomic fetch_add</strong>：替代不安全的后置 <code>++</code>，保证多线程安全取值</li>
+<li><strong>优雅停机</strong>：释放 work → join 线程 → 清理资源，顺序不可颠倒</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/">https://weimo1.github.io/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/aligned_storage/" title="aligned_storage"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">aligned_storage</div></div><div class="info-2"><div class="info-item-1">aligned_storage 适用范围：C++ std::aligned_storage——管理对齐内存的模板类及其 C++23 替代方案。  参考：https://blog.csdn.net/weixin_61470881/article/details/144594288、https://dev59.com/vVEG5IYBdhLWcg3wKFbw 一、核心概念 定义：std::aligned_storage 是 C++ 标准库中用于管理对齐内存的模板类，定义在 &lt;type_traits&gt; 头文件中。它通过模板参数指定内存大小和对齐方式，提供未初始化的内存区域，适用于需...</div></div></div></a><a class="pagination-related" href="/posts/align/" title="align"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">align</div></div><div class="info-2"><div class="info-item-1">align 适用范围：C++ 内存对齐——alignas、alignof、std::align 及结构体对齐规则。  一、核心概念 定义：alignas 和 alignof 是 C++11 引入的两个关键字，它们与内存对齐相关，帮助开发者控制和查询数据的内存对齐方式。std::align 是 C++11 引入的内存对齐工具函数，用于在给定的内存缓冲区中找到满足对齐要求的地址。内存对齐可以提高访问数据时的性能，特别是在处理硬件层面要求严格的场景下。 关键词：alignas、alignof、std::align、内存对齐、#pragma pack、SIMD、cache line、paddin...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#IOServicePool%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">IOServicePool实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#IOServicePool%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0"><span class="toc-number">1.1.</span> <span class="toc-text">IOServicePool构造函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#GetIOService"><span class="toc-number">1.2.</span> <span class="toc-text">GetIOService()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Stop"><span class="toc-number">1.3.</span> <span class="toc-text">Stop()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">2.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">二、详细解析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">4.</span> <span class="toc-text">三、动手实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8"><span class="toc-number">5.</span> <span class="toc-text">四、进阶应用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A-Reactor-vs-%E5%8D%95-Reactor-%E5%A4%9A%E7%BA%BF%E7%A8%8B"><span class="toc-number">5.1.</span> <span class="toc-text">多 Reactor vs 单 Reactor 多线程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nextIOService-%E7%9A%84%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8"><span class="toc-number">5.2.</span> <span class="toc-text">_nextIOService 的线程安全</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E4%B8%8E-io-context-%E7%9A%84%E4%BA%B2%E5%92%8C%E6%80%A7%E7%BB%91%E5%AE%9A"><span class="toc-number">5.3.</span> <span class="toc-text">连接与 io_context 的亲和性绑定</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">6.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">6.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Round-Robin-%E8%B0%83%E5%BA%A6%E7%9A%84%E5%8E%9F%E5%AD%90%E6%80%A7%E9%9A%90%E6%82%A3"><span class="toc-number">6.1.1.</span> <span class="toc-text">Round-Robin 调度的原子性隐患</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Work-%E5%AE%88%E5%8D%AB%E7%9A%84%E5%86%85%E9%83%A8%E6%9C%BA%E5%88%B6"><span class="toc-number">6.1.2.</span> <span class="toc-text">Work 守卫的内部机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#thread-join-%E7%9A%84%E9%A1%BA%E5%BA%8F%E4%BF%9D%E8%AF%81"><span class="toc-number">6.1.3.</span> <span class="toc-text">thread.join() 的顺序保证</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">6.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">7.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">7.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">7.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

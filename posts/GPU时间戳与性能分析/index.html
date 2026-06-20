@@ -1,0 +1,296 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>GPU时间戳与性能分析 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="GPU 时间戳与性能分析系统 适用范围：Vulkan Timestamp Query、帧耗时分析、ScopePerframeMarker RAII、Tracy 集成  一、一句话结论GPU 时间戳系统 &#x3D; VkQueryPool + vkCmdWriteTimestamp + 3 帧异步缓冲。每帧最多 128 个时间戳，当前帧写入、下一帧读取，零 GPU 等待。配合 ScopePerfr">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GPU时间戳与性能分析">
+<meta property="og:url" content="https://weimo1.github.io/posts/GPU%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="GPU 时间戳与性能分析系统 适用范围：Vulkan Timestamp Query、帧耗时分析、ScopePerframeMarker RAII、Tracy 集成  一、一句话结论GPU 时间戳系统 &#x3D; VkQueryPool + vkCmdWriteTimestamp + 3 帧异步缓冲。每帧最多 128 个时间戳，当前帧写入、下一帧读取，零 GPU 等待。配合 ScopePerfr">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.543Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "GPU时间戳与性能分析",
+  "url": "https://weimo1.github.io/posts/GPU%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.543Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/GPU%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'GPU时间戳与性能分析',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">GPU时间戳与性能分析</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">GPU时间戳与性能分析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.543Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/%E6%80%A7%E8%83%BD%E4%B8%8E%E8%B0%83%E8%AF%95/">性能与调试</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>5分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="GPU-时间戳与性能分析系统"><a href="#GPU-时间戳与性能分析系统" class="headerlink" title="GPU 时间戳与性能分析系统"></a>GPU 时间戳与性能分析系统</h1><blockquote>
+<p>适用范围：Vulkan Timestamp Query、帧耗时分析、ScopePerframeMarker RAII、Tracy 集成</p>
+</blockquote>
+<h2 id="一、一句话结论"><a href="#一、一句话结论" class="headerlink" title="一、一句话结论"></a>一、一句话结论</h2><p>GPU 时间戳系统 &#x3D; <strong>VkQueryPool + vkCmdWriteTimestamp + 3 帧异步缓冲</strong>。每帧最多 128 个时间戳，当前帧写入、下一帧读取，零 GPU 等待。配合 ScopePerframeMarker RAII 自动标记 Pass 边界，输出各 Pass 时间和占比。</p>
+<hr>
+<h2 id="二、核心概念解析（≥200字）"><a href="#二、核心概念解析（≥200字）" class="headerlink" title="二、核心概念解析（≥200字）"></a>二、核心概念解析（≥200字）</h2><h3 id="2-1-异步无等待设计"><a href="#2-1-异步无等待设计" class="headerlink" title="2.1 异步无等待设计"></a>2.1 异步无等待设计</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">第 N 帧：CPU 调用 vkCmdWriteTimestamp → GPU 执行到此处时记录 tick</span><br><span class="line">第 N+1 帧：CPU 调用 vkGetQueryPoolResults 读取第 N 帧的 tick → 不阻塞</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么需要 3 帧缓冲</strong>：GPU 可能还在执行第 N 帧时 CPU 已经开始第 N+1 帧。如果只有 1 个缓冲区，CPU 读取和 GPU 写入会冲突。3 帧轮转确保安全。</p>
+<h3 id="2-2-容量计算"><a href="#2-2-容量计算" class="headerlink" title="2.2 容量计算"></a>2.2 容量计算</h3><ul>
+<li>典型帧：5-10 个主要 Pass</li>
+<li>每个 Pass：3-5 个时间戳（开始&#x2F;子阶段&#x2F;结束）</li>
+<li>特殊操作：10-20 个</li>
+<li>总计：~90 个 → 取 128（有余量）</li>
+<li>内存：128 × 3 帧 × 8 字节 &#x3D; 3KB</li>
+</ul>
+<hr>
+<h2 id="三、源码解析与实践感悟（≥1000字）"><a href="#三、源码解析与实践感悟（≥1000字）" class="headerlink" title="三、源码解析与实践感悟（≥1000字）"></a>三、源码解析与实践感悟（≥1000字）</h2><h3 id="3-1-初始化"><a href="#3-1-初始化" class="headerlink" title="3.1 初始化"></a>3.1 初始化</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">GPUTimestamps::init</span><span class="params">(<span class="type">uint32_t</span> numberOfBackBuffers)</span> </span>&#123;</span><br><span class="line">    m_numberOfBackBuffers = numberOfBackBuffers;</span><br><span class="line">    <span class="type">const</span> VkQueryPoolCreateInfo queryPoolCreateInfo = &#123;</span><br><span class="line">        .queryType = VK_QUERY_TYPE_TIMESTAMP,</span><br><span class="line">        .queryCount = m_maxValuesPerFrame * numberOfBackBuffers,  <span class="comment">// 128 × 3 = 384</span></span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="built_in">vkCreateQueryPool</span>(device, &amp;queryPoolCreateInfo, <span class="literal">NULL</span>, &amp;m_queryPool);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-记录时间戳"><a href="#3-2-记录时间戳" class="headerlink" title="3.2 记录时间戳"></a>3.2 记录时间戳</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">GPUTimestamps::getTimeStamp</span><span class="params">(VkCommandBuffer cmd, <span class="type">const</span> <span class="type">char</span>* label)</span> </span>&#123;</span><br><span class="line">    <span class="type">uint32_t</span> measurements = (<span class="type">uint32_t</span>)m_labels[m_frame].<span class="built_in">size</span>();</span><br><span class="line">    <span class="type">uint32_t</span> offset = m_frame * m_maxValuesPerFrame + measurements;</span><br><span class="line">    <span class="built_in">vkCmdWriteTimestamp</span>(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, offset);</span><br><span class="line">    m_labels[m_frame].<span class="built_in">push_back</span>(label);  <span class="comment">// 记录标签</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong><code>BOTTOM_OF_PIPE_BIT</code></strong>：在管线最末端记录时间戳，确保前面的所有命令都已执行完毕。</p>
+<h3 id="3-3-读取与计算"><a href="#3-3-读取与计算" class="headerlink" title="3.3 读取与计算"></a>3.3 读取与计算</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">GPUTimestamps::onBeginFrame</span><span class="params">(VkCommandBuffer cmd, std::vector&lt;TimeStamp&gt;* pTimestamps)</span> </span>&#123;</span><br><span class="line">    <span class="type">uint32_t</span> offset = m_frame * m_maxValuesPerFrame;</span><br><span class="line">    <span class="type">uint32_t</span> measurements = (<span class="type">uint32_t</span>)gpuLabels.<span class="built_in">size</span>();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (measurements &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="type">double</span> microsecondsPerTick = (<span class="number">1e-3</span> * deviceProperties.limits.timestampPeriod);</span><br><span class="line">        <span class="type">uint64_t</span> timingsInTicks[<span class="number">256</span>] = &#123;&#125;;</span><br><span class="line">        <span class="built_in">vkGetQueryPoolResults</span>(device, m_queryPool, offset, measurements,</span><br><span class="line">            measurements * <span class="built_in">sizeof</span>(<span class="type">uint64_t</span>), &amp;timingsInTicks, <span class="built_in">sizeof</span>(<span class="type">uint64_t</span>),</span><br><span class="line">            VK_QUERY_RESULT_64_BIT);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">uint32_t</span> i = <span class="number">1</span>; i &lt; measurements; i++) &#123;</span><br><span class="line">            TimeStamp ts = &#123;</span><br><span class="line">                m_labels[m_frame][i],</span><br><span class="line">                <span class="built_in">float</span>(microsecondsPerTick * (timingsInTicks[i] - timingsInTicks[i - <span class="number">1</span>]))</span><br><span class="line">            &#125;;</span><br><span class="line">            pTimestamps-&gt;<span class="built_in">push_back</span>(ts);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 总时间</span></span><br><span class="line">        pTimestamps-&gt;<span class="built_in">push_back</span>(&#123;</span><br><span class="line">            <span class="string">&quot;Total GPU Time&quot;</span>,</span><br><span class="line">            <span class="built_in">float</span>(microsecondsPerTick * (timingsInTicks[measurements<span class="number">-1</span>] - timingsInTicks[<span class="number">0</span>]))</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">vkCmdResetQueryPool</span>(cmd, m_queryPool, offset, m_maxValuesPerFrame);  <span class="comment">// 重置备用</span></span><br><span class="line">    <span class="built_in">getTimeStamp</span>(cmd, <span class="string">&quot;Begin Frame&quot;</span>);  <span class="comment">// 新帧第一个时间戳</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键</strong>：读取的是 <code>m_frame</code>（上一帧）的数据，写入的 <code>getTimeStamp</code> 是当前帧的。</p>
+<h3 id="3-4-ScopePerframeMarker（RAII-自动标记）"><a href="#3-4-ScopePerframeMarker（RAII-自动标记）" class="headerlink" title="3.4 ScopePerframeMarker（RAII 自动标记）"></a>3.4 ScopePerframeMarker（RAII 自动标记）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">ScopePerframeMarker</span> &#123;</span><br><span class="line">    <span class="built_in">ScopePerframeMarker</span>(VkCommandBuffer cmdBuf, <span class="type">const</span> std::string&amp; name, </span><br><span class="line">        <span class="type">const</span> glm::vec4&amp; color, GPUTimestamps* timer) &#123;</span><br><span class="line">        <span class="built_in">getContext</span>()-&gt;<span class="built_in">setPerfMarkerBegin</span>(cmdBuf, name.<span class="built_in">c_str</span>(), color);</span><br><span class="line">    &#125;</span><br><span class="line">    ~<span class="built_in">ScopePerframeMarker</span>() &#123;</span><br><span class="line">        <span class="built_in">getContext</span>()-&gt;<span class="built_in">setPerfMarkerEnd</span>(cmd);</span><br><span class="line">        <span class="keyword">if</span> (timer) timer-&gt;<span class="built_in">getTimeStamp</span>(cmd, name.<span class="built_in">c_str</span>());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>使用：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="function">ScopePerframeMarker <span class="title">marker</span><span class="params">(cmd, <span class="string">&quot;Bloom Pass&quot;</span>, &#123;<span class="number">1</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">1</span>&#125;, timer)</span></span>;</span><br><span class="line">    <span class="comment">// ... 渲染 Bloom ...</span></span><br><span class="line">&#125; <span class="comment">// 自动结束 + 记录时间戳</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-5-ScopeRenderCmdObject（完整渲染通道作用域）"><a href="#3-5-ScopeRenderCmdObject（完整渲染通道作用域）" class="headerlink" title="3.5 ScopeRenderCmdObject（完整渲染通道作用域）"></a>3.5 ScopeRenderCmdObject（完整渲染通道作用域）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">ScopeRenderCmdObject</span> : NonCopyable &#123;</span><br><span class="line">    VkCommandBuffer cmd;</span><br><span class="line">    VkRect2D scissor;</span><br><span class="line">    VkViewport viewport;</span><br><span class="line">    std::unique_ptr&lt;ScopePerframeMarker&gt; frameMarker;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">ScopeRenderCmdObject</span>(VkCommandBuffer inCmd, GPUTimestamps* timer, ...) &#123;</span><br><span class="line">        frameMarker = std::<span class="built_in">make_unique</span>&lt;ScopePerframeMarker&gt;(inCmd, name, color, timer);</span><br><span class="line">        <span class="comment">// 设置视口（Y 翻转）、裁剪、多边形填充模式</span></span><br><span class="line">        viewport = &#123;<span class="number">0</span>, (<span class="type">float</span>)renderHeight, (<span class="type">float</span>)renderWidth, -(<span class="type">float</span>)renderHeight, <span class="number">0</span>, <span class="number">1</span>&#125;;</span><br><span class="line">        <span class="built_in">vkCmdBeginRendering</span>(cmd, &amp;renderInfo);</span><br><span class="line">        <span class="built_in">vkCmdSetScissor</span>(cmd, <span class="number">0</span>, <span class="number">1</span>, &amp;scissor);</span><br><span class="line">        <span class="built_in">vkCmdSetViewport</span>(cmd, <span class="number">0</span>, <span class="number">1</span>, &amp;viewport);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~<span class="built_in">ScopeRenderCmdObject</span>() &#123;</span><br><span class="line">        <span class="built_in">vkCmdEndRendering</span>(cmd);</span><br><span class="line">        frameMarker.<span class="built_in">reset</span>();  <span class="comment">// 自动结束标记 + 时间戳</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>封装了 Vulkan Dynamic Rendering 的整套启动流程</strong>：BeginRendering → SetScissor → SetViewport → 用户渲染 → EndRendering。</p>
+<h3 id="3-6-输出示例"><a href="#3-6-输出示例" class="headerlink" title="3.6 输出示例"></a>3.6 输出示例</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">=== 性能报告 (第 123 帧) ===</span><br><span class="line">总时间: 16.7ms (目标: 16.67ms)</span><br><span class="line">┌─────────────────┬──────────┬──────────┐</span><br><span class="line">│ 阶段             │ 时间(ms) │ 占比(%)  │</span><br><span class="line">├─────────────────┼──────────┼──────────┤</span><br><span class="line">│ Shadow Pass      │ 2.3      │ 13.8%    │</span><br><span class="line">│ G-Buffer         │ 5.1      │ 30.5%    │</span><br><span class="line">│ Deferred Light   │ 3.8      │ 22.8%    │</span><br><span class="line">│ Post Process     │ 2.9      │ 17.4%    │</span><br><span class="line">│ UI               │ 0.5      │ 3.0%     │</span><br><span class="line">└─────────────────┴──────────┴──────────┘</span><br><span class="line">瓶颈: G-Buffer (30.5%)</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、面试准备"><a href="#四、面试准备" class="headerlink" title="四、面试准备"></a>四、面试准备</h2><h3 id="高频问法（≥8个）"><a href="#高频问法（≥8个）" class="headerlink" title="高频问法（≥8个）"></a>高频问法（≥8个）</h3><ol>
+<li><strong>Vulkan Timestamp Query 的工作原理？</strong> → <code>vkCmdWriteTimestamp</code> 在 GPU 管线中插入时间标记，GPU 执行到时自动记录时钟周期</li>
+<li><strong>为什么需要多帧缓冲？</strong> → CPU-GPU 异步，单缓冲会导致读取和写入冲突；3 帧轮转确保安全</li>
+<li><strong>timestampPeriod 是什么？</strong> → 一个 GPU tick 对应多少纳秒，不同 GPU 不同；用于 tick→微秒转换</li>
+<li><strong>为什么选 BOTTOM_OF_PIPE_BIT 而非 TOP_OF_PIPE？</strong> → BOTTOM 确保前面所有命令已执行，测量更准确（含所有等待）</li>
+<li><strong>ScopePerframeMarker 用了什么设计模式？</strong> → RAII：构造标记开始，析构标记结束 + 自动记录时间戳</li>
+<li><strong>128 个时间戳每帧够用吗？如何扩展？</strong> → 典型需要 ~90 个，128 有余量；不够可增大 <code>m_maxValuesPerFrame</code></li>
+<li><strong>如何与 Tracy 集成？</strong> → 将时间戳数据导出为 Tracy Zone 格式，Tracy 提供可视化火焰图</li>
+<li><strong>为什么读取上一帧数据不影响性能分析？</strong> → 性能分析目标是定位瓶颈，不是实时显示；延迟一帧的数值仍然有效</li>
+<li><strong>ScopeRenderCmdObject 封装了什么？</strong> → BeginRendering + SetScissor + SetViewport + PerfMarker + EndRendering</li>
+</ol>
+<h3 id="反问点（≥5个）"><a href="#反问点（≥5个）" class="headerlink" title="反问点（≥5个）"></a>反问点（≥5个）</h3><ul>
+<li>如果 <code>vkGetQueryPoolResults</code> 返回 <code>VK_NOT_READY</code> 怎么处理？</li>
+<li><code>timestampPeriod</code> 在不同 GPU 上的典型值？</li>
+<li>如何区分 CPU 端耗时和 GPU 端耗时？</li>
+<li>时间戳对 GPU 性能有影响吗？</li>
+<li>能否在 Release Build 中使用？影响多大？</li>
+</ul>
+<h3 id="一句话答案（≥5个）"><a href="#一句话答案（≥5个）" class="headerlink" title="一句话答案（≥5个）"></a>一句话答案（≥5个）</h3><ul>
+<li>Timestamp Query &#x3D; GPU 内置秒表</li>
+<li>3 帧缓冲 &#x3D; 读取和写入永不冲突</li>
+<li>BOTTOM_OF_PIPE &#x3D; 等所有命令跑完再计时</li>
+<li>ScopePerframeMarker &#x3D; RAII 自动掐秒表</li>
+<li>128 × 3 × 8 &#x3D; 3KB 内存</li>
+</ul>
+<hr>
+<h2 id="附录（原内容完整保留）"><a href="#附录（原内容完整保留）" class="headerlink" title="附录（原内容完整保留）"></a>附录（原内容完整保留）</h2><h3 id="原：GPUTimestamps-类定义"><a href="#原：GPUTimestamps-类定义" class="headerlink" title="原：GPUTimestamps 类定义"></a>原：GPUTimestamps 类定义</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GPUTimestamps</span> &#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">TimeStamp</span> &#123;</span><br><span class="line">        std::string label;</span><br><span class="line">        <span class="type">float</span> microseconds;</span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="type">static</span> <span class="type">const</span> <span class="type">uint32_t</span> m_maxValuesPerFrame = <span class="number">128</span>;</span><br><span class="line">    VkQueryPool m_queryPool;</span><br><span class="line">    <span class="type">uint32_t</span> m_frame = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint32_t</span> m_numberOfBackBuffers = <span class="number">0</span>;</span><br><span class="line">    std::vector&lt;std::string&gt; m_labels[<span class="number">5</span>];</span><br><span class="line">    std::vector&lt;TimeStamp&gt; m_cpuTimeStamps[<span class="number">5</span>];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：完整-init-onBeginFrame-onEndFrame-实现"><a href="#原：完整-init-onBeginFrame-onEndFrame-实现" class="headerlink" title="原：完整 init&#x2F;onBeginFrame&#x2F;onEndFrame 实现"></a>原：完整 init&#x2F;onBeginFrame&#x2F;onEndFrame 实现</h3><p>（已在正文展示完整代码）</p>
+<h3 id="原：ScopeRenderCmdObject"><a href="#原：ScopeRenderCmdObject" class="headerlink" title="原：ScopeRenderCmdObject"></a>原：ScopeRenderCmdObject</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">ScopeRenderCmdObject</span> : NonCopyable &#123;</span><br><span class="line">    VkCommandBuffer cmd;</span><br><span class="line">    VkRect2D scissor;</span><br><span class="line">    VkViewport viewport;</span><br><span class="line">    <span class="comment">// 构造：BeginRendering + 设置视口/裁剪 + 开始 PerfMarker</span></span><br><span class="line">    <span class="comment">// 析构：EndRendering + 结束 PerfMarker</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：ColorAttachmentsBuilder"><a href="#原：ColorAttachmentsBuilder" class="headerlink" title="原：ColorAttachmentsBuilder"></a>原：ColorAttachmentsBuilder</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">ColorAttachmentsBuilder</span> &#123;</span><br><span class="line">    std::vector&lt;VkRenderingAttachmentInfo&gt; result;</span><br><span class="line">    <span class="function">ColorAttachmentsBuilder&amp; <span class="title">add</span><span class="params">(VulkanImage&amp; image, ...)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：光线追踪扩展函数延迟加载"><a href="#原：光线追踪扩展函数延迟加载" class="headerlink" title="原：光线追踪扩展函数延迟加载"></a>原：光线追踪扩展函数延迟加载</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">VkResult <span class="title">createAccelerationStructure</span><span class="params">(...)</span> </span>&#123;</span><br><span class="line">    <span class="type">static</span> <span class="keyword">auto</span> ptr = (PFN_vkCreateAccelerationStructureKHR)</span><br><span class="line">        <span class="built_in">vkGetDeviceProcAddr</span>(device, <span class="string">&quot;vkCreateAccelerationStructureKHR&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">ptr</span>(device, pCreateInfo, pAllocator, pAccelerationStructure);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/GPU%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/">https://weimo1.github.io/posts/GPU%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/GPU%E8%B5%84%E4%BA%A7%E7%AE%A1%E7%90%86/" title="GPU资产管理"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">GPU资产管理</div></div><div class="info-2"><div class="info-item-1">GPU 资产管理 适用范围：GPUImageAsset、GPUStaticMeshAsset、回退机制、异步加载与 Bindless 集成  一、一句话结论GPU 资产系统 &#x3D; 异步上传 + 回退 Fallback + Bindless 自动注册 + LRU 缓存淘汰。纹理和网格资产加载期间使用 Fallback（白纹理&#x2F;内置盒子），加载完成后自动切换到真实资产，渲染无卡顿。  二、核心概念解析（≥200字）2.1 两类 GPU 资源12345678GPU 资源├── 临时资源（池化系统）│   ├── 后处理中间纹理 → RenderTexturePool│   └...</div></div></div></a><a class="pagination-related" href="/posts/GPU%E5%9F%BA%E7%A1%80%E4%B8%8E%E8%B0%83%E8%AF%95/" title="GPU基础与调试"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">GPU基础与调试</div></div><div class="info-2"><div class="info-item-1">GPU 基础与调试 适用范围：GPU 线程模型、RenderDoc 调试、性能分析入门  一、一句话结论GPU 是超大规模并行处理器（数千核心），Shader 以 Warp&#x2F;Wavefront（32&#x2F;64 线程）为单位执行。RenderDoc 是 Vulkan&#x2F;DX 调试利器——抓帧、看 Draw Call、检查资源状态。  二、核心概念解析（≥200字）2.1 GPU 线程模型 Thread：执行一个 Shader 调用（一个像素&#x2F;顶点） Warp（NVIDIA）&#x2F; Wavefront（AMD）：32&#x2F;64 个线程为一组，SI...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#GPU-%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.</span> <span class="toc-text">GPU 时间戳与性能分析系统</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%BB%93%E8%AE%BA"><span class="toc-number">1.1.</span> <span class="toc-text">一、一句话结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心概念解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%BC%82%E6%AD%A5%E6%97%A0%E7%AD%89%E5%BE%85%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 异步无等待设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%AE%B9%E9%87%8F%E8%AE%A1%E7%AE%97"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 容量计算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码解析与实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 初始化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AE%B0%E5%BD%95%E6%97%B6%E9%97%B4%E6%88%B3"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 记录时间戳</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E8%AF%BB%E5%8F%96%E4%B8%8E%E8%AE%A1%E7%AE%97"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 读取与计算</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-ScopePerframeMarker%EF%BC%88RAII-%E8%87%AA%E5%8A%A8%E6%A0%87%E8%AE%B0%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 ScopePerframeMarker（RAII 自动标记）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-ScopeRenderCmdObject%EF%BC%88%E5%AE%8C%E6%95%B4%E6%B8%B2%E6%9F%93%E9%80%9A%E9%81%93%E4%BD%9C%E7%94%A8%E5%9F%9F%EF%BC%89"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 ScopeRenderCmdObject（完整渲染通道作用域）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E8%BE%93%E5%87%BA%E7%A4%BA%E4%BE%8B"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 输出示例</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.4.</span> <span class="toc-text">四、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8D%E9%97%AE%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">反问点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E5%AE%8C%E6%95%B4%E4%BF%9D%E7%95%99%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">附录（原内容完整保留）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AGPUTimestamps-%E7%B1%BB%E5%AE%9A%E4%B9%89"><span class="toc-number">1.5.1.</span> <span class="toc-text">原：GPUTimestamps 类定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%AE%8C%E6%95%B4-init-onBeginFrame-onEndFrame-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.2.</span> <span class="toc-text">原：完整 init&#x2F;onBeginFrame&#x2F;onEndFrame 实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AScopeRenderCmdObject"><span class="toc-number">1.5.3.</span> <span class="toc-text">原：ScopeRenderCmdObject</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AColorAttachmentsBuilder"><span class="toc-number">1.5.4.</span> <span class="toc-text">原：ColorAttachmentsBuilder</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%85%89%E7%BA%BF%E8%BF%BD%E8%B8%AA%E6%89%A9%E5%B1%95%E5%87%BD%E6%95%B0%E5%BB%B6%E8%BF%9F%E5%8A%A0%E8%BD%BD"><span class="toc-number">1.5.5.</span> <span class="toc-text">原：光线追踪扩展函数延迟加载</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>密码加密 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="密码加密实现 适用范围：密码加密流程实现、加盐哈希代码、bcrypt&#x2F;Argon2 集成、ECC 椭圆曲线加密  一、项目&#x2F;模块概述 模块定位：密码加密是 IM 系统的安全基础，本文聚焦密码加密的具体实现细节，涵盖加盐哈希、密钥延申、ECC 椭圆曲线的工程落地。 技术栈与依赖：OpenSSL（SHA-256&#x2F;ECC）、bcrypt&#x2F;Argon2 库、CSPR">
+<meta property="og:type" content="article">
+<meta property="og:title" content="密码加密">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="密码加密实现 适用范围：密码加密流程实现、加盐哈希代码、bcrypt&#x2F;Argon2 集成、ECC 椭圆曲线加密  一、项目&#x2F;模块概述 模块定位：密码加密是 IM 系统的安全基础，本文聚焦密码加密的具体实现细节，涵盖加盐哈希、密钥延申、ECC 椭圆曲线的工程落地。 技术栈与依赖：OpenSSL（SHA-256&#x2F;ECC）、bcrypt&#x2F;Argon2 库、CSPR">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.569Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "密码加密",
+  "url": "https://weimo1.github.io/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.569Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '密码加密',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">密码加密</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">密码加密</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.569Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="密码加密实现"><a href="#密码加密实现" class="headerlink" title="密码加密实现"></a>密码加密实现</h1><blockquote>
+<p>适用范围：密码加密流程实现、加盐哈希代码、bcrypt&#x2F;Argon2 集成、ECC 椭圆曲线加密</p>
+</blockquote>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：密码加密是 IM 系统的安全基础，本文聚焦密码加密的具体实现细节，涵盖加盐哈希、密钥延申、ECC 椭圆曲线的工程落地。</li>
+<li><strong>技术栈与依赖</strong>：OpenSSL（SHA-256&#x2F;ECC）、bcrypt&#x2F;Argon2 库、CSPRNG（安全随机数生成器）。</li>
+<li><strong>模块边界</strong>：本文聚焦加密算法的代码实现，系统架构和安全策略见《密码加密方案》。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><h3 id="完整密码处理流程"><a href="#完整密码处理流程" class="headerlink" title="完整密码处理流程"></a>完整密码处理流程</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">注册流程：</span><br><span class="line">  用户输入密码 → 生成随机 salt → hash(salt + password) → 存储 salt + hash</span><br><span class="line"></span><br><span class="line">登录流程：</span><br><span class="line">  用户输入密码 → 取出该用户 salt → hash(salt + 输入密码)</span><br><span class="line">             → 比对存储的 hash → 一致则通过</span><br><span class="line"></span><br><span class="line">重置流程：</span><br><span class="line">  验证身份（邮箱/短信）→ 用户输入新密码 → 重新生成 salt + hash → 覆盖旧值</span><br></pre></td></tr></table></figure>
+
+<h3 id="分层安全模型"><a href="#分层安全模型" class="headerlink" title="分层安全模型"></a>分层安全模型</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>实现方式</th>
+<th>防护目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>存储层</td>
+<td>加盐哈希 + bcrypt&#x2F;Argon2</td>
+<td>防彩虹表、防暴力破解</td>
+</tr>
+<tr>
+<td>传输层</td>
+<td>HTTPS (TLS) + ECC 密钥交换</td>
+<td>防中间人窃听</td>
+</tr>
+<tr>
+<td>应用层</td>
+<td>密码强度校验 + 登录限流</td>
+<td>防弱密码、防爆破</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-加盐哈希原理"><a href="#3-1-加盐哈希原理" class="headerlink" title="3.1 加盐哈希原理"></a>3.1 加盐哈希原理</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">传统哈希问题：SHA-256(password) → 彩虹表可反查常见密码哈希值</span><br><span class="line"></span><br><span class="line">加盐哈希：SHA-256(salt + password)</span><br><span class="line">- 每个用户独立随机 salt（32 字节 CSPRNG）</span><br><span class="line">- 相同密码 → 不同哈希值 → 彩虹表失效</span><br><span class="line">- 需为每个 salt 独立爆破 → 计算量 = 密码空间 × 用户数</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-密钥延申（Key-Derivation）"><a href="#3-2-密钥延申（Key-Derivation）" class="headerlink" title="3.2 密钥延申（Key Derivation）"></a>3.2 密钥延申（Key Derivation）</h3><p>暴力破解的核心指标是”哈希计算速度”。SHA-256 设计目标是”快”，反而不利于密码存储。</p>
+<table>
+<thead>
+<tr>
+<th>算法</th>
+<th>salt</th>
+<th>可调 cost</th>
+<th>抗GPU&#x2F;ASIC</th>
+<th>推荐度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SHA-256</td>
+<td>手动</td>
+<td>无</td>
+<td>弱</td>
+<td>⭐⭐</td>
+</tr>
+<tr>
+<td>bcrypt</td>
+<td>内置</td>
+<td>rounds (2^n)</td>
+<td>中</td>
+<td>⭐⭐⭐</td>
+</tr>
+<tr>
+<td>Argon2id</td>
+<td>内置</td>
+<td>内存+迭代+并行度</td>
+<td>强</td>
+<td>⭐⭐⭐⭐⭐</td>
+</tr>
+</tbody></table>
+<h3 id="3-3-ECC-椭圆曲线"><a href="#3-3-ECC-椭圆曲线" class="headerlink" title="3.3 ECC 椭圆曲线"></a>3.3 ECC 椭圆曲线</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ECC vs RSA：</span><br><span class="line">- 256位 ECC ≈ 3072位 RSA 安全强度</span><br><span class="line">- 密钥更短 → 计算更快、带宽更小</span><br><span class="line">- 适合移动端和 IoT 设备</span><br><span class="line"></span><br><span class="line">常用曲线：secp256r1 (NIST P-256)、Curve25519</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li><strong>密码哈希算法选择</strong>：bcrypt（成熟稳定，rounds&#x3D;10~12）或 Argon2id（抗 GPU&#x2F;ASIC 最强）。SHA-256 仅适合 HMAC 场景。</li>
+<li><strong>salt 要求</strong>：每个用户独立、CSPRNG 生成（<code>/dev/urandom</code> 或 <code>RAND_bytes</code>）、32 字节。</li>
+<li><strong>cost factor 调优</strong>：以服务端单次验证耗时 200~500ms 为目标。bcrypt rounds &#x3D; 12 大约需要 250ms。</li>
+<li><strong>HTTPS 强制</strong>：所有认证接口必须走 TLS 1.2+，防止明文传输。</li>
+<li><strong>密码强度策略</strong>：最小 8 位、至少含大写+小写+数字+特殊字符中的 3 类、禁止常见密码 Top1000。</li>
+<li><strong>登录限流</strong>：同一 IP 连续失败 5 次 → 锁定 15 分钟；同一账号连续失败 3 次 → 验证码。</li>
+</ul>
+<h2 id="五、源码解析"><a href="#五、源码解析" class="headerlink" title="五、源码解析"></a>五、源码解析</h2><h3 id="5-1-bcrypt-集成"><a href="#5-1-bcrypt-集成" class="headerlink" title="5.1 bcrypt 集成"></a>5.1 bcrypt 集成</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;bcrypt/BCrypt.hpp&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 注册：生成哈希</span></span><br><span class="line"><span class="function">std::string <span class="title">hashPassword</span><span class="params">(<span class="type">const</span> std::string&amp; password)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// bcrypt 自动生成 salt 并嵌入结果</span></span><br><span class="line">    <span class="comment">// 返回格式：$2a$12$&lt;22-char-salt&gt;&lt;31-char-hash&gt;</span></span><br><span class="line">    <span class="comment">// rounds = 2^12 = 4096 次迭代</span></span><br><span class="line">    <span class="keyword">return</span> BCrypt::<span class="built_in">generateHash</span>(password, <span class="number">12</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 登录：验证密码</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">verifyPassword</span><span class="params">(<span class="type">const</span> std::string&amp; password, <span class="type">const</span> std::string&amp; hash)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> BCrypt::<span class="built_in">validatePassword</span>(password, hash);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-OpenSSL-SHA-256-手动加盐"><a href="#5-2-OpenSSL-SHA-256-手动加盐" class="headerlink" title="5.2 OpenSSL SHA-256 手动加盐"></a>5.2 OpenSSL SHA-256 手动加盐</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;openssl/sha.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;openssl/rand.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function">std::string <span class="title">toHex</span><span class="params">(<span class="type">const</span> <span class="type">unsigned</span> <span class="type">char</span>* data, <span class="type">size_t</span> len)</span> </span>&#123;</span><br><span class="line">    std::ostringstream oss;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; len; ++i)</span><br><span class="line">        oss &lt;&lt; std::hex &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">2</span>) &lt;&lt; std::<span class="built_in">setfill</span>(<span class="string">&#x27;0&#x27;</span>) &lt;&lt; (<span class="type">int</span>)data[i];</span><br><span class="line">    <span class="keyword">return</span> oss.<span class="built_in">str</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">PasswordRecord</span> &#123;</span><br><span class="line">    std::string salt; <span class="comment">// 32 bytes hex → 64 chars</span></span><br><span class="line">    std::string hash; <span class="comment">// SHA-256 → 64 chars</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function">PasswordRecord <span class="title">createPasswordRecord</span><span class="params">(<span class="type">const</span> std::string&amp; password)</span> </span>&#123;</span><br><span class="line">    PasswordRecord record;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 生成 32 字节随机 salt</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> salt[<span class="number">32</span>];</span><br><span class="line">    <span class="built_in">RAND_bytes</span>(salt, <span class="built_in">sizeof</span>(salt));</span><br><span class="line">    record.salt = <span class="built_in">toHex</span>(salt, <span class="built_in">sizeof</span>(salt));</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. SHA-256(salt + password)</span></span><br><span class="line">    std::string combined = record.salt + password;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> hash[SHA256_DIGEST_LENGTH];</span><br><span class="line">    <span class="built_in">SHA256</span>(<span class="built_in">reinterpret_cast</span>&lt;<span class="type">const</span> <span class="type">unsigned</span> <span class="type">char</span>*&gt;(combined.<span class="built_in">c_str</span>()),</span><br><span class="line">           combined.<span class="built_in">size</span>(), hash);</span><br><span class="line">    record.hash = <span class="built_in">toHex</span>(hash, <span class="built_in">sizeof</span>(hash));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> record;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">verifyPassword</span><span class="params">(<span class="type">const</span> std::string&amp; password,</span></span></span><br><span class="line"><span class="params"><span class="function">                    <span class="type">const</span> std::string&amp; salt,</span></span></span><br><span class="line"><span class="params"><span class="function">                    <span class="type">const</span> std::string&amp; storedHash)</span> </span>&#123;</span><br><span class="line">    std::string combined = salt + password;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> hash[SHA256_DIGEST_LENGTH];</span><br><span class="line">    <span class="built_in">SHA256</span>(<span class="built_in">reinterpret_cast</span>&lt;<span class="type">const</span> <span class="type">unsigned</span> <span class="type">char</span>*&gt;(combined.<span class="built_in">c_str</span>()),</span><br><span class="line">           combined.<span class="built_in">size</span>(), hash);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">toHex</span>(hash, SHA256_DIGEST_LENGTH) == storedHash;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-ECC-密钥交换（简化示例）"><a href="#5-3-ECC-密钥交换（简化示例）" class="headerlink" title="5.3 ECC 密钥交换（简化示例）"></a>5.3 ECC 密钥交换（简化示例）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;openssl/ec.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;openssl/ecdh.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 生成 ECC 密钥对</span></span><br><span class="line"><span class="function">EVP_PKEY* <span class="title">generateECCKey</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    EVP_PKEY_CTX* ctx = <span class="built_in">EVP_PKEY_CTX_new_id</span>(EVP_PKEY_EC, <span class="literal">nullptr</span>);</span><br><span class="line">    <span class="built_in">EVP_PKEY_keygen_init</span>(ctx);</span><br><span class="line">    <span class="built_in">EVP_PKEY_CTX_set_ec_paramgen_curve_nid</span>(ctx, NID_X9_62_prime256v1); <span class="comment">// P-256</span></span><br><span class="line">    EVP_PKEY* key = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="built_in">EVP_PKEY_keygen</span>(ctx, &amp;key);</span><br><span class="line">    <span class="built_in">EVP_PKEY_CTX_free</span>(ctx);</span><br><span class="line">    <span class="keyword">return</span> key;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ECDH 密钥交换 → 共享密钥用于 AES 加密</span></span><br><span class="line"><span class="function">std::vector&lt;<span class="type">uint8_t</span>&gt; <span class="title">deriveSharedSecret</span><span class="params">(EVP_PKEY* privateKey,</span></span></span><br><span class="line"><span class="params"><span class="function">                                         EVP_PKEY* peerPublicKey)</span> </span>&#123;</span><br><span class="line">    EVP_PKEY_CTX* ctx = <span class="built_in">EVP_PKEY_CTX_new</span>(privateKey, <span class="literal">nullptr</span>);</span><br><span class="line">    <span class="built_in">EVP_PKEY_derive_init</span>(ctx);</span><br><span class="line">    <span class="built_in">EVP_PKEY_derive_set_peer</span>(ctx, peerPublicKey);</span><br><span class="line"></span><br><span class="line">    <span class="type">size_t</span> secretLen = <span class="number">0</span>;</span><br><span class="line">    <span class="built_in">EVP_PKEY_derive</span>(ctx, <span class="literal">nullptr</span>, &amp;secretLen);</span><br><span class="line"></span><br><span class="line">    <span class="function">std::vector&lt;<span class="type">uint8_t</span>&gt; <span class="title">secret</span><span class="params">(secretLen)</span></span>;</span><br><span class="line">    <span class="built_in">EVP_PKEY_derive</span>(ctx, secret.<span class="built_in">data</span>(), &amp;secretLen);</span><br><span class="line">    <span class="built_in">EVP_PKEY_CTX_free</span>(ctx);</span><br><span class="line">    <span class="keyword">return</span> secret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法"><a href="#6-1-高频问法" class="headerlink" title="6.1 高频问法"></a>6.1 高频问法</h3><p><strong>Q1：为什么加盐？salt 的作用是什么？</strong><br>防止彩虹表攻击。相同密码不同用户产生不同哈希，攻击者无法批量反查。salt 不是秘密（可以明文存储），作用是让彩虹表失效。</p>
+<p><strong>Q2：为什么用 bcrypt 而不是 SHA-256？</strong><br>bcrypt 设计目标是”慢”（内置 rounds 迭代），暴力破解代价大。SHA-256 设计目标是”快”，GPU 可每秒计算数十亿次 SHA-256。</p>
+<p><strong>Q3：bcrypt 的 cost factor 如何选择？</strong><br>以服务端单次验证耗时 200~500ms 为目标。rounds &#x3D; 2^cost，cost&#x3D;12 → 4096 次迭代（约 250ms）。需根据服务器 CPU 压测调整。</p>
+<p><strong>Q4：Argon2 比 bcrypt 好在哪？</strong><br>Argon2 可配置内存消耗（如 64MB），对抗 GPU&#x2F;ASIC 并行攻击。bcrypt 固定 4KB 内存，专用硬件可大量并行爆破。Argon2 是 2015 年密码哈希竞赛冠军。</p>
+<p><strong>Q5：忘记密码怎么办？能恢复原文吗？</strong><br>不能。哈希是单向函数，无法从 hash 反推原文。只能通过验证邮箱&#x2F;手机 → 重置为新密码。</p>
+<p><strong>Q6：ECC 和 RSA 对比？</strong><br>256 位 ECC ≈ 3072 位 RSA 安全强度。ECC 密钥更短、计算更快、适合移动端。RSA 加解密快但密钥生成慢，ECC 密钥生成快。</p>
+<p><strong>Q7：salt 应该怎么生成？有什么要求？</strong><br>CSPRNG（加密安全伪随机数生成器）生成，每用户独立，长度 ≥ 16 字节（推荐 32）。不能用 <code>rand()</code> 或 <code>time(NULL)</code> —— 它们不是密码学安全的。</p>
+<p><strong>Q8：彩虹表是什么？怎么防御？</strong><br>预先计算的”常见密码 → 哈希值”映射表。防御：① 加盐（为每个 salt 建表不现实）；② 密钥延申（减慢计算速度）；③ 密码强度要求（避免常见密码）。</p>
+<p><strong>Q9：数据库泄露后密码有多危险？</strong><br>密码明文 → 立即全部暴露（最危险）。仅哈希 → 彩虹表可秒查常见密码。加盐哈希 + bcrypt → 攻击者需为每个用户暴力破解，cost&#x3D;12 约每秒 4 次尝试。</p>
+<p><strong>Q10：前端加密和后端加密哪个更重要？</strong><br>后端存储加密是底线（防止数据库泄露）。前端加密（如先做一次 SHA-256）能防止 HTTPS 中间人攻击，但不能替代后端加密——前端哈希若泄露等同于密码。</p>
+<h3 id="6-2-反问点"><a href="#6-2-反问点" class="headerlink" title="6.2 反问点"></a>6.2 反问点</h3><ul>
+<li>你们用的是什么密码哈希算法？bcrypt 还是 Argon2？</li>
+<li>cost factor 设置多少？有没有做过性能测试？</li>
+<li>登录限流策略是什么？失败几次锁定多久？</li>
+<li>数据库中的密码 hash 能否被内部人员访问？审计日志是否记录？</li>
+</ul>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ul>
+<li>加盐 &#x3D; salt + password → hash，让彩虹表失效</li>
+<li>bcrypt &gt; SHA-256 &#x3D; 设计为”慢”而非”快”</li>
+<li>Argon2 &gt; bcrypt &#x3D; 可配置内存消耗抗 GPU&#x2F;ASIC</li>
+<li>忘记密码 &#x3D; 不可恢复，只能重置</li>
+<li>ECC 256 位 ≈ RSA 3072 位</li>
+<li>salt 用 CSPRNG，每用户独立 32 字节</li>
+<li>彩虹表防御 &#x3D; 加盐 + 密钥延申 + 强密码策略</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">OWASP Password Storage Cheat Sheet</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://en.wikipedia.org/wiki/Bcrypt">bcrypt Wikipedia</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/P-H-C/phc-winner-argon2">Argon2 GitHub</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.openssl.org/docs/manmaster/man7/ECDH.html">OpenSSL ECDH 文档</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/">https://weimo1.github.io/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86%E6%96%B9%E6%A1%88/" title="密码加密方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">密码加密方案</div></div><div class="info-2"><div class="info-item-1">密码加密方案 适用范围：用户密码安全存储、加盐哈希、密钥延申、传输加密、bcrypt&#x2F;Argon2 选型  一、项目&#x2F;模块概述 模块定位：用户密码安全是 IM 系统的基础安全要求，涵盖存储端加盐哈希和传输端加密。密码一旦泄露会导致用户全网账号风险（用户通常多平台共用密码）。 技术栈与依赖：SHA-256 &#x2F; bcrypt &#x2F; Argon2（哈希算法）、HTTPS&#x2F;TLS（传输层加密）、ECC 椭圆曲线（非对称加密）、CSPRNG（安全随机数）。 模块边界：前端加密 → HTTPS 传输 → 服务端验证 → Token 返回。服务端永不存储...</div></div></div></a><a class="pagination-related" href="/posts/%E5%AE%9A%E6%97%B6%E5%99%A8/" title="定时器"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">定时器</div></div><div class="info-2"><div class="info-item-1">定时器 适用范围：高性能定时器系统设计、优先队列&#x2F;时间轮&#x2F;红黑树三种方案对比、muduo TimerQueue 源码分析、shared_ptr 延迟取消技巧  一、项目&#x2F;模块概述 模块定位：定时器是网络服务器的核心组件之一，负责管理超时连接关闭、心跳检测、周期任务调度等功能。高性能定时器需要支持海量定时任务的 O(1) 增删以及精确到毫秒级的触发精度。 技术栈与依赖：C++17、std::priority_queue &#x2F; std::set、std::chrono、智能指针（shared_ptr&#x2F;weak_ptr）、Linux timerf...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">密码加密实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%8C%E6%95%B4%E5%AF%86%E7%A0%81%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">完整密码处理流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E5%B1%82%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.2.2.</span> <span class="toc-text">分层安全模型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8A%A0%E7%9B%90%E5%93%88%E5%B8%8C%E5%8E%9F%E7%90%86"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 加盐哈希原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%AF%86%E9%92%A5%E5%BB%B6%E7%94%B3%EF%BC%88Key-Derivation%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 密钥延申（Key Derivation）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-ECC-%E6%A4%AD%E5%9C%86%E6%9B%B2%E7%BA%BF"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 ECC 椭圆曲线</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.</span> <span class="toc-text">四、工程实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-bcrypt-%E9%9B%86%E6%88%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 bcrypt 集成</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-OpenSSL-SHA-256-%E6%89%8B%E5%8A%A8%E5%8A%A0%E7%9B%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 OpenSSL SHA-256 手动加盐</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-ECC-%E5%AF%86%E9%92%A5%E4%BA%A4%E6%8D%A2%EF%BC%88%E7%AE%80%E5%8C%96%E7%A4%BA%E4%BE%8B%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 ECC 密钥交换（简化示例）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.7.</span> <span class="toc-text">附录</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

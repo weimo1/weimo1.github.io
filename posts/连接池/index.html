@@ -1,0 +1,312 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>连接池 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="连接池12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576777879808182838485868788899091929394959697989910010110">
+<meta property="og:type" content="article">
+<meta property="og:title" content="连接池">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E8%BF%9E%E6%8E%A5%E6%B1%A0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="连接池12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576777879808182838485868788899091929394959697989910010110">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.578Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "连接池",
+  "url": "https://weimo1.github.io/posts/%E8%BF%9E%E6%8E%A5%E6%B1%A0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.578Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E8%BF%9E%E6%8E%A5%E6%B1%A0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '连接池',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">连接池</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">连接池</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.578Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="连接池"><a href="#连接池" class="headerlink" title="连接池"></a>连接池</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br></pre></td><td class="code"><pre><span class="line">//</span><br><span class="line">// Created by qiyu on 12/14/17.</span><br><span class="line">//</span><br><span class="line"></span><br><span class="line">#ifndef ORMPP_CONNECTION_POOL_HPP</span><br><span class="line">#define ORMPP_CONNECTION_POOL_HPP</span><br><span class="line"></span><br><span class="line">#include &lt;chrono&gt;</span><br><span class="line">#include &lt;condition_variable&gt;</span><br><span class="line">#include &lt;deque&gt;</span><br><span class="line">#include &lt;memory&gt;</span><br><span class="line">#include &lt;mutex&gt;</span><br><span class="line">#include &lt;string&gt;</span><br><span class="line">#include &lt;tuple&gt;</span><br><span class="line"></span><br><span class="line">namespace ormpp &#123;</span><br><span class="line">template &lt;typename DB&gt;</span><br><span class="line">class connection_pool &#123;</span><br><span class="line"> public:</span><br><span class="line">  static connection_pool&lt;DB&gt; &amp;instance() &#123;</span><br><span class="line">    static connection_pool&lt;DB&gt; instance;</span><br><span class="line">    return instance;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // call_once</span><br><span class="line">  void init(int maxsize, const std::string &amp;host = &quot;&quot;,</span><br><span class="line">            const std::string &amp;user = &quot;&quot;, const std::string &amp;passwd = &quot;&quot;,</span><br><span class="line">            const std::string &amp;db = &quot;&quot;, const std::optional&lt;int&gt; &amp;timeout = &#123;&#125;,</span><br><span class="line">            const std::optional&lt;int&gt; &amp;port = &#123;&#125;) &#123;</span><br><span class="line">    std::call_once(flag_, &amp;connection_pool&lt;DB&gt;::init_impl, this, maxsize, host,</span><br><span class="line">                   user, passwd, db, timeout, port);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  std::shared_ptr&lt;DB&gt; get() &#123;</span><br><span class="line">    std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span><br><span class="line"></span><br><span class="line">    while (pool_.empty()) &#123;</span><br><span class="line">      if (condition_.wait_for(lock, std::chrono::seconds(3)) ==</span><br><span class="line">          std::cv_status::timeout) &#123;</span><br><span class="line">        // timeout</span><br><span class="line">        return nullptr;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    auto conn = pool_.front();</span><br><span class="line">    pool_.pop_front();</span><br><span class="line">    lock.unlock();</span><br><span class="line"></span><br><span class="line">    if (conn == nullptr || !conn-&gt;ping()) &#123;</span><br><span class="line">      return create_connection();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // check timeout, idle time shuold less than 8 hours</span><br><span class="line">    auto now = std::chrono::system_clock::now();</span><br><span class="line">    auto last = conn-&gt;get_latest_operate_time();</span><br><span class="line">    auto mins =</span><br><span class="line">        std::chrono::duration_cast&lt;std::chrono::minutes&gt;(now - last).count();</span><br><span class="line">    if ((mins - 6 * 60) &gt; 0) &#123;</span><br><span class="line">      return create_connection();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    conn-&gt;update_operate_time();</span><br><span class="line">    return conn;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  void return_back(std::shared_ptr&lt;DB&gt; conn) &#123;</span><br><span class="line">    if (conn == nullptr || conn-&gt;has_error()) &#123;</span><br><span class="line">      conn = create_connection();</span><br><span class="line">    &#125;</span><br><span class="line">    std::unique_lock&lt;std::mutex&gt; lock(mutex_);</span><br><span class="line">    pool_.push_back(conn);</span><br><span class="line">    lock.unlock();</span><br><span class="line">    condition_.notify_one();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"> private:</span><br><span class="line">  void init_impl(int maxsize, const std::string &amp;host, const std::string &amp;user,</span><br><span class="line">                 const std::string &amp;passwd, const std::string &amp;db,</span><br><span class="line">                 const std::optional&lt;int&gt; &amp;timeout,</span><br><span class="line">                 const std::optional&lt;int&gt; &amp;port) &#123;</span><br><span class="line">    args_ = std::make_tuple(host, user, passwd, db, timeout, port);</span><br><span class="line"></span><br><span class="line">    for (int i = 0; i &lt; maxsize; ++i) &#123;</span><br><span class="line">      auto conn = std::make_shared&lt;DB&gt;();</span><br><span class="line">      if (conn-&gt;connect(args_)) &#123;</span><br><span class="line">        pool_.push_back(conn);</span><br><span class="line">      &#125;</span><br><span class="line">      else &#123;</span><br><span class="line">        throw std::invalid_argument(&quot;init failed&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  auto create_connection() &#123;</span><br><span class="line">    auto conn = std::make_shared&lt;DB&gt;();</span><br><span class="line">    return conn-&gt;connect(args_) ? conn : nullptr;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  connection_pool() = default;</span><br><span class="line">  ~connection_pool() = default;</span><br><span class="line">  connection_pool(const connection_pool &amp;) = delete;</span><br><span class="line">  connection_pool &amp;operator=(const connection_pool &amp;) = delete;</span><br><span class="line"></span><br><span class="line">  std::mutex mutex_;</span><br><span class="line">  std::once_flag flag_;</span><br><span class="line">  std::condition_variable condition_;</span><br><span class="line">  std::deque&lt;std::shared_ptr&lt;DB&gt;&gt; pool_;</span><br><span class="line">  std::tuple&lt;std::string, std::string, std::string, std::string,</span><br><span class="line">             std::optional&lt;int&gt;, std::optional&lt;int&gt;&gt;</span><br><span class="line">      args_;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;typename DB&gt;</span><br><span class="line">struct conn_guard &#123;</span><br><span class="line">  conn_guard(std::shared_ptr&lt;DB&gt; con) : conn_(con) &#123;&#125;</span><br><span class="line">  ~conn_guard() &#123; connection_pool&lt;DB&gt;::instance().return_back(conn_.lock()); &#125;</span><br><span class="line"></span><br><span class="line"> private:</span><br><span class="line">  std::weak_ptr&lt;DB&gt; conn_;</span><br><span class="line">&#125;;</span><br><span class="line">&#125;  // namespace ormpp</span><br><span class="line"></span><br><span class="line">#endif  // ORMPP_CONNECTION_POOL_HPP</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="双重保险：call-once-防止并发初始化"><a href="#双重保险：call-once-防止并发初始化" class="headerlink" title="双重保险：call_once 防止并发初始化"></a>双重保险：call_once 防止并发初始化</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">init</span><span class="params">(<span class="type">int</span> maxsize, ...)</span> </span>&#123;</span><br><span class="line">    std::<span class="built_in">call_once</span>(flag_, &amp;connection_pool&lt;DB&gt;::init_impl, <span class="keyword">this</span>, maxsize, ...);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>连接池初始化只需执行一次，<code>call_once</code> 保证即使在多线程同时首次 <code>get()</code> 时也只会有一个线程执行 <code>init_impl</code>。注意 <code>flag_</code> 是实例成员（非静态），每个池实例独立控制初始化。</p>
+<h4 id="get-的超时等待机制"><a href="#get-的超时等待机制" class="headerlink" title="get() 的超时等待机制"></a>get() 的超时等待机制</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::shared_ptr&lt;DB&gt; <span class="title">get</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">std::unique_lock&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">    <span class="keyword">while</span> (pool_.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">        <span class="keyword">if</span> (condition_.<span class="built_in">wait_for</span>(lock, std::chrono::<span class="built_in">seconds</span>(<span class="number">3</span>)) ==</span><br><span class="line">            std::cv_status::timeout) &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nullptr</span>;  <span class="comment">// 超时返回空，避免无限阻塞</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键细节</strong>：① <code>wait_for</code> 而非 <code>wait</code>——给定上限防止永久阻塞；② <code>while</code> 循环而非 <code>if</code>——防止虚假唤醒导致取空队列；③ 返回 <code>nullptr</code> 而非抛异常——让调用方自行决策。</p>
+<h4 id="return-back-的健康检查与自动修复"><a href="#return-back-的健康检查与自动修复" class="headerlink" title="return_back 的健康检查与自动修复"></a>return_back 的健康检查与自动修复</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">return_back</span><span class="params">(std::shared_ptr&lt;DB&gt; conn)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (conn == <span class="literal">nullptr</span> || conn-&gt;<span class="built_in">has_error</span>()) &#123;</span><br><span class="line">        conn = <span class="built_in">create_connection</span>();  <span class="comment">// 坏连接被替换</span></span><br><span class="line">    &#125;</span><br><span class="line">    pool_.<span class="built_in">push_back</span>(conn);</span><br><span class="line">    condition_.<span class="built_in">notify_one</span>();  <span class="comment">// 唤醒等待的 get() 调用</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>归还时自动检查连接健康状态——坏连接被新连接替换后再入池。这样池中始终只有健康连接，避免下次 <code>get()</code> 取到坏连接。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>连接池初始大小一定是 0 吗？</strong> 否。建议启动时预热（如创建 5-10 个连接），避免首个请求因建立连接而超时</li>
+<li><strong>归还比获取更重要</strong>：连接泄漏（忘记 return_back）是生产中最常见的池故障——RAII guard 是根治方案</li>
+<li><strong>ping() 的实现成本</strong>：每次 <code>get()</code> 都 ping 对 MySQL 是轻量操作（COM_PING 几乎无开销），但高频场景可改为间隔 ping</li>
+<li><strong>空闲超时别设太激进</strong>：<code>wait_for</code> 设 3 秒超时合理（TCP 连接超时通常 30 秒+），太短会导致频繁创建新连接</li>
+<li><strong>单例 + 连接池 &#x3D; 双刃剑</strong>：全局唯一方便但不利于多数据库实例、不利于测试。单元测试中可注入 mock 池</li>
+<li><strong>监控每次 get 耗时</strong>：若平均耗时显著上升 → 池大小不够或数据库响应变慢</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: 连接池的核心数据结构是什么？</strong></p>
+<p><code>std::deque&lt;std::shared_ptr&lt;DB&gt;&gt; pool_</code>——双端队列存储可用连接。<code>deque</code> 而非 <code>stack</code>&#x2F;<code>queue</code> 可支持 LIFO 或 FIFO 调度。<code>shared_ptr</code> 保证连接在外借期间不被销毁。</p>
+<p><strong>Q2: 为什么用 shared_ptr 管理连接？</strong></p>
+<p>① 外借连接时 <code>shared_ptr</code> 计数 +1，连接不会在池析构时被销毁；② <code>conn_guard</code> 用 <code>weak_ptr</code> 观察连接是否仍存活；③ 多线程间安全传递所有权。</p>
+<p><strong>Q3: 连接池的 call_once 为什么是成员变量而非静态？</strong></p>
+<p>每个 <code>connection_pool&lt;DB&gt;</code> 实例独立——不同 DB 类型（MySQL、PostgreSQL）各有一个池，各自的 <code>init</code> 独立调用一次。作为实例成员允许运行时创建多个不同类型的池。</p>
+<p><strong>Q4: 归还连接时如果池已满（超过初始 maxsize）怎么办？</strong></p>
+<p>此实现中 <code>return_back</code> 无条件 push_back，未设上限。若需上限控制，应在 push 前检查 <code>pool_.size() &gt;= maxsize</code> 并丢弃多余连接。</p>
+<p><strong>Q5: 连接池获取超时后如何重试？</strong></p>
+<p>策略：① 简单重试 N 次（不推荐——可能放大故障）；② 重试 + 退避（exponential backoff）；③ 快速失败 + 上层熔断降级。推荐方案③——让调用方感知故障并降级（如从缓存读）。</p>
+<p><strong>Q6: 为什么 deque 而不是 vector 或 list？</strong></p>
+<p><code>deque</code> 两端 O(1) 操作——从队首取（front + pop_front），队尾还（push_back）。<code>vector</code> 在队首删除 O(n)，<code>list</code> 内存碎片化。<code>deque</code> 是连接池的最佳容器。</p>
+<p><strong>Q7: 多线程环境下 pool_ 的线程安全如何保证？</strong></p>
+<p><code>std::mutex mutex_</code> + <code>std::condition_variable condition_</code> 经典组合。<code>get()</code> 在等待期间 <code>unique_lock</code> 允许 <code>wait_for</code> 原子地 unlock → sleep → lock，避免死锁。</p>
+<p><strong>Q8: 连接池如何与 ORM 框架（如 ORMPP）集成？</strong></p>
+<p>ORM 框架通过 <code>conn_guard</code> 绑定连接生命周期：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> guard = <span class="built_in">conn_guard</span>(pool.<span class="built_in">get</span>());  <span class="comment">// 获取连接</span></span><br><span class="line"><span class="keyword">auto</span> result = guard-&gt;<span class="built_in">query</span>(<span class="string">&quot;SELECT ...&quot;</span>);  <span class="comment">// 使用连接</span></span><br><span class="line"><span class="comment">// guard 析构自动归还连接</span></span><br></pre></td></tr></table></figure>
+<p>完全透明，业务代码无需关心获取&#x2F;归还细节。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：<code>pool_.front()</code> 后忘记 <code>pop_front()</code> → 同一连接被多次分配。<strong>修复</strong>：确保 <code>front()</code> + <code>pop_front()</code> 成对出现。</p>
+</li>
+<li><p><strong>陷阱</strong>：<code>notify_one()</code> 放在 <code>unlock()</code> 前 → 被通知线程被唤醒后立即阻塞在 lock 上（”hurry up and wait”）。<strong>改进</strong>：<code>unlock()</code> 后再 <code>notify_one()</code>（本代码已正确处理）。</p>
+</li>
+<li><p><strong>陷阱</strong>：<code>condition_.wait_for</code> 返回后未检查返回值 → 可能使用 <code>nullptr</code> 连接。<strong>修复</strong>：检查超时返回 <code>nullptr</code>。</p>
+</li>
+<li><p><strong>反问</strong>：「如果数据库连接数达到上限，你的连接池如何处理？」希望听到：① 设 max_size 限制池大小；② <code>get()</code> 超时返回空；③ 监控告警；④ 业务侧限流降级。</p>
+</li>
+<li><p><strong>反问</strong>：「在多实例部署（K8s）下，每个 Pod 的连接池大小如何设置？」希望听到：总连接数 &#x3D; 单 Pod 池大小 × Pod 数 ≤ DB max_connections。Pod 数变化时需动态调整或使用 ProxySQL&#x2F;PgBouncer 等连接池中间件。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>连接池核心目的？</td>
+<td>复用 TCP 连接，消除三次握手+认证开销</td>
+</tr>
+<tr>
+<td>deque 优势？</td>
+<td>队首取队尾还均为 O(1)</td>
+</tr>
+<tr>
+<td>call_once 作用？</td>
+<td>保证多线程下只初始化一次</td>
+</tr>
+<tr>
+<td>wait_for 为什么用 while？</td>
+<td>防止虚假唤醒导致取空队列</td>
+</tr>
+<tr>
+<td>return_back 健康检查？</td>
+<td>坏连接替换为新连接再入池</td>
+</tr>
+<tr>
+<td>conn_guard？</td>
+<td>RAII：析构自动归还连接</td>
+</tr>
+<tr>
+<td>超时返回 nullptr？</td>
+<td>让调用方决策，不无限阻塞</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E8%BF%9E%E6%8E%A5%E6%B1%A0/">https://weimo1.github.io/posts/%E8%BF%9E%E6%8E%A5%E6%B1%A0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E9%80%9A%E7%94%A8%E6%80%A7&amp;%E5%A4%9AIDC&amp;%E6%96%B9%E6%A1%88%E6%80%BB%E7%BB%93/" title="通用性&amp;多IDC&amp;方案总结"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">通用性&多IDC&方案总结</div></div><div class="info-2"><div class="info-item-1">通用性 &amp; 多 IDC &amp; 方案总结 当 IM 系统需要支撑多条业务线时，长连接网关需要从中台化角度进行设计，支持多业务的灵活对接。同时多 IDC 架构保证异地多活，实现全球范围的低延迟和高可用。  一、核心概念 定义：通用性设计是指将长连接网关抽象为消息通道，通过配置化&#x2F;自动化&#x2F;平台化&#x2F;中台化&#x2F;产品化递进演进，支撑多业务线灵活复用。多 IDC 方案则是基于地理位置进行流量调度，实现跨数据中心的异地多活。 关键词：中台化、配置化、平台化、领域建模、发布&#x2F;订阅、单元化部署、多 IDC、广域请求、跨机房消息路由 适用场景&#x...</div></div></div></a><a class="pagination-related" href="/posts/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B_1/" title="进程和线程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">进程和线程</div></div><div class="info-2"><div class="info-item-1">进程和线程 适用范围：操作系统核心概念——进程、线程、协程的定义、区别与通信机制。  一、项目&#x2F;模块概述 模块定位：操作系统基础概念梳理——进程（资源分配单位）、线程（调度执行单位）、协程（用户态并发单位）的定义、区别、同步与通信方式。 技术栈与依赖：操作系统内核（Linux&#x2F;Windows）、POSIX 线程库、CPU 调度器。 模块边界：从概念定义到工程实践——进程间通信（IPC）、线程同步机制、调度算法、异常状态处理。  二、架构设计（≥200字）设计拆解（三层递进）第一层：进程、线程、协程的定义与关系  进程：一个正在运行的程序实例。程序是静态的，而进程是动态...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%BF%9E%E6%8E%A5%E6%B1%A0"><span class="toc-number">1.</span> <span class="toc-text">连接池</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.1.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.1.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%8C%E9%87%8D%E4%BF%9D%E9%99%A9%EF%BC%9Acall-once-%E9%98%B2%E6%AD%A2%E5%B9%B6%E5%8F%91%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">1.1.1.1.</span> <span class="toc-text">双重保险：call_once 防止并发初始化</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#get-%E7%9A%84%E8%B6%85%E6%97%B6%E7%AD%89%E5%BE%85%E6%9C%BA%E5%88%B6"><span class="toc-number">1.1.1.2.</span> <span class="toc-text">get() 的超时等待机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#return-back-%E7%9A%84%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E4%B8%8E%E8%87%AA%E5%8A%A8%E4%BF%AE%E5%A4%8D"><span class="toc-number">1.1.1.3.</span> <span class="toc-text">return_back 的健康检查与自动修复</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.1.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.2.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">1.2.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">1.2.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">1.2.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

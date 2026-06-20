@@ -1,0 +1,349 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>aligned_storage | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="aligned_storage 适用范围：C++ std::aligned_storage——管理对齐内存的模板类及其 C++23 替代方案。  参考：https:&#x2F;&#x2F;blog.csdn.net&#x2F;weixin_61470881&#x2F;article&#x2F;details&#x2F;144594288、https:&#x2F;&#x2F;dev59.com&#x2F;vVEG5IYBdhLWcg3wKFbw 一、核心概念 定义：std::aligne">
+<meta property="og:type" content="article">
+<meta property="og:title" content="aligned_storage">
+<meta property="og:url" content="https://weimo1.github.io/posts/aligned_storage/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="aligned_storage 适用范围：C++ std::aligned_storage——管理对齐内存的模板类及其 C++23 替代方案。  参考：https:&#x2F;&#x2F;blog.csdn.net&#x2F;weixin_61470881&#x2F;article&#x2F;details&#x2F;144594288、https:&#x2F;&#x2F;dev59.com&#x2F;vVEG5IYBdhLWcg3wKFbw 一、核心概念 定义：std::aligne">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.555Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "aligned_storage",
+  "url": "https://weimo1.github.io/posts/aligned_storage/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.555Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/aligned_storage/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'aligned_storage',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">aligned_storage</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">aligned_storage</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.555Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">内存模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="aligned-storage"><a href="#aligned-storage" class="headerlink" title="aligned_storage"></a>aligned_storage</h1><blockquote>
+<p>适用范围：C++ <code>std::aligned_storage</code>——管理对齐内存的模板类及其 C++23 替代方案。</p>
+</blockquote>
+<p>参考：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/weixin_61470881/article/details/144594288">https://blog.csdn.net/weixin_61470881/article/details/144594288</a>、<a target="_blank" rel="noopener external nofollow noreferrer" href="https://dev59.com/vVEG5IYBdhLWcg3wKFbw">https://dev59.com/vVEG5IYBdhLWcg3wKFbw</a></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::aligned_storage</code> 是 C++ 标准库中用于<strong>管理对齐内存的模板类</strong>，定义在 <code>&lt;type_traits&gt;</code> 头文件中。它通过模板参数指定内存大小和对齐方式，提供未初始化的内存区域，适用于需要精确控制内存布局的场景。</li>
+<li><strong>关键词</strong>：<code>std::aligned_storage</code>、<code>std::aligned_union</code>、对齐存储、placement new、显式析构、<code>std::aligned_flat_storage</code>（C++23）、SBO</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>实现自定义容器（如 <code>std::optional</code>、<code>std::variant</code> 等）</li>
+<li>手动管理内存时保持布局一致性</li>
+<li>延迟构造对象（配合 placement new）</li>
+<li>C++23 已弃用，应迁移至 <code>std::aligned_flat_storage</code> 或 <code>alignas(T) std::byte data[sizeof(T)]</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：基本工作原理</strong></p>
+<p><code>std::aligned_storage</code> 的核心功能：</p>
+<ul>
+<li><strong>内存对齐管理</strong>：通过模板参数设置内存大小（Len）和对齐方式（Align），确保数据按特定规则排列</li>
+<li><strong>类型安全保障</strong>：提供 <code>type</code> 类型别名，避免直接操作未初始化内存导致的未定义行为</li>
+</ul>
+<p><strong>第二层：关键步骤详解</strong></p>
+<p><code>std::aligned_storage</code> 的语法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;std::<span class="type">size_t</span> Len, std::<span class="type">size_t</span> Align = <span class="built_in">alignof</span>(std::<span class="type">max_align_t</span>)&gt;</span><br><span class="line"><span class="keyword">struct</span> aligned_storage;</span><br></pre></td></tr></table></figure>
+
+<p>其中：</p>
+<ul>
+<li><code>Len</code> 表示所要分配的存储空间的大小（以字节为单位）</li>
+<li><code>Align</code> 表示存储空间的对齐要求（以字节为单位），默认值为 <code>std::max_align_t</code>，该值将会满足所有数据类型的对齐要求</li>
+</ul>
+<p>例如，在 x86-64 平台上，最大对齐值通常是 16 个字节（因为 <code>long double</code> 类型的对齐值是 16 个字节）；在 ARM 平台上，最大对齐值可能会是 8 个字节（因为 <code>double</code> 类型的对齐值是 8 个字节）。</p>
+<p>使用如下语句可以得到一个类型：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">std::aligned_storage&lt;<span class="number">20</span>,<span class="number">4</span>&gt;::type  <span class="comment">// 定义了一个20字节为大小，4字节对齐（地址为4的倍数）的内存块类型</span></span><br></pre></td></tr></table></figure>
+
+<p>上述语句定义了一个 20 字节为大小，4 字节对齐的内存块类型，使用该类型可以在堆空间或栈空间上分配该内存块。</p>
+<p><code>std::aligned_union</code> 与 <code>std::aligned_storage</code> 类似，也用于创建具有特定对齐要求的存储，不过它更侧重于联合类型的存储。</p>
+<p><strong>第三层：底层机制</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;std::<span class="type">size_t</span> Len, std::<span class="type">size_t</span> Align = <span class="built_in">alignof</span>(<span class="type">max_align_t</span>)&gt;</span><br><span class="line"><span class="keyword">struct</span> aligned_storage &#123;</span><br><span class="line">    <span class="built_in">alignas</span>(Align) <span class="type">unsigned</span> <span class="type">char</span> data[Len];  <span class="comment">// 裸字节数组 + 对齐约束</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>编译器通过 <code>alignas</code> 确保 <code>data</code> 数组按 <code>Align</code> 对齐。使用时配合 placement new 构造对象，用完后显式调用析构函数。编译器不会为 <code>aligned_storage</code> 自动管理生命周期。</p>
+<ul>
+<li><strong>关键数据结构</strong>：<code>aligned_storage&lt;Len, Align&gt;::type</code>、placement new 返回值</li>
+<li><strong>关键公式</strong>：对齐存储字节数 ≥ <code>sizeof(T)</code>，对齐值 ≥ <code>alignof(T)</code></li>
+</ul>
+<h3 id="被弃用的原因"><a href="#被弃用的原因" class="headerlink" title="被弃用的原因"></a>被弃用的原因</h3><p><code>std::aligned_storage</code> 和 <code>std::aligned_union</code> 被弃用的主要原因是它们不能很好地满足实际使用需求。例如，<code>aligned_storage</code> 不能保证准确适应存储需求——保证 <code>aligned_storage&lt;16&gt;::type</code> 至少为 16 个字节，但是一个符合标准的实现可以轻松地提供 32 个字节或 4K 字节。这就可能导致意外使用，给开发者带来困扰。</p>
+<h3 id="替代方案"><a href="#替代方案" class="headerlink" title="替代方案"></a>替代方案</h3><p>可以使用类似 <code>libstdc++</code> 的 <code>__aligned_membuf</code> 来替代：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">storage_for</span> &#123;</span><br><span class="line">    <span class="built_in">alignas</span>(T) std::byte data[<span class="built_in">sizeof</span>(T)];</span><br><span class="line">    <span class="comment">// 可以添加一些有用的构造函数和方法</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h3 id="3-1-基本使用"><a href="#3-1-基本使用" class="headerlink" title="3.1 基本使用"></a>3.1 基本使用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;type_traits&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> std::aligned_storage&lt;<span class="built_in">sizeof</span>(<span class="type">int</span>), std::alignment_of&lt;<span class="type">double</span>&gt;::value&gt;::type new_type;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;alignment_of&lt;int&gt; == &quot;</span> &lt;&lt; std::alignment_of&lt;<span class="type">int</span>&gt;::value &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;aligned to double == &quot;</span> &lt;&lt; std::alignment_of&lt;new_type&gt;::value &lt;&lt; std::endl;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-延迟构造与显式析构"><a href="#3-2-延迟构造与显式析构" class="headerlink" title="3.2 延迟构造与显式析构"></a>3.2 延迟构造与显式析构</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">aligned_storage_t</span>&lt;<span class="built_in">sizeof</span>(MyClass), <span class="built_in">alignof</span>(MyClass)&gt; storage;</span><br><span class="line">MyClass* p = <span class="built_in">new</span> (&amp;storage) <span class="built_in">MyClass</span>(<span class="number">42</span>);  <span class="comment">// placement new 构造</span></span><br><span class="line">p-&gt;~<span class="built_in">MyClass</span>();  <span class="comment">// 必须显式析构！</span></span><br><span class="line"><span class="comment">// 编译器不会为 aligned_storage 自动管理生命周期</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-aligned-storage-在自定义-variant-中的应用"><a href="#3-3-aligned-storage-在自定义-variant-中的应用" class="headerlink" title="3.3 aligned_storage 在自定义 variant 中的应用"></a>3.3 aligned_storage 在自定义 variant 中的应用</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;type_traits&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;new&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span>... Types&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SimpleVariant</span> &#123;</span><br><span class="line">    <span class="keyword">using</span> Storage = std::<span class="type">aligned_union_t</span>&lt;<span class="number">0</span>, Types...&gt;;</span><br><span class="line">    Storage data;</span><br><span class="line">    <span class="type">int</span> type_index = <span class="number">-1</span>;</span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">    <span class="type">void</span> <span class="title">emplace</span><span class="params">(Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">new</span> (&amp;data) <span class="built_in">T</span>(std::forward&lt;Args&gt;(args)...);</span><br><span class="line">        type_index = <span class="comment">/* find index of T */</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function">    T&amp; <span class="title">get</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> *<span class="built_in">reinterpret_cast</span>&lt;T*&gt;(&amp;data);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ~<span class="built_in">SimpleVariant</span>() &#123;</span><br><span class="line">        <span class="comment">// 需要根据 type_index 调用对应类型的析构</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="标准库中的实际应用"><a href="#标准库中的实际应用" class="headerlink" title="标准库中的实际应用"></a>标准库中的实际应用</h3><ol>
+<li><p><strong><code>std::optional</code> 的底层存储</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libstdc++ 的 std::optional 内部</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">optional</span> &#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">_Optional_payload</span> &#123;</span><br><span class="line">        <span class="comment">// 使用 aligned storage 存储 T，延迟构造</span></span><br><span class="line">        <span class="type">aligned_storage_t</span>&lt;<span class="built_in">sizeof</span>(T), <span class="built_in">alignof</span>(T)&gt; _M_storage;</span><br><span class="line">        <span class="type">bool</span> _M_engaged = <span class="literal">false</span>;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong><code>std::variant</code> 的底层存储</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 使用 aligned_union 存储多种可能类型</span></span><br><span class="line"><span class="keyword">using</span> <span class="type">storage_t</span> = <span class="type">aligned_union_t</span>&lt;<span class="number">0</span>, <span class="type">int</span>, <span class="type">double</span>, std::string&gt;;</span><br><span class="line"><span class="type">storage_t</span> buffer;</span><br><span class="line"><span class="comment">// 通过 placement new 构造实际类型</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong><code>std::any</code> 的小对象优化</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// std::any 内部针对小对象使用 SBO</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">constexpr</span> <span class="type">size_t</span> SBO_SIZE = <span class="built_in">sizeof</span>(<span class="type">void</span>*) * <span class="number">4</span>;</span><br><span class="line"><span class="type">aligned_storage_t</span>&lt;SBO_SIZE&gt; _M_buffer;</span><br><span class="line"><span class="comment">// 小对象直接存缓冲区，大对象存堆</span></span><br></pre></td></tr></table></figure></li>
+</ol>
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>placement new</strong>：对齐存储上构造对象的唯一合法方式</li>
+<li><strong>显式析构</strong>：<code>ptr-&gt;~T()</code> 手动调用析构函数，编译器不会自动析构</li>
+<li><strong>类型擦除</strong>：<code>std::function</code>、<code>std::any</code> 内部都使用了类似 aligned_storage 的技术</li>
+<li><strong>POD 类型</strong>：<code>aligned_storage</code> 本身是 trivial 类型，可用于 memcpy</li>
+</ul>
+<h3 id="常见优化策略"><a href="#常见优化策略" class="headerlink" title="常见优化策略"></a>常见优化策略</h3><ul>
+<li><strong>C++23 用 <code>aligned_flat_storage</code></strong>：类型安全的替代方案</li>
+<li><strong>对齐值必须是 2 的幂</strong>：否则编译错误</li>
+<li><strong>生命周期管理全手动</strong>：不调用析构→资源泄漏</li>
+<li><strong>union 和 <code>aligned_storage</code> 的区别</strong>：union 只能存一种类型（同时只能活跃一个），aligned_storage 可复用于不同场景</li>
+<li><strong>适合实现 variant&#x2F;optional</strong>：底层用 aligned_storage + unsigned char 表示状态</li>
+</ul>
+<h3 id="std-numeric-limits-has-denorm-也被-C-23-弃用"><a href="#std-numeric-limits-has-denorm-也被-C-23-弃用" class="headerlink" title="std::numeric_limits::has_denorm 也被 C++23 弃用"></a><code>std::numeric_limits::has_denorm</code> 也被 C++23 弃用</h3><p><code>std::numeric_limits::has_denorm</code> 是 <code>std::numeric_limits</code> 类的一个静态成员常量，用于鉴别浮点类型所用的非正规风格。其值可以是：</p>
+<ul>
+<li><code>std::denorm_absent</code>：表示该类型不支持非正规值</li>
+<li><code>std::denorm_present</code>：表示该类型支持非正规值</li>
+</ul>
+<p>标准特化中，对于大多数整数类型，<code>has_denorm</code> 的值为 <code>std::denorm_absent</code>；对于 <code>float</code>、<code>double</code> 和 <code>long double</code> 类型，通常为 <code>std::denorm_present</code>。</p>
+<p>在 C++23 中，<code>std::aligned_storage</code>、<code>std::aligned_union</code>（提案 P1413R3）以及 <code>std::numeric_limits::has_denorm</code>（提案 P2614R2）都被列入了弃用名单。</p>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="1-aligned-storage-的底层实现"><a href="#1-aligned-storage-的底层实现" class="headerlink" title="1. aligned_storage 的底层实现"></a>1. aligned_storage 的底层实现</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;std::<span class="type">size_t</span> Len, std::<span class="type">size_t</span> Align = <span class="built_in">alignof</span>(<span class="type">max_align_t</span>)&gt;</span><br><span class="line"><span class="keyword">struct</span> aligned_storage &#123;</span><br><span class="line">    <span class="built_in">alignas</span>(Align) <span class="type">unsigned</span> <span class="type">char</span> data[Len];  <span class="comment">// 裸字节数组 + 对齐约束</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 用途: 提供未初始化的对齐存储，配合 placement new 延迟构造</span></span><br><span class="line"><span class="comment">// C++23: 改为 aligned_flat_storage，更安全的接口</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-延迟构造与显式析构"><a href="#2-延迟构造与显式析构" class="headerlink" title="2. 延迟构造与显式析构"></a>2. 延迟构造与显式析构</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">aligned_storage_t</span>&lt;<span class="built_in">sizeof</span>(MyClass), <span class="built_in">alignof</span>(MyClass)&gt; storage;</span><br><span class="line">MyClass* p = <span class="built_in">new</span> (&amp;storage) <span class="built_in">MyClass</span>(<span class="number">42</span>);  <span class="comment">// placement new 构造</span></span><br><span class="line">p-&gt;~<span class="built_in">MyClass</span>();  <span class="comment">// 必须显式析构！</span></span><br><span class="line"><span class="comment">// 编译器不会为 aligned_storage 自动管理生命周期</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>C++23 用 aligned_flat_storage</strong>：类型安全替代</li>
+<li><strong>对齐值必须是 2 的幂</strong>：否则编译错误</li>
+<li><strong>生命周期管理全手动</strong>：不调用析构→资源泄漏</li>
+<li><strong>union 和 aligned_storage 的区别</strong>：union 只能存一种类型，aligned_storage 可复用</li>
+<li><strong>适合实现 variant&#x2F;optional</strong>：底层用 aligned_storage + unsigned char 表示状态</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（10题）"><a href="#Q-A（10题）" class="headerlink" title="Q&amp;A（10题）"></a>Q&amp;A（10题）</h3><p><strong>Q1: aligned_storage 的用途？</strong><br>A: 提供原始对齐存储，允许在已分配内存上延迟构造对象</p>
+<p><strong>Q2: aligned_storage 和 union 的区别？</strong><br>A: union 明确声明所有可能类型；aligned_storage 是未类型化的原始字节缓冲区</p>
+<p><strong>Q3: 如何在对齐存储上构造对象？</strong><br>A: placement new: <code>new (&amp;storage) T(args...)</code></p>
+<p><strong>Q4: 对齐存储中的对象如何销毁？</strong><br>A: 必须显式调用析构函数: <code>p-&gt;~T()</code>，编译器不会自动析构</p>
+<p><strong>Q5: C++23 中 aligned_storage 被什么替代？</strong><br>A: <code>std::aligned_flat_storage</code>（更安全的类型化接口）</p>
+<p><strong>Q6: aligned_storage 的第二个模板参数是什么？</strong><br>A: 对齐值，默认 <code>alignof(std::max_align_t)</code></p>
+<p><strong>Q7: 对齐不匹配会导致什么问题？</strong><br>A: UB——可能触发硬件异常或性能严重下降</p>
+<p><strong>Q8: 哪些标准库类型内部使用 aligned_storage？</strong><br>A: std::optional、std::variant、std::any 内部都用了类似技术</p>
+<p><strong>Q9: aligned_union 和 aligned_storage 的区别？</strong><br>A: aligned_union 自动计算满足多个类型中大者的 Len 和 Align</p>
+<p><strong>Q10: aligned_storage 是 trivial 类型吗？</strong><br>A: 是（纯 char 数组），可用于 memcpy 等</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：忘记调用析构→非平凡类型的资源泄漏</li>
+<li><strong>反问</strong>：为什么 C++23 要弃用 aligned_storage？→ 易导致 UB 且不直观</li>
+<li><strong>陷阱</strong>：访问 aligned_storage 前未 placement new→UB</li>
+<li><strong>反问</strong>：能否用 char 数组替代 aligned_storage？→ 不能保证对齐</li>
+<li><strong>陷阱</strong>：<code>reinterpret_cast&lt;T*&gt;(&amp;storage)</code> 而非 placement new→UB</li>
+</ol>
+<h3 id="一句话答案（8个）"><a href="#一句话答案（8个）" class="headerlink" title="一句话答案（8个）"></a>一句话答案（8个）</h3><ol>
+<li><strong>aligned_storage</strong>：裸字节对齐存储</li>
+<li><strong>placement new</strong>：对齐存储上构造对象</li>
+<li><strong>显式析构</strong>：<code>ptr-&gt;~T()</code> 手动调析构</li>
+<li><strong>对齐模板参数</strong>：默认 alignof(max_align_t)</li>
+<li><strong>C++23 替代</strong>：aligned_flat_storage</li>
+<li><strong>内部使用</strong>：optional&#x2F;variant&#x2F;any</li>
+<li><strong>aligned_union</strong>：自动选最大 Len&#x2F;Align</li>
+<li><strong>trivial</strong>：是，可 memcpy</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/aligned_storage/">https://weimo1.github.io/posts/aligned_storage/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_2/" title="asio多线程模型IOServicePool"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">asio多线程模型IOServicePool</div></div><div class="info-2"><div class="info-item-1">IOServicePool实现IOServicePool本质上是一个线程池，基本功能就是根据构造函数传入的数量创建n个线程和iocontext，然后每个线程跑一个iocontext，这样就可以并发处理不同iocontext读写事件了。 IOServicePool: 1234567891011121314151617181920class AsioIOServicePool:public Singleton&lt;AsioIOServicePool&gt;&#123;    friend Singleton&lt;AsioIOServicePool&gt;;public:    using...</div></div></div></a><a class="pagination-related" href="/posts/asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool_1/" title="asio多线程模型IOServicePool"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">asio多线程模型IOServicePool</div></div><div class="info-2"><div class="info-item-1">IOServicePool实现IOServicePool本质上是一个线程池，基本功能就是根据构造函数传入的数量创建n个线程和iocontext，然后每个线程跑一个iocontext，这样就可以并发处理不同iocontext读写事件了。 IOServicePool: 1234567891011121314151617181920class AsioIOServicePool:public Singleton&lt;AsioIOServicePool&gt;&#123;    friend Singleton&lt;AsioIOServicePool&gt;;public:    using...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#aligned-storage"><span class="toc-number">1.</span> <span class="toc-text">aligned_storage</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A2%AB%E5%BC%83%E7%94%A8%E7%9A%84%E5%8E%9F%E5%9B%A0"><span class="toc-number">1.2.2.</span> <span class="toc-text">被弃用的原因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9B%BF%E4%BB%A3%E6%96%B9%E6%A1%88"><span class="toc-number">1.2.3.</span> <span class="toc-text">替代方案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%9F%BA%E6%9C%AC%E4%BD%BF%E7%94%A8"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 基本使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%BB%B6%E8%BF%9F%E6%9E%84%E9%80%A0%E4%B8%8E%E6%98%BE%E5%BC%8F%E6%9E%90%E6%9E%84"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 延迟构造与显式析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-aligned-storage-%E5%9C%A8%E8%87%AA%E5%AE%9A%E4%B9%89-variant-%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 aligned_storage 在自定义 variant 中的应用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%87%E5%87%86%E5%BA%93%E4%B8%AD%E7%9A%84%E5%AE%9E%E9%99%85%E5%BA%94%E7%94%A8"><span class="toc-number">1.4.1.</span> <span class="toc-text">标准库中的实际应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.2.</span> <span class="toc-text">与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.4.3.</span> <span class="toc-text">常见优化策略</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#std-numeric-limits-has-denorm-%E4%B9%9F%E8%A2%AB-C-23-%E5%BC%83%E7%94%A8"><span class="toc-number">1.4.4.</span> <span class="toc-text">std::numeric_limits::has_denorm 也被 C++23 弃用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-aligned-storage-%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. aligned_storage 的底层实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%BB%B6%E8%BF%9F%E6%9E%84%E9%80%A0%E4%B8%8E%E6%98%BE%E5%BC%8F%E6%9E%90%E6%9E%84"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. 延迟构造与显式析构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.3.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%8810%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（10题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%888%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（8个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

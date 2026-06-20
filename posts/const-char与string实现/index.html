@@ -1,0 +1,291 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>const char与string实现 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="const char* 与 string 实现一、核心概念 定义：const char* 是 C 风格字符串的底层类型——指向常量字符的指针，以 \0 结尾；std::string 是 C++ RAII 封装的动态字符串类，内部管理堆内存分配和 SSO（短字符串优化） 关键词：const char* vs char*、字符串字面量、SSO、c_str()、自定义 string 实现、字符数组模板推">
+<meta property="og:type" content="article">
+<meta property="og:title" content="const char与string实现">
+<meta property="og:url" content="https://weimo1.github.io/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="const char* 与 string 实现一、核心概念 定义：const char* 是 C 风格字符串的底层类型——指向常量字符的指针，以 \0 结尾；std::string 是 C++ RAII 封装的动态字符串类，内部管理堆内存分配和 SSO（短字符串优化） 关键词：const char* vs char*、字符串字面量、SSO、c_str()、自定义 string 实现、字符数组模板推">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.556Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "const char与string实现",
+  "url": "https://weimo1.github.io/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.556Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'const char与string实现',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">const char与string实现</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">const char与string实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.556Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/">基础知识</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/">基础概念</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="const-char-与-string-实现"><a href="#const-char-与-string-实现" class="headerlink" title="const char* 与 string 实现"></a>const char* 与 string 实现</h1><h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>const char*</code> 是 C 风格字符串的底层类型——指向常量字符的指针，以 <code>\0</code> 结尾；<code>std::string</code> 是 C++ RAII 封装的动态字符串类，内部管理堆内存分配和 SSO（短字符串优化）</li>
+<li><strong>关键词</strong>：<code>const char*</code> vs <code>char*</code>、字符串字面量、SSO、<code>c_str()</code>、自定义 string 实现、字符数组模板推导</li>
+<li><strong>适用场景&#x2F;边界</strong>：const char* 适合 C API 交互和性能关键路径；std::string 适合日常开发；自定义 string 适合学习内存管理和理解 SSO 原理</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><em><em>第一层——const char</em> 三种形式</em>*：<code>const char* p</code>（指向常量，指针可改）、<code>char const* p</code>（同上）、<code>char* const p</code>（指针常量，内容可改）。C++ 中字符串字面量类型是 <code>const char[N]</code>（不可修改），C 中是 <code>char[N]</code>（可修改，但修改是 UB）</li>
+<li><strong>第二层——std::string 的核心设计</strong>：内部维护 <code>char* data_</code> + <code>size_t size_</code> + <code>size_t capacity_</code>。SSO 优化下短字符串（GCC≤15字节）直接存储在对象内部 union 缓冲中无需堆分配。<code>c_str()</code> 返回内部缓冲区的 const 指针（保证 <code>\0</code> 结尾）</li>
+<li><strong>第三层——自定义 string 的最小实现</strong>：需要三个特殊函数（拷贝构造 <code>memcpy</code>、移动构造 <code>swap</code> 指针、析构 <code>delete[]</code>）+ <code>reserve</code>（扩容策略）+ <code>append</code>（拼接含扩容检测）</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：GCC <code>sizeof(string) = 32</code>（data 指针 + size + capacity + 16字节本地缓冲）；<code>std::strlen</code> 计算 C 字符串长度</li>
+<li><strong>关键公式</strong>：扩容策略 <code>new_cap = std::max(old_cap * 2, size + len)</code>；最小容量 <code>s_min_capacity = 15</code></li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 自定义最小 string 实现</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">string</span> &#123;</span><br><span class="line">    <span class="type">static</span> <span class="type">const</span> <span class="type">size_t</span> s_min_capacity = <span class="number">15</span>;</span><br><span class="line">    <span class="type">char</span>* data_;</span><br><span class="line">    <span class="type">size_t</span> size_;</span><br><span class="line">    <span class="type">size_t</span> capacity_;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">realloc_data</span><span class="params">(<span class="type">size_t</span> new_cap)</span> </span>&#123;</span><br><span class="line">        new_cap = std::<span class="built_in">max</span>(new_cap, s_min_capacity);</span><br><span class="line">        <span class="type">char</span>* new_data = <span class="keyword">new</span> <span class="type">char</span>[new_cap + <span class="number">1</span>];</span><br><span class="line">        <span class="keyword">if</span> (data_) &#123;</span><br><span class="line">            std::<span class="built_in">memcpy</span>(new_data, data_, size_ + <span class="number">1</span>);  <span class="comment">// +1 拷贝 \0</span></span><br><span class="line">            <span class="keyword">delete</span>[] data_;</span><br><span class="line">        &#125;</span><br><span class="line">        data_ = new_data;</span><br><span class="line">        capacity_ = new_cap;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">string</span>() : <span class="built_in">data_</span>(<span class="keyword">new</span> <span class="type">char</span>[s_min_capacity + <span class="number">1</span>]), <span class="built_in">size_</span>(<span class="number">0</span>), <span class="built_in">capacity_</span>(s_min_capacity) &#123;</span><br><span class="line">        data_[<span class="number">0</span>] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">string</span>(<span class="type">const</span> <span class="type">char</span>* str) : <span class="built_in">string</span>() &#123;</span><br><span class="line">        <span class="keyword">if</span> (!str) <span class="keyword">throw</span> std::<span class="built_in">invalid_argument</span>(<span class="string">&quot;null pointer&quot;</span>);</span><br><span class="line">        size_ = std::<span class="built_in">strlen</span>(str);</span><br><span class="line">        <span class="keyword">if</span> (size_ &gt; capacity_) <span class="built_in">reserve</span>(size_);</span><br><span class="line">        std::<span class="built_in">memcpy</span>(data_, str, size_ + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 拷贝构造</span></span><br><span class="line">    <span class="built_in">string</span>(<span class="type">const</span> string&amp; other) : <span class="built_in">data_</span>(<span class="keyword">new</span> <span class="type">char</span>[other.capacity_ + <span class="number">1</span>]),</span><br><span class="line">        <span class="built_in">size_</span>(other.size_), <span class="built_in">capacity_</span>(other.capacity_) &#123;</span><br><span class="line">        std::<span class="built_in">memcpy</span>(data_, other.data_, size_ + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 移动构造（noexcept 重要！）</span></span><br><span class="line">    <span class="built_in">string</span>(string&amp;&amp; other) <span class="keyword">noexcept</span> : <span class="built_in">data_</span>(other.data_),</span><br><span class="line">        <span class="built_in">size_</span>(other.size_), <span class="built_in">capacity_</span>(other.capacity_) &#123;</span><br><span class="line">        other.data_ = <span class="literal">nullptr</span>;</span><br><span class="line">        other.size_ = other.capacity_ = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ~<span class="built_in">string</span>() &#123; <span class="keyword">delete</span>[] data_; &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">reserve</span><span class="params">(<span class="type">size_t</span> new_cap)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (new_cap &gt; capacity_) <span class="built_in">realloc_data</span>(new_cap);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function">string&amp; <span class="title">append</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* str)</span> </span>&#123;</span><br><span class="line">        <span class="type">size_t</span> len = std::<span class="built_in">strlen</span>(str);</span><br><span class="line">        <span class="keyword">if</span> (size_ + len &gt; capacity_) <span class="built_in">reserve</span>((size_ + len) * <span class="number">2</span>);</span><br><span class="line">        std::<span class="built_in">memcpy</span>(data_ + size_, str, len);</span><br><span class="line">        size_ += len;</span><br><span class="line">        data_[size_] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line">        <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="type">const</span> <span class="type">char</span>* <span class="title">c_str</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_; &#125;</span><br><span class="line">    <span class="function"><span class="type">size_t</span> <span class="title">size</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> size_; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function">string <span class="title">s</span><span class="params">(<span class="string">&quot;hello&quot;</span>)</span></span>;</span><br><span class="line">    s.<span class="built_in">append</span>(<span class="string">&quot; world&quot;</span>);</span><br><span class="line">    std::cout &lt;&lt; s.<span class="built_in">c_str</span>() &lt;&lt; std::endl;  <span class="comment">// hello world</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>预期</strong>：理解 string 的内存管理（扩容&#x2F;拷贝&#x2F;移动）、const char* 的三种形式</li>
+<li><strong>补充</strong>：生产代码用 <code>std::string</code>，自定义版本仅用于学习内存管理机制</li>
+</ul>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><ul>
+<li><strong>与其他主题的关联</strong>：与内存管理（RAII、三&#x2F;五法则）、移动语义（noexcept 移动构造）、SSO 优化（union 复用空间）、模板元编程（字符数组模板推导）强相关</li>
+<li><strong>工程中的真实用法</strong>：<ul>
+<li><em><em>const char</em> 陷阱</em>*：字符串字面量不可修改——<code>char* s = &quot;hello&quot;; s[0] = &#39;H&#39;</code> 是 UB（段错误）。C++ 中字面量类型是 <code>const char[N]</code>，必须用 <code>const char*</code> 接收</li>
+<li><strong><code>c_str()</code> 生命周期</strong>：返回的指针在 string 对象被修改或析构后失效——不要存储 <code>c_str()</code> 返回值跨函数使用</li>
+<li><strong>字符数组模板推导</strong>：<code>template&lt;size_t N&gt; void f(const char (&amp;s)[N])</code> 可推导出编译期字符串长度，用于编译期字符串处理</li>
+<li><strong>零拷贝优化</strong>：C++17 <code>std::string_view</code> 取代 <code>const char*</code>，提供安全访问（带边界检查）且不拥有内存</li>
+</ul>
+</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-字符数组模板推导"><a href="#1-字符数组模板推导" class="headerlink" title="1. 字符数组模板推导"></a>1. 字符数组模板推导</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="type">size_t</span> T&gt;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">f</span><span class="params">(<span class="type">const</span> <span class="type">char</span> (*s)[T])</span> </span>&#123;  <span class="comment">// 指向长度为 T 的字符数组的指针</span></span><br><span class="line">    std::cout &lt;&lt; T &lt;&lt; std::endl;  <span class="comment">// 编译期知道数组长度</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">f</span>(&amp;<span class="string">&quot;\x116789abcdef&quot;</span>);  <span class="comment">// T = 15（含 \0 和 \x 转义序列）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="2-移动构造的-noexcept-关键性"><a href="#2-移动构造的-noexcept-关键性" class="headerlink" title="2. 移动构造的 noexcept 关键性"></a>2. 移动构造的 noexcept 关键性</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">string</span>(string&amp;&amp; other) <span class="keyword">noexcept</span> : <span class="built_in">data_</span>(other.data_), ... &#123;</span><br><span class="line">    other.data_ = <span class="literal">nullptr</span>;  <span class="comment">// 将源对象置为安全空状态</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// noexcept 保证 vector&lt;string&gt; 扩容时走 move 而非 copy</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>C++ 中必须用 <code>const char*</code></strong>：<code>char* s = &quot;hello&quot;</code> 在 C++ 是弃用的（deprecated），字面量不可修改</li>
+<li><strong><code>std::string_view</code> 替代 <code>const char*</code></strong>：C++17 起，传递只读字符串优先用 string_view——安全且零拷贝</li>
+<li><strong>SSO 阈值</strong>：GCC 15 字节、Clang 22 字节、MSVC 15 字节。短字符串完全在栈上</li>
+<li><strong>扩容策略</strong>：2x 增长（摊销 O(1)），配合 <code>reserve()</code> 预分配避免频繁扩容</li>
+<li><strong><code>c_str()</code> 与 <code>data()</code></strong>：C++11 起两者等价（都保证 <code>\0</code> 结尾），C++17 起 <code>data()</code> 返回 <code>char*</code> 可写</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（8题）"><a href="#Q-A（8题）" class="headerlink" title="Q&amp;A（8题）"></a>Q&amp;A（8题）</h3><p><strong>Q1: <code>const char*</code> 和 <code>char* const</code> 的区别？</strong><br>A: 前者指向常量（内容不可改），后者指针常量（不可指向别处）。读法：从右向左——<code>const char*</code> &#x3D; pointer to const char</p>
+<p><strong>Q2: 为什么 C++ 字符串字面量是 <code>const char[]</code>？</strong><br>A: 编译器通常将字面量放在只读数据段（.rodata），修改会段错误。const 阻止意外修改</p>
+<p><strong>Q3: <code>c_str()</code> 返回的指针什么时候失效？</strong><br>A: string 对象被修改（非 const 操作）、移动、析构后。不可存储该指针跨函数使用</p>
+<p><strong>Q4: 自定义 string 的扩容策略？</strong><br>A: 通常 2x 增长（保证摊销 O(1) 插入）。reserve 预分配避免多次扩容</p>
+<p><strong>Q5: 移动构造为什么必须标记 noexcept？</strong><br>A: 保证 vector 扩容时使用移动而非拷贝——如果移动不 noexcept，vector 退化为拷贝以保证异常安全</p>
+<p><strong>Q6: SSO 的阈值各编译器是多少？</strong><br>A: GCC 15 字节（含 \0 共 16）、Clang 22 字节、MSVC 15 字节</p>
+<p><strong>Q7: <code>std::string_view</code> 相比 <code>const char*</code> 的优势？</strong><br>A: 有长度信息（免 strlen）、支持子串操作（O(1)）、带边界检查、不拥有内存</p>
+<p><strong>Q8: 如何在模板中推导字符串字面量长度？</strong><br>A: <code>template&lt;size_t N&gt; void f(const char (&amp;)[N])</code> 或 <code>template&lt;size_t N&gt; void f(const char (*)[N])</code></p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：<code>char* s = &quot;hello&quot;</code> 在 C++ 中已弃用——应使用 <code>const char*</code></li>
+<li><strong>反问</strong>：为什么需要 <code>c_str()</code> 和 <code>data()</code> 两个方法？→ C++17 前 data() 不保证 \0 结尾，现已统一</li>
+<li><strong>陷阱</strong>：<code>c_str()</code> 后修改 string —— 返回的指针可能指向已释放或移位的内存</li>
+<li><strong>反问</strong>：都用 <code>std::string_view</code> 可以吗？→ string_view 不拥有内存，不能返回 string_view 指向局部 string</li>
+<li><strong>陷阱</strong>：自定义 string 的拷贝构造忘掉 +1 拷贝 \0 —— c_str() 返回非零结尾字符串</li>
+</ol>
+<h3 id="一句话答案（5个）"><a href="#一句话答案（5个）" class="headerlink" title="一句话答案（5个）"></a>一句话答案（5个）</h3><ol>
+<li><strong><code>const char*</code></strong>：指向只读 C 风格字符串的指针</li>
+<li><strong><code>c_str()</code></strong>：返回内部缓冲区的 const char*，保证 \0 结尾</li>
+<li><strong>SSO</strong>：短字符串内嵌对象存储，免堆分配</li>
+<li><strong>扩容策略</strong>：2x 增长，摊销 O(1)</li>
+<li><strong>noexcept 移动</strong>：保证 vector 扩容走 move 而非 copy</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/">https://weimo1.github.io/posts/const-char%E4%B8%8Estring%E5%AE%9E%E7%8E%B0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/auto_decltype/" title="auto_decltype"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">auto_decltype</div></div><div class="info-2"><div class="info-item-1">auto，decltype 适用范围：C++11 auto自动类型推导、decltype推导规则、尾置返回类型、引用折叠、cv限定符推导  一、核心概念 定义：auto 让编译器通过初始化表达式自动推导变量类型；decltype 在编译期获取表达式的确切类型（包括引用和cv限定符）而不求值 关键词：类型推导(type deduction)、万能引用(auto&amp;&amp;)、尾置返回类型(trailing return type)、转发引用、cv限定符保留 适用场景&#x2F;边界： 简化冗长类型名（迭代器、智能指针、模板类型） 泛型编程中的类型转发（auto&amp;&amp; ...</div></div></div></a><a class="pagination-related" href="/posts/async-thread/" title="async  thread"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">async  thread</div></div><div class="info-2"><div class="info-item-1">async  thread std::async vs std::thread 的异步任务选择：一个高层抽象自动管理，一个底层精细控制。  C++ 中，std::async 可以完全替代 std::thread 来开启异步的多线程操作吗？ 一、核心概念补充  定义：std::async 是高级异步接口，自动管理线程生命周期并返回 std::future 获取结果；std::thread 是底层线程封装，需手动 join&#x2F;detach。 关键词：std::async、std::thread、std::future、std::launch::async、std::launch::d...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#const-char-%E4%B8%8E-string-%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">const char* 与 string 实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%AD%97%E7%AC%A6%E6%95%B0%E7%BB%84%E6%A8%A1%E6%9D%BF%E6%8E%A8%E5%AF%BC"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. 字符数组模板推导</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E7%A7%BB%E5%8A%A8%E6%9E%84%E9%80%A0%E7%9A%84-noexcept-%E5%85%B3%E9%94%AE%E6%80%A7"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. 移动构造的 noexcept 关键性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.3.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%888%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（8题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（5个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

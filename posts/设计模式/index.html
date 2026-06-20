@@ -1,0 +1,383 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>设计模式 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="设计模式SOLID Design PrinciplesSOLID is an acronym which stands for the following design principles (and their abbreviations): Single Responsibility Principle (SRP)单一职责原则单一职责原则的定义是：应该有且仅有一个原因引起类的变更 单一职责的好">
+<meta property="og:type" content="article">
+<meta property="og:title" content="设计模式">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="设计模式SOLID Design PrinciplesSOLID is an acronym which stands for the following design principles (and their abbreviations): Single Responsibility Principle (SRP)单一职责原则单一职责原则的定义是：应该有且仅有一个原因引起类的变更 单一职责的好">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.577Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "设计模式",
+  "url": "https://weimo1.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.577Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '设计模式',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">设计模式</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">设计模式</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.577Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>8分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="设计模式"><a href="#设计模式" class="headerlink" title="设计模式"></a>设计模式</h1><h1 id="SOLID-Design-Principles"><a href="#SOLID-Design-Principles" class="headerlink" title="SOLID Design Principles"></a>SOLID Design Principles</h1><p>SOLID is an acronym which stands for the following design principles (and</p>
+<p>their abbreviations):</p>
+<h2 id="Single-Responsibility-Principle-SRP"><a href="#Single-Responsibility-Principle-SRP" class="headerlink" title="Single Responsibility Principle (SRP)"></a>Single Responsibility Principle (SRP)</h2><h2 id="单一职责原则"><a href="#单一职责原则" class="headerlink" title="单一职责原则"></a>单一职责原则</h2><p>单一职责原则的定义是：应该有且仅有一个原因引起类的变更</p>
+<h3 id="单一职责的好处"><a href="#单一职责的好处" class="headerlink" title="单一职责的好处"></a>单一职责的好处</h3><ol>
+<li><p>类的复杂性降低，实现什么职责都有清晰明确的定义；</p>
+</li>
+<li><p>可读性高，复杂性降低，可读性自然就提高了；</p>
+</li>
+<li><p>可维护性提高，可读性提高了，那自然更容易维护了；</p>
+</li>
+<li><p>变更引起的风险降低，变更是必不可少的，如果接口的单一职责做得好，一个接口修改只对相应的实现类有影响，对其他的接口无影响，这对系统的扩展性、维护性都有非常大的帮助。</p>
+</li>
+</ol>
+<h2 id="Open-Closed-Principle-OCP-开闭原则"><a href="#Open-Closed-Principle-OCP-开闭原则" class="headerlink" title="Open-Closed Principle (OCP) 开闭原则"></a>Open-Closed Principle (OCP) 开闭原则</h2><p>开闭原则是指一个软件实体如类、模块和函数应该对扩展开放，对修改关闭。也就是说一个软件实体应该通过扩展来实现变化，而不是通过修改已有的代码来实现变化。我们以书店销售书籍为例来说明什么是开闭原则。</p>
+<h2 id="Liskov-Substitution-Principle-LSP-里氏替换原则"><a href="#Liskov-Substitution-Principle-LSP-里氏替换原则" class="headerlink" title="Liskov Substitution Principle (LSP) 里氏替换原则"></a>Liskov Substitution Principle (LSP) 里氏替换原则</h2><p>在面向对象的语言中，继承是必不可少的、非常优秀的语言机制，它有如下优点：</p>
+<ol>
+<li>代码共享，减少创建类的工作量，每个子类都拥有父类的属性和方法；</li>
+<li>提高代码的重用性；</li>
+<li>子类可以形似父类，但又异于父类；</li>
+<li>提高代码的可扩展性；</li>
+<li>提高产品或项目的开放性。</li>
+</ol>
+<p>有优点就必然存在缺点：</p>
+<ol>
+<li>继承是侵入性的。只要继承，就必须拥有父类的属性和方法。</li>
+<li>降低代码的灵活性。子类会多一些父类的约束。</li>
+<li>增强了耦合性。当父类的常量、变量、方法被修改时，需要考虑子类的修改。</li>
+</ol>
+<p>为了让“利”的因素发挥最大的作用，同时减少“弊”带来的麻烦，引入了里氏替换原则（LSP）。</p>
+<p>历史替换原则最正宗的定义是：如果对每一个类型为S的对象o1，都有类型为T的对象o2，使得以T定义的所有程序P在所有的对象o1都代替o2时，程序P的行为没有发生变化，那么类型S是类型T的子类型。</p>
+<p>通俗点讲，就是只要父类能出现的地方，子类就可以出现，而且替换为子类也不会产生任何错误或异常。</p>
+<h2 id="Interface-Segregation-Principle-ISP-接口隔离原则"><a href="#Interface-Segregation-Principle-ISP-接口隔离原则" class="headerlink" title="Interface Segregation Principle (ISP) 接口隔离原则"></a>Interface Segregation Principle (ISP) 接口隔离原则</h2><p>接口隔离原则就是客户端不应该依赖它不需要的接口，或者说类间的依赖关系应该建立在最小的接口上</p>
+<h2 id="Dependency-Inversion-Principle-DIP"><a href="#Dependency-Inversion-Principle-DIP" class="headerlink" title="Dependency Inversion Principle (DIP)"></a>Dependency Inversion Principle (DIP)</h2><h2 id="依赖倒置原则"><a href="#依赖倒置原则" class="headerlink" title="依赖倒置原则"></a>依赖倒置原则</h2><ol>
+<li><p>模块间的依赖通过抽象发生，实现类之间不直接发生依赖关系，其依赖关系是通过接口或抽象类产生的；</p>
+</li>
+<li><p>接口或抽象类不依赖于实现类；</p>
+</li>
+<li><p>实现类依赖接口或抽象类。</p>
+</li>
+</ol>
+<p>说白了，就是“面向接口编程”。</p>
+<p><strong>依赖倒置原则可以减少类间的耦合性，提高系统的稳定性，降低并行开发引起的风险，提高代码的可读性和可维护性。</strong></p>
+<h3 id="依赖倒置原则的使用建议："><a href="#依赖倒置原则的使用建议：" class="headerlink" title="依赖倒置原则的使用建议："></a>依赖倒置原则的使用建议：</h3><p>（1）每个类尽量都有接口或抽象类，或者接口和抽象类两者都具备。</p>
+<p>（2）变量的表面类型尽量是接口或抽象类。</p>
+<p>（3）任何类都不应该从具体类派生。</p>
+<p>（4）尽量不要重写基类的方法。如果基类是一个抽象类，而且这个方法已经实现了，子类尽量不要重写。</p>
+<p>（5）结合里氏替换原则使用。</p>
+<h2 id="总结六大设计原则"><a href="#总结六大设计原则" class="headerlink" title="总结六大设计原则"></a>总结六大设计原则</h2><ol>
+<li><p>单一职责原则：一个类或接口只承担一个职责。</p>
+</li>
+<li><p>里氏替换原则：在继承类时，务必重写（override）父类中所有的方法，尤其需要注意父类的protected方法（它们往往是让你重写的），子类尽量不要暴露自己的public方法供外界调用。</p>
+</li>
+<li><p>依赖倒置原则：高层模块不应该依赖于低层模块，而应该依赖于抽象。抽象不应依赖于细节，细节应依赖于抽象。</p>
+</li>
+<li><p>接口隔离原则：不要对外暴露没有实际意义的接口。</p>
+</li>
+<li><p>迪米特法则：尽量减少对象之间的交互，从而减小类之间的耦合。</p>
+</li>
+<li><p>开闭原则：对软件实体的改动，最好用扩展而非修改的方式。</p>
+</li>
+</ol>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="开闭原则的策略模式示例——虚函数扩展"><a href="#开闭原则的策略模式示例——虚函数扩展" class="headerlink" title="开闭原则的策略模式示例——虚函数扩展"></a>开闭原则的策略模式示例——虚函数扩展</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 违反 OCP 的写法（需修改源代码添加新形状）</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">AreaCalculator</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">double</span> <span class="title">calculateTotal</span><span class="params">(Shape* shapes[], <span class="type">int</span> n)</span> </span>&#123;</span><br><span class="line">        <span class="type">double</span> total = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="built_in">typeid</span>(*shapes[i]) == <span class="built_in">typeid</span>(Circle))</span><br><span class="line">                total += <span class="built_in">areaOfCircle</span>((Circle*)shapes[i]);</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">typeid</span>(*shapes[i]) == <span class="built_in">typeid</span>(Rectangle))</span><br><span class="line">                total += <span class="built_in">areaOfRectangle</span>((Rectangle*)shapes[i]);</span><br><span class="line">            <span class="comment">// 新增形状需修改此处 ↓ 违反 OCP</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> total;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 符合 OCP 的写法（通过虚函数扩展）</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Shape</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">double</span> <span class="title">area</span><span class="params">()</span> <span class="type">const</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Shape</span>() = <span class="keyword">default</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Circle</span> : <span class="keyword">public</span> Shape &#123;</span><br><span class="line">    <span class="type">double</span> r_;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">double</span> <span class="title">area</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">override</span> </span>&#123; <span class="keyword">return</span> <span class="number">3.14159</span> * r_ * r_; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">AreaCalculator</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="type">double</span> <span class="title">calculateTotal</span><span class="params">(<span class="type">const</span> std::vector&lt;Shape*&gt;&amp; shapes)</span> </span>&#123;</span><br><span class="line">        <span class="type">double</span> total = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span>* s : shapes) total += s-&gt;<span class="built_in">area</span>();</span><br><span class="line">        <span class="keyword">return</span> total;  <span class="comment">// 新增形状零修改</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h4 id="依赖倒置原则在-C-中的显式实现"><a href="#依赖倒置原则在-C-中的显式实现" class="headerlink" title="依赖倒置原则在 C++ 中的显式实现"></a>依赖倒置原则在 C++ 中的显式实现</h4><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// DIP：高层模块和低层模块都依赖抽象</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">ILogger</span> &#123;  <span class="comment">// 抽象接口</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">log</span><span class="params">(<span class="type">const</span> std::string&amp; msg)</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">ILogger</span>() = <span class="keyword">default</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">FileLogger</span> : <span class="keyword">public</span> ILogger &#123; <span class="comment">/* ... */</span> &#125;;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">ConsoleLogger</span> : <span class="keyword">public</span> ILogger &#123; <span class="comment">/* ... */</span> &#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">UserService</span> &#123;  <span class="comment">// 高层模块</span></span><br><span class="line">    std::unique_ptr&lt;ILogger&gt; logger_;  <span class="comment">// 依赖抽象，而非具体实现</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">explicit</span> <span class="title">UserService</span><span class="params">(std::unique_ptr&lt;ILogger&gt; logger)</span></span></span><br><span class="line"><span class="function">        : logger_(std::move(logger)) &#123;</span>&#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">createUser</span><span class="params">(<span class="type">const</span> std::string&amp; name)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 业务逻辑...</span></span><br><span class="line">        logger_-&gt;<span class="built_in">log</span>(<span class="string">&quot;User created: &quot;</span> + name);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 使用时：UserService svc(std::make_unique&lt;FileLogger&gt;());</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>SOLID 不是教条，是权衡工具</strong>：开闭原则对「频繁变更」的模块最重要，对「稳定不变」的模块过度设计反而增加复杂度</li>
+<li><strong>单一职责的粒度看”变更原因”</strong>：两个功能如果总是 <strong>同时变更</strong>，可以放在一起；如果 <strong>独立变更</strong>，必须分离</li>
+<li><strong>依赖倒置实践 &#x3D; 构造函数注入 + 接口隔离</strong>：C++ 用 <code>unique_ptr&lt;Interface&gt;</code> 做依赖注入，用纯虚函数做接口</li>
+<li><strong>里氏替换原则在 C++ 的体现 &#x3D; 虚函数契约</strong>：重写函数不能收紧前置条件、不能放宽后置条件、不能抛新异常</li>
+<li><strong>接口隔离的极端：每个类只有一个纯虚函数</strong> → 过度。正常粒度是一个「角色」一组方法（如 IReader、IWriter）</li>
+<li><strong>学好 SOLID 看代码更高效</strong>：看到 <code>switch(type)</code> + 向下转型 → 违反 OCP；看到构造中 <code>new Concrete()</code> → 违反 DIP</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: 用一句话说清楚 SOLID 五大原则？</strong></p>
+<table>
+<thead>
+<tr>
+<th>原则</th>
+<th>一句话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SRP 单一职责</td>
+<td>一个类只干一件事</td>
+</tr>
+<tr>
+<td>OCP 开闭</td>
+<td>扩展开放，修改关闭</td>
+</tr>
+<tr>
+<td>LSP 里氏替换</td>
+<td>子类必须能替换父类</td>
+</tr>
+<tr>
+<td>ISP 接口隔离</td>
+<td>不强迫依赖不需要的接口</td>
+</tr>
+<tr>
+<td>DIP 依赖倒置</td>
+<td>依赖抽象不依赖具体</td>
+</tr>
+</tbody></table>
+<p><strong>Q2: 单一职责和接口隔离有什么区别？</strong></p>
+<p>SRP 讲的是<strong>类的职责</strong>（一个类不该有多个变更原因），ISP 讲的是<strong>接口的粒度</strong>（一个接口不该让调用方依赖不需要的方法）。SRP 导致接口天然较小，ISP 要求进一步拆分臃肿接口。</p>
+<p><strong>Q3: 开闭原则在 C++ 中如何实现？</strong></p>
+<p>核心手段：虚函数（多态）+ 继承 + 策略模式&#x2F;模板方法模式。通过基类定义稳定接口，子类扩展可变行为。C++ 还有模板方案（编译期多态），但不如虚函数灵活。</p>
+<p><strong>Q4: 依赖倒置和依赖注入有什么关系？</strong></p>
+<p>依赖倒置是<strong>原则</strong>（高层和低层都依赖抽象），依赖注入是<strong>实现手段</strong>（通过构造函数&#x2F;Setter 将依赖传递进来）。DIP 告诉你”应该这样做”，DI 告诉你”具体怎么做”。C++ 中常见用 <code>std::unique_ptr&lt;I&gt;</code> 做构造注入。</p>
+<p><strong>Q5: 为什么里氏替换原则跟 C++ 的虚函数紧密相关？</strong></p>
+<p>LSP 要求”子类必须能替换父类”。C++ 中通过虚函数实现多态替换。违反 LSP 的典型：子类重写虚函数抛出父类未声明的异常、子类返回比父类更窄的类型（C++ 协变返回类型除外）、子类改变函数语义。</p>
+<p><strong>Q6: 迪米特法则（最少知识原则）的核心思想？</strong></p>
+<p>一个对象应对其他对象有最少了解——只与直接的朋友通信，不和”朋友的朋友”交互。代码上体现为：<code>a.getB().getC().doSomething()</code> 违反迪米特，应封装为 <code>a.doSomethingThroughB()</code>。</p>
+<p><strong>Q7: SOLID 原则之间有冲突吗？</strong></p>
+<p>有。最典型：遵循 ISP 拆分接口 → 产生大量小接口&#x2F;类 → SRP 自然满足，但可能违背 OCP（需要修改多处才能扩展）。需要根据模块稳定性权衡——稳定模块优先 OCP，易变模块优先 ISP。</p>
+<p><strong>Q8: 实际项目中如何度量是否符合 SOLID？</strong></p>
+<p>代码审查 checklist：① SRP：一个类是否因多个原因被改过？（git log 看变更分布）；② OCP：加功能是加文件还是改现有文件？③ DIP：类内部是否 new 具体类（不含工厂&#x2F;POJO）？工具辅助：CppDepend、SonarQube。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：追求完美 OCP → 为每处「可能」变化预留扩展点 → 过度设计。<strong>修复</strong>：等到第二处相似变更出现时再重构抽象，YAGNI 原则。</p>
+</li>
+<li><p><strong>陷阱</strong>：LSP 只关注语法（编译通过）→ 忽略语义（行为正确）。<strong>修复</strong>：椭圆-矩形问题——Rectangle.setWidth(5).setHeight(3) 期望 area&#x3D;15，Square 继承后违反此语义。</p>
+</li>
+<li><p><strong>陷阱</strong>：构造函数中调用虚函数 → 此时子类尚未构造，多态失效。<strong>修复</strong>：构造后调用两阶段初始化（init()）或工厂函数。</p>
+</li>
+<li><p><strong>反问</strong>：「你在实际项目中遇到过哪些 SOLID 原则解决的具体问题？」期望有实例——如通过策略模式消除 if-else 实现 OCP、通过依赖注入让单元测试可 Mock 外部依赖。</p>
+</li>
+<li><p><strong>反问</strong>：「Go 语言没有继承，如何实现 SOLID？」期望：Go 用接口+组合替代继承，LSP 自然满足（接口只声明行为），OCP 通过接口+struct embedding 实现。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>原则</th>
+<th>记忆口诀</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SRP</td>
+<td>一类的活儿不多给</td>
+</tr>
+<tr>
+<td>OCP</td>
+<td>加功能不动老代码</td>
+</tr>
+<tr>
+<td>LSP</td>
+<td>儿子能顶老子的班</td>
+</tr>
+<tr>
+<td>ISP</td>
+<td>别逼人用不需要的</td>
+</tr>
+<tr>
+<td>DIP</td>
+<td>面向接口编程</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">https://weimo1.github.io/posts/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E8%AF%B7%E6%B1%82/" title="请求"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">请求</div></div><div class="info-2"><div class="info-item-1">HTTP 请求处理流程 基于 Qt + Boost.Beast 的 HTTP 请求处理全链路——从客户端 QNetworkAccessManager 构造请求，到服务端 CServer 异步 accept，再到 HttpConnection 解析请求，最后由 LogicSystem 路由分发。通过注册路由 + 动态调用的方式实现灵活可扩展的 HTTP 请求处理。  一、核心概念 定义：HTTP 请求处理流程涵盖客户端构造请求、服务端接收连接、解析请求体、路由分发处理、构造响应和返回结果。采用异步非阻塞模式，通过 LogicSystem 的路由注册机制解耦 URL 和业务逻辑。 关键词：Q...</div></div></div></a><a class="pagination-related" href="/posts/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" title="计算机网络"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">计算机网络</div></div><div class="info-2"><div class="info-item-1">计算机网络概述计算机网络是将多个计算机通过通信链路相互连接，实现资源共享和信息传递的系统。网络协议定义了通信的规则和标准，TCP&#x2F;IP 模型是互联网的基础架构。 TCP&#x2F;IP 四层模型网络接口层：负责物理传输和 MAC 寻址，运行以太网（Ethernet）、WiFi（802.11）等协议。数据以帧（frame）为单位传输，帧头包含源和目标 MAC 地址。 网络层：负责路由选择和逻辑寻址。IP 协议提供无连接、尽力交付的数据报服务，IPv4 地址 32 位，IPv6 地址 128 位。ICMP 用于网络诊断（ping&#x2F;traceroute），ARP 将 IP ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"><span class="toc-number">1.</span> <span class="toc-text">设计模式</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#SOLID-Design-Principles"><span class="toc-number">2.</span> <span class="toc-text">SOLID Design Principles</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Single-Responsibility-Principle-SRP"><span class="toc-number">2.1.</span> <span class="toc-text">Single Responsibility Principle (SRP)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%95%E4%B8%80%E8%81%8C%E8%B4%A3%E5%8E%9F%E5%88%99"><span class="toc-number">2.2.</span> <span class="toc-text">单一职责原则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E4%B8%80%E8%81%8C%E8%B4%A3%E7%9A%84%E5%A5%BD%E5%A4%84"><span class="toc-number">2.2.1.</span> <span class="toc-text">单一职责的好处</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Open-Closed-Principle-OCP-%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99"><span class="toc-number">2.3.</span> <span class="toc-text">Open-Closed Principle (OCP) 开闭原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Liskov-Substitution-Principle-LSP-%E9%87%8C%E6%B0%8F%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99"><span class="toc-number">2.4.</span> <span class="toc-text">Liskov Substitution Principle (LSP) 里氏替换原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Interface-Segregation-Principle-ISP-%E6%8E%A5%E5%8F%A3%E9%9A%94%E7%A6%BB%E5%8E%9F%E5%88%99"><span class="toc-number">2.5.</span> <span class="toc-text">Interface Segregation Principle (ISP) 接口隔离原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Dependency-Inversion-Principle-DIP"><span class="toc-number">2.6.</span> <span class="toc-text">Dependency Inversion Principle (DIP)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99"><span class="toc-number">2.7.</span> <span class="toc-text">依赖倒置原则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99%E7%9A%84%E4%BD%BF%E7%94%A8%E5%BB%BA%E8%AE%AE%EF%BC%9A"><span class="toc-number">2.7.1.</span> <span class="toc-text">依赖倒置原则的使用建议：</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%E5%85%AD%E5%A4%A7%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99"><span class="toc-number">2.8.</span> <span class="toc-text">总结六大设计原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">2.9.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">2.9.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99%E7%9A%84%E7%AD%96%E7%95%A5%E6%A8%A1%E5%BC%8F%E7%A4%BA%E4%BE%8B%E2%80%94%E2%80%94%E8%99%9A%E5%87%BD%E6%95%B0%E6%89%A9%E5%B1%95"><span class="toc-number">2.9.1.1.</span> <span class="toc-text">开闭原则的策略模式示例——虚函数扩展</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99%E5%9C%A8-C-%E4%B8%AD%E7%9A%84%E6%98%BE%E5%BC%8F%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.9.1.2.</span> <span class="toc-text">依赖倒置原则在 C++ 中的显式实现</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">2.9.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">2.10.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">2.10.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">2.10.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">2.10.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

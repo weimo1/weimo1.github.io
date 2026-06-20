@@ -1,0 +1,373 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Nameof库 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Nameof库 —— C++ 编译期反射 适用范围：header-only C++17 编译期名称获取库，零运行时开销的变量&#x2F;类型&#x2F;枚举&#x2F;成员名字符串化，保持可复用、可检索。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥8个问法+5反问+5一句话 先结论后细节，每节至">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Nameof库">
+<meta property="og:url" content="https://weimo1.github.io/posts/Nameof%E5%BA%93/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Nameof库 —— C++ 编译期反射 适用范围：header-only C++17 编译期名称获取库，零运行时开销的变量&#x2F;类型&#x2F;枚举&#x2F;成员名字符串化，保持可复用、可检索。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：二≥200字、四≥500字、五≥1000字、六≥8个问法+5反问+5一句话 先结论后细节，每节至">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.549Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Nameof库",
+  "url": "https://weimo1.github.io/posts/Nameof%E5%BA%93/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.549Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Nameof%E5%BA%93/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Nameof库',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Nameof库</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Nameof库</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.549Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%9F%BA%E7%A1%80%E5%BA%93%E4%B8%8E%E5%B7%A5%E5%85%B7/">基础库与工具</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Nameof库-——-C-编译期反射"><a href="#Nameof库-——-C-编译期反射" class="headerlink" title="Nameof库 —— C++ 编译期反射"></a>Nameof库 —— C++ 编译期反射</h1><blockquote>
+<p>适用范围：header-only C++17 编译期名称获取库，零运行时开销的变量&#x2F;类型&#x2F;枚举&#x2F;成员名字符串化，保持可复用、可检索。</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong></li>
+<li><strong>只做归纳重组+增加</strong></li>
+<li><strong>放不进的进附录</strong></li>
+<li><strong>动笔前先搜索</strong></li>
+<li><strong>字数硬指标</strong>：二≥200字、四≥500字、五≥1000字、六≥8个问法+5反问+5一句话</li>
+<li>先结论后细节，每节至少3条要点</li>
+<li><strong>代码块必须标注语言</strong>：C++ 使用 <code>c++</code>（不可用 <code>cpp</code> 或 <code>c</code>）</li>
+</ul>
+<h2 id="一、模块概述"><a href="#一、模块概述" class="headerlink" title="一、模块概述"></a>一、模块概述</h2><ul>
+<li>模块定位：Nameof（github.com&#x2F;Neargye&#x2F;nameof）是一个 header-only C++17 编译期反射库。核心功能是通过宏 <code>NAMEOF(var)</code> &#x2F; <code>NAMEOF_ENUM(val)</code> &#x2F; <code>NAMEOF_TYPE(T)</code> 等，在编译期获取变量名、枚举名、类型名、成员名，输出为 <code>constexpr string_view</code>，运行时零开销。</li>
+<li>技术栈：C++17 <code>constexpr</code> + 编译器内置宏（<code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code>）+ 编译期字符串解析 <code>pretty_name()</code> + 编译期枚举值枚举（<code>reflected_min/max</code>）。</li>
+<li>模块边界：输入→任意 C++ 标识符（变量&#x2F;类型&#x2F;枚举值&#x2F;成员指针），输出→ <code>constexpr string_view</code>。支持 GCC&#x2F;Clang&#x2F;MSVC 三大编译器。不支持局部变量名获取（这是 C++ 语言层面的限制，编译器不保留局部变量名到二进制）。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><ul>
+<li><p><strong>设计拆解（三层递进）</strong>：</p>
+<ul>
+<li>第一层：整体架构——宏层（<code>NAMEOF</code>&#x2F;<code>NAMEOF_ENUM</code> 等）→ 模板函数层（<code>nameof::detail::n&lt;E,V&gt;()</code>）→ 编译器内建宏层（<code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code>）。宏负责语法糖，模板负责类型推导和将值嵌入函数签名，编译器宏负责吐出包含名称的字符串。</li>
+<li>第二层：关键流程——以 <code>NAMEOF_ENUM(Color::Red)</code> 为例：1) 实例化 <code>n&lt;Color, Color::Red&gt;()</code> → 2) 编译器将类型和值写入 <code>__PRETTY_FUNCTION__</code>，生成类似 <code>&quot;auto nameof::detail::n() [E = Color, V = Color::Red]&quot;</code> → 3) <code>pretty_name()</code> 在编译期解析这个字符串，提取出 <code>&quot;Red&quot;</code> → 4) 返回 <code>constexpr string_view</code>。</li>
+<li>第三层：关键设计决策——为什么用编译期字符串解析而非运行时？因为 C++ 的 <code>typeid(T).name()</code> 返回的是 mangled name（如 <code>5Color</code>），且依赖 RTTI。Nameof 利用 <code>constexpr</code> 在编译期完成解析，输出可读名称，无 RTTI 依赖。枚举处理的难点在于：C++ 不提供”遍历枚举值”的标准方式，Nameof 通过假设枚举值在 <code>[min, max]</code> 范围内连续分布，用 <code>static_cast&lt;E&gt;(i)</code> 枚举所有可能值，再用 <code>n&lt;E, static_cast&lt;E&gt;(i)&gt;()</code> 验证是否为合法枚举值。</li>
+</ul>
+</li>
+<li><p>关键数据结构：<code>cstring&lt;N&gt;</code>（编译期定长字符串容器）、<code>pretty_name()</code> 编译期字符串解析函数。</p>
+</li>
+<li><p>命名约定：<code>NAMEOF</code>（变量&#x2F;表达式名）、<code>NAMEOF_FULL</code>（含作用域全名）、<code>NAMEOF_RAW</code>（原始表达式）、<code>NAMEOF_ENUM</code>（枚举值名）、<code>NAMEOF_ENUM_FLAG</code>（枚举标志位）、<code>NAMEOF_TYPE</code>（类型名）、<code>NAMEOF_MEMBER</code>（成员指针名）。</p>
+</li>
+</ul>
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-编译器内置宏适配"><a href="#3-1-编译器内置宏适配" class="headerlink" title="3.1 编译器内置宏适配"></a>3.1 编译器内置宏适配</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E, E V&gt;</span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> <span class="keyword">auto</span> <span class="title">n</span><span class="params">()</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="built_in">static_assert</span>(is_enum_v&lt;E&gt;, <span class="string">&quot;nameof::detail::n requires enum type.&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(nameof_enum_supported&lt;E&gt;::value)</span> </span>&#123;</span><br><span class="line">        <span class="meta">#<span class="keyword">if</span> defined(__clang__) || defined(__GNUC__)</span></span><br><span class="line">        <span class="keyword">constexpr</span> <span class="keyword">auto</span> name = <span class="built_in">pretty_name</span>(&#123;__PRETTY_FUNCTION__,</span><br><span class="line">        <span class="built_in">sizeof</span>(__PRETTY_FUNCTION__) - <span class="number">2</span>&#125;);</span><br><span class="line">        <span class="meta">#<span class="keyword">elif</span> defined(_MSC_VER)</span></span><br><span class="line">        <span class="keyword">constexpr</span> <span class="keyword">auto</span> name = <span class="built_in">pretty_name</span>(&#123;__FUNCSIG__,</span><br><span class="line">        <span class="built_in">sizeof</span>(__FUNCSIG__) - <span class="number">17</span>&#125;);</span><br><span class="line">        <span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">        <span class="keyword">constexpr</span> <span class="keyword">auto</span> name = string_view&#123;&#125;;</span><br><span class="line">        <span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">        <span class="keyword">return</span> name;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> string_view&#123;&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>解读：核心 trick——将枚举值 V 作为模板参数，编译器在 <code>__PRETTY_FUNCTION__</code> 中展开为可读的名称字符串。不同编译器的展开格式不同（GCC&#x2F;Clang 用 <code>[...]</code>，MSVC 用 <code>&lt;&gt;</code> 和 <code>()</code>），所以 <code>pretty_name</code> 需要适配。</p>
+</blockquote>
+<h3 id="3-2-pretty-name-——-编译期字符串解析"><a href="#3-2-pretty-name-——-编译期字符串解析" class="headerlink" title="3.2 pretty_name —— 编译期字符串解析"></a>3.2 pretty_name —— 编译期字符串解析</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">constexpr</span> string_view <span class="title">pretty_name</span><span class="params">(string_view name, <span class="type">bool</span> remove_suffix = <span class="literal">true</span>)</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 1. 跳过字符串字面量</span></span><br><span class="line">    <span class="keyword">if</span> (name.<span class="built_in">size</span>() &gt;= <span class="number">1</span> &amp;&amp; (name[<span class="number">0</span>] == <span class="string">&#x27;&quot;&#x27;</span> || name[<span class="number">0</span>] == <span class="string">&#x27;\&#x27;&#x27;</span>)) &#123;</span><br><span class="line">        <span class="keyword">return</span> &#123;&#125;;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 处理模板参数（跳过 &lt;&gt; 嵌套内容）</span></span><br><span class="line">    <span class="keyword">for</span> (std::<span class="type">size_t</span> i = name.<span class="built_in">size</span>(), h = <span class="number">0</span>, s = <span class="number">0</span>; i &gt; <span class="number">0</span>; --i) &#123;</span><br><span class="line">        <span class="keyword">if</span> (name[i - <span class="number">1</span>] == <span class="string">&#x27;&gt;&#x27;</span>) &#123; ++h; ++s; <span class="keyword">continue</span>; &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (name[i - <span class="number">1</span>] == <span class="string">&#x27;&lt;&#x27;</span>) &#123; --h; ++s; <span class="keyword">continue</span>; &#125;</span><br><span class="line">        <span class="keyword">if</span> (h == <span class="number">0</span>) &#123; <span class="keyword">break</span>; &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123; ++s; <span class="keyword">continue</span>; &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 提取标识符（反向扫描到非标识符字符）</span></span><br><span class="line">    <span class="keyword">for</span> (std::<span class="type">size_t</span> i = name.<span class="built_in">size</span>() - s; i &gt; <span class="number">0</span>; --i) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!((name[i - <span class="number">1</span>] &gt;= <span class="string">&#x27;0&#x27;</span> &amp;&amp; name[i - <span class="number">1</span>] &lt;= <span class="string">&#x27;9&#x27;</span>) ||</span><br><span class="line">              (name[i - <span class="number">1</span>] &gt;= <span class="string">&#x27;a&#x27;</span> &amp;&amp; name[i - <span class="number">1</span>] &lt;= <span class="string">&#x27;z&#x27;</span>) ||</span><br><span class="line">              (name[i - <span class="number">1</span>] &gt;= <span class="string">&#x27;A&#x27;</span> &amp;&amp; name[i - <span class="number">1</span>] &lt;= <span class="string">&#x27;Z&#x27;</span>) ||</span><br><span class="line">              (name[i - <span class="number">1</span>] == <span class="string">&#x27;_&#x27;</span>))) &#123;</span><br><span class="line">            name.<span class="built_in">remove_prefix</span>(i);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> name;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>解读：三段处理——跳过字符串字面量 → 跳过模板参数（<code>&lt;&gt;</code> 嵌套计数）→ 反向扫描找到标识符边界。全部在 <code>constexpr</code> 中完成，编译期即得到最终字符串。<code>h</code> 跟踪 <code>&lt;&gt;</code> 嵌套深度，正确处理 <code>vector&lt;pair&lt;int, string&gt;&gt;</code> 这种嵌套模板。</p>
+</blockquote>
+<h3 id="3-3-cstring-——-编译期字符串容器"><a href="#3-3-cstring-——-编译期字符串容器" class="headerlink" title="3.3 cstring —— 编译期字符串容器"></a>3.3 cstring —— 编译期字符串容器</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;std::<span class="type">uint16_t</span> N&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">cstring</span> &#123;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="type">char</span> chars_[<span class="built_in">static_cast</span>&lt;std::<span class="type">size_t</span>&gt;(N) + <span class="number">1</span>];</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="keyword">explicit</span> <span class="title">cstring</span><span class="params">(string_view str)</span> <span class="keyword">noexcept</span></span></span><br><span class="line"><span class="function">        : cstring&#123;</span>str, std::make_integer_sequence&lt;std::<span class="type">uint16_t</span>, N&gt;&#123;&#125;&#125; &#123;</span><br><span class="line">        <span class="built_in">assert</span>(str.<span class="built_in">size</span>() &gt; <span class="number">0</span> &amp;&amp; str.<span class="built_in">size</span>() == N);</span><br><span class="line">    &#125;</span><br><span class="line">    [nodiscard](#) <span class="function"><span class="keyword">constexpr</span> const_pointer <span class="title">data</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> chars_; &#125;</span><br><span class="line">    [nodiscard](#) <span class="function"><span class="keyword">constexpr</span> size_type <span class="title">size</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123; <span class="keyword">return</span> N; &#125;</span><br><span class="line">    [nodiscard](#) <span class="function"><span class="keyword">constexpr</span> <span class="keyword">operator</span> <span class="title">string_view</span><span class="params">()</span> <span class="type">const</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> &#123;<span class="built_in">data</span>(), <span class="built_in">size</span>()&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-4-枚举值遍历"><a href="#3-4-枚举值遍历" class="headerlink" title="3.4 枚举值遍历"></a>3.4 枚举值遍历</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E, <span class="type">bool</span> IsFlags, <span class="keyword">typename</span> U = std::<span class="type">underlying_type_t</span>&lt;E&gt;&gt;</span><br><span class="line"><span class="keyword">constexpr</span> <span class="type">int</span> <span class="built_in">reflected_min</span>() <span class="keyword">noexcept</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">constexpr</span> (IsFlags) &#123; <span class="keyword">return</span> <span class="number">0</span>; &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">constexpr</span> <span class="keyword">auto</span> lhs = customize::enum_range&lt;E&gt;::min;</span><br><span class="line">        <span class="keyword">constexpr</span> <span class="keyword">auto</span> rhs = (std::numeric_limits&lt;U&gt;::min)();</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">cmp_less</span>(rhs, lhs) ? lhs : rhs;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E, <span class="type">bool</span> IsFlags, std::<span class="type">size_t</span> Size, <span class="type">int</span> Min&gt;</span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> <span class="keyword">auto</span> <span class="title">values</span><span class="params">()</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="keyword">constexpr</span> <span class="keyword">auto</span> vc = <span class="built_in">valid_count</span>&lt;E, IsFlags, Size, Min&gt;();</span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(vc.count &gt; <span class="number">0</span>)</span> </span>&#123;</span><br><span class="line">        std::array&lt;E, vc.count&gt; values = &#123;&#125;;</span><br><span class="line">        <span class="keyword">for</span> (std::<span class="type">size_t</span> i = <span class="number">0</span>, v = <span class="number">0</span>; v &lt; vc.count; ++i) &#123;</span><br><span class="line">            <span class="keyword">if</span> (vc.valid[i]) &#123;</span><br><span class="line">                values[v++] = <span class="built_in">value</span>&lt;E, Min, IsFlags&gt;(i);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> values;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> std::array&lt;E, <span class="number">0</span>&gt;&#123;&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>解读：枚举遍历的 hack——从 <code>reflected_min()</code> 到 <code>reflected_max()</code> 范围内遍历所有 <code>underlying_type</code> 值，通过 <code>n&lt;E, static_cast&lt;E&gt;(i)&gt;()</code> 能否编译通过来判断 <code>i</code> 是否为合法枚举值。这是编译期 SFINAE 的经典应用。</p>
+</blockquote>
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li>与项目中其他模块的集成方式：Nameof 最常见的集成场景：1) 日志系统——自动获取枚举级别名称；2) 序列化——用 <code>NAMEOF_MEMBER</code> 生成 JSON key；3) 测试框架——断言失败时自动输出变量名；4) 配置系统——用 <code>NAMEOF_TYPE</code> 做类型安全的配置 key。</li>
+<li>生产环境考量：<ul>
+<li>编译器兼容性：支持 GCC ≥ 9、Clang ≥ 5、MSVC ≥ 15.3（VS 2017 15.3+）。需要 C++17。如果项目还需要支持更老的编译器，需要 <code>#if</code> 条件编译。</li>
+<li>编译时间影响：枚举值遍历在编译期进行（<code>reflected_min</code> → <code>reflected_max</code>）。如果枚举范围很大（如 <code>enum { A=0, B=1000000 }</code>），会导致大量模板实例化，编译时间显著增加。建议：大范围枚举用 <code>customize::enum_range</code> 手动指定范围。</li>
+<li>二进制大小：Nameof 的所有计算在编译期完成，输出是 <code>constexpr string_view</code>，最终就是嵌入 .rodata 的字符串字面量。不会增加运行时内存或代码段。</li>
+</ul>
+</li>
+<li>常见对比：<ul>
+<li>Nameof vs <code>typeid(T).name()</code>：typeid 返回 mangled name（如 <code>&quot;5Color&quot;</code> 或 <code>&quot;enum Color&quot;</code>），需要运行时 demangle；Nameof 编译期返回可读名称，零开销。</li>
+<li>Nameof vs magic_enum：两者原理相同（<code>__PRETTY_FUNCTION__</code> hack），magic_enum 在 C++17 之前就可用，Nameof 的 API 更丰富（支持变量名、成员指针名等）。</li>
+<li>限制（补充）：无法获取局部变量名、函数形参名、lambda 捕获名——这些信息在编译后不存在于二进制中。</li>
+</ul>
+</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><ul>
+<li><p>关键实现路径：Nameof 的精髓在一个函数 <code>n&lt;E,V&gt;()</code> 和一个解析器 <code>pretty_name()</code>。<code>n&lt;E,V&gt;()</code> 把枚举类型和值嵌入函数签名，<code>pretty_name()</code> 从编译器的函数签名串中切割出名字。这种”利用编译器 diagnostic 信息做反射”的做法是 C++ 模板元编程的经典范式——不是语言提供的反射，而是”骗”编译器告诉我们它知道的信息。</p>
+</li>
+<li><p>难点与易错点：</p>
+<ol>
+<li><strong>不同编译器的 <code>__PRETTY_FUNCTION__</code> 格式不同</strong>：GCC 用 <code>[...]</code> 包裹模板参数，MSVC 用 <code>&lt;&gt;</code> 和 <code>()</code>。<code>sizeof(__PRETTY_FUNCTION__) - 2</code> 和 <code>sizeof(__FUNCSIG__) - 17</code> 这些 magic number 是手工对齐的结果，编译器升级可能导致格式变化。</li>
+<li><strong>枚举遍历的编译时间陷阱</strong>：如果枚举 <code>[min, max]</code> 范围很大但实际值很少（稀疏枚举），遍历所有可能值会导致大量无效的模板实例化。解决方案是用 <code>customize::enum_range</code> 缩小范围，或用 <code>NAMEOF_ENUM_CONST</code> 只获取单个值。</li>
+<li><strong><code>pretty_name</code> 的 <code>&lt;&gt;</code> 嵌套处理</strong>：<code>vector&lt;pair&lt;int, string&gt;&gt;</code> 中 <code>&gt;&gt;</code> 需要正确处理为两层闭合而非右移。<code>h</code> 变量追踪嵌套深度。</li>
+</ol>
+</li>
+<li><p>经验总结（补充）：</p>
+<ul>
+<li><strong>C++ 缺乏标准反射的现状</strong>：C++26 有望引入静态反射（P2996），届时 <code>^T</code> 语法可获取类型的元信息，Nameof&#x2F;magic_enum 等库可能被标准替代。但在 C++17&#x2F;20 项目中，Nameof 仍是最实用的编译期名称获取方案。</li>
+<li><strong>NAMEOF 宏 vs 直接使用</strong>：宏封装了 <code>nameof::detail::n&lt;decltype(var), var&gt;()</code>，避免了手动推导类型。这是合理的宏使用——用于减少模板样板代码。</li>
+</ul>
+</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：Nameof 库的原理是什么？</p>
+<p>A：利用编译器的 <code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code> 内置宏，将枚举值&#x2F;类型作为模板参数嵌入函数签名，编译期解析签名字符串提取名称。所有计算在 <code>constexpr</code> 中完成，零运行时开销。</p>
+<p>Q2：和 <code>typeid(T).name()</code> 的区别？</p>
+<p>A：<code>typeid</code> 返回 mangled name（如 <code>&quot;5Color&quot;</code>），依赖 RTTI，运行时开销；Nameof 返回可读名称（如 <code>&quot;Color&quot;</code>），编译期完成，不依赖 RTTI。</p>
+<p>Q3：枚举值是如何遍历的？</p>
+<p>A：假设枚举值在 <code>[min, max]</code> 范围内连续分布，<code>static_cast&lt;E&gt;(i)</code> 尝试每个可能值，通过 <code>n&lt;E, V&gt;()</code> 能否编译通过来验证合法性。大范围稀疏枚举需通过 <code>customize::enum_range</code> 缩小范围。</p>
+<p>Q4：C++ 语言层面的限制是什么？</p>
+<p>A：无法获取局部变量名、函数形参名、lambda 捕获名——这些名字编译后不保留到二进制。C++ 缺乏标准反射机制（C++26 有望引入静态反射）。</p>
+<p>Q5：<code>__PRETTY_FUNCTION__</code> 在不同编译器上的差异？</p>
+<p>A：GCC&#x2F;Clang 用 <code>[...]</code> 包裹模板参数，MSVC 用 <code>&lt;&gt;</code> 和 <code>()</code>。<code>pretty_name()</code> 需要适配不同格式，使用 <code>#if defined</code> 做编译期分支。</p>
+<p>Q6：<code>pretty_name()</code> 如何处理嵌套模板 <code>&lt;&gt;</code>？</p>
+<p>A：用 <code>h</code> 变量追踪嵌套深度——遇到 <code>&gt;</code> 则 <code>++h</code>，遇到 <code>&lt;</code> 则 <code>--h</code>，<code>h==0</code> 时表示到达模板参数区域外。</p>
+<p>Q7：编译期枚举遍历对大范围枚举有什么影响？</p>
+<p>A：编译时间显著增加（大量无效模板实例化）。解决：1) <code>customize::enum_range</code> 缩小范围；2) 使用 <code>NAMEOF_ENUM_CONST</code> 而非 <code>NAMEOF_ENUM</code>。</p>
+<p>Q8：Nameof 和 magic_enum 的区别？</p>
+<p>A：原理相同（<code>__PRETTY_FUNCTION__</code> hack），magic_enum 更早出现，Nameof 的 API 更丰富（支持变量名、成员指针名、函数指针名等）。</p>
+<p>Q9：为什么 Nameof 能零运行时开销？</p>
+<p>A：所有字符串解析在 <code>constexpr</code> 上下文中完成，结果直接嵌入 .rodata 段。运行时就是一个 <code>string_view</code> 指向预计算的字符串。</p>
+<p>Q10：Nameof 适用于哪些场景？</p>
+<p>A：日志（枚举值→字符串）、序列化（成员→JSON key）、测试框架（断言时输出变量名）、配置系统（类型安全的 key）、调试输出。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li>你们项目中用什么东西替代 C++ 的反射？Nameof 还是手写 switch-case？</li>
+<li>对于不连续的稀疏枚举，你们是怎么处理的？</li>
+<li>C++26 静态反射出来后，Nameof 这类库还有存在的必要吗？</li>
+</ul>
+<p>陷阱问题：</p>
+<ul>
+<li>陷阱1：<code>NAMEOF(var)</code> 能获取局部变量名吗？答：不能，只能获取编译期可推导的静态名称。</li>
+<li>陷阱2：大范围枚举遍历导致编译超时怎么办？答：用 <code>customize::enum_range</code> 缩小范围。</li>
+<li>陷阱3：跨编译器移植时 <code>pretty_name</code> 的 magic number 失效怎么办？答：需要针对新编译器版本调整。</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>Nameof 的核心原理：将值作为模板参数嵌入函数签名，编译期解析 <code>__PRETTY_FUNCTION__</code> 提取名称。</li>
+<li>零运行时开销：所有解析 <code>constexpr</code> 完成，结果直接嵌入 .rodata。</li>
+<li>限制：无法获取局部变量名、形参名、lambda 捕获名。</li>
+<li><code>typeid</code> 返回 mangled name + 需要 RTTI；Nameof 返回可读名称 + 无 RTTI。</li>
+<li>枚举遍历是编译期 SFINAE hack，大范围稀疏枚举需要手动缩小范围。</li>
+<li>C++26 静态反射（P2996）可能是 Nameof 这类库的”终结者”。</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中不直接适配六大段结构、但仍有价值的内容，原样保留于此。</p>
+</blockquote>
+<h3 id="解决的问题"><a href="#解决的问题" class="headerlink" title="解决的问题"></a>解决的问题</h3><p>传统方式的痛点：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 传统方式：硬编码字符串</span></span><br><span class="line"><span class="keyword">enum class</span> <span class="title class_">LogLevel</span> &#123; Debug, Info, Warning, Error &#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">log</span><span class="params">(LogLevel level, <span class="type">const</span> std::string&amp; message)</span> </span>&#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* level_str = <span class="string">&quot;&quot;</span>;</span><br><span class="line">    <span class="keyword">switch</span> (level) &#123;</span><br><span class="line">        <span class="keyword">case</span> LogLevel::Debug:   level_str = <span class="string">&quot;Debug&quot;</span>; <span class="keyword">break</span>;   <span class="comment">// ❌ 字符串重复</span></span><br><span class="line">        <span class="keyword">case</span> LogLevel::Info:    level_str = <span class="string">&quot;Info&quot;</span>; <span class="keyword">break</span>;    <span class="comment">// ❌ 容易出错</span></span><br><span class="line">        <span class="keyword">case</span> LogLevel::Warning: level_str = <span class="string">&quot;Warning&quot;</span>; <span class="keyword">break</span>; <span class="comment">// ❌ 维护困难</span></span><br><span class="line">        <span class="keyword">case</span> LogLevel::Error:   level_str = <span class="string">&quot;Error&quot;</span>; <span class="keyword">break</span>;   <span class="comment">// ❌ 重构不友好</span></span><br><span class="line">    &#125;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;[&quot;</span> &lt;&lt; level_str &lt;&lt; <span class="string">&quot;] &quot;</span> &lt;&lt; message &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>使用 nameof 的改进：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;nameof.hpp&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">log_with_nameof</span><span class="params">(LogLevel level, <span class="type">const</span> std::string&amp; message)</span> </span>&#123;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;[&quot;</span> &lt;&lt; <span class="built_in">NAMEOF_ENUM</span>(level) &lt;&lt; <span class="string">&quot;] &quot;</span> &lt;&lt; message &lt;&lt; std::endl;</span><br><span class="line">    <span class="comment">// 输出示例: [Debug] Something happened</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="主要功能展示"><a href="#主要功能展示" class="headerlink" title="主要功能展示"></a>主要功能展示</h3><p><strong>获取变量&#x2F;表达式名称</strong>、<strong>获取枚举名称</strong>、<strong>获取类型名称</strong>、<strong>获取成员和指针名称</strong> ——具体示例见上方正文。</p>
+<h3 id="实际应用场景"><a href="#实际应用场景" class="headerlink" title="实际应用场景"></a>实际应用场景</h3><p>日志系统、序列化&#x2F;反序列化（用 <code>NAMEOF_MEMBER</code> 生成 JSON key）、测试框架（断言失败输出变量名）、配置系统（类型安全配置 key）——代码示例见上方正文。</p>
+<h3 id="自定义扩展"><a href="#自定义扩展" class="headerlink" title="自定义扩展"></a>自定义扩展</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">namespace</span> nameof::customize &#123;</span><br><span class="line">    <span class="keyword">template</span> &lt;&gt;</span><br><span class="line">    <span class="keyword">constexpr</span> string_view <span class="built_in">enum_name</span>&lt;Color&gt;(Color value) <span class="keyword">noexcept</span> &#123;</span><br><span class="line">        <span class="keyword">switch</span> (value) &#123;</span><br><span class="line">            <span class="keyword">case</span> Color::Red:   <span class="keyword">return</span> <span class="string">&quot;红色&quot;</span>;</span><br><span class="line">            <span class="keyword">case</span> Color::Green: <span class="keyword">return</span> <span class="string">&quot;绿色&quot;</span>;</span><br><span class="line">            <span class="keyword">case</span> Color::Blue:  <span class="keyword">return</span> <span class="string">&quot;蓝色&quot;</span>;</span><br><span class="line">            <span class="keyword">default</span>: <span class="keyword">return</span> &#123;&#125;;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">namespace</span> nameof::customize &#123;</span><br><span class="line">    <span class="keyword">template</span> &lt;&gt;</span><br><span class="line">    <span class="keyword">constexpr</span> string_view <span class="built_in">type_name</span>&lt;MySpecialType&gt;() <span class="keyword">noexcept</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;SpecialType&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="性能优势"><a href="#性能优势" class="headerlink" title="性能优势"></a>性能优势</h3><p>nameof 的所有操作都在编译期完成：</p>
+<ol>
+<li>字符串提取在编译期</li>
+<li>枚举值映射在编译期</li>
+<li>类型名解析在编译期</li>
+<li>运行时只有简单的字符串查找</li>
+</ol>
+<p>对比运行时反射（如 typeid）：</p>
+<ul>
+<li>typeid: 需要 RTTI，运行时开销</li>
+<li>nameof: 纯编译期，零开销</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">constexpr</span> <span class="keyword">auto</span> color_name = <span class="built_in">NAMEOF_ENUM_CONST</span>(Color::Red);</span><br><span class="line"><span class="comment">// 等价于: constexpr auto color_name = &quot;Red&quot;;</span></span><br><span class="line"><span class="comment">// 编译期就已经是字符串字面量</span></span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Nameof%E5%BA%93/">https://weimo1.github.io/posts/Nameof%E5%BA%93/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Nignx/" title="Nignx"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Nignx</div></div><div class="info-2"><div class="info-item-1">Nginx 核心架构 Nginx 是高性能 HTTP&#x2F;反向代理服务器，其核心设计围绕进程模型、模块化架构和事件驱动机制展开。本文深入分析 Nginx 核心三角关系：进程（Processes）、Cycle（运行周期）和模块（Modules）之间的交互与协同。  一、核心概念 定义：Nginx 采用 Master-Worker 多进程模型，通过 Cycle 管理运行时配置和模块，模块提供可插拔的功能扩展。其高性能源于事件驱动的非阻塞 I&#x2F;O 模型和精巧的内存管理。 关键词：Master-Worker 进程模型、Cycle 运行周期、模块化架构、事件驱动、非阻塞 I&#x2...</div></div></div></a><a class="pagination-related" href="/posts/MySQL%E8%BF%9E%E6%8E%A5%E6%B1%A0%E8%AE%BE%E8%AE%A1%E8%A6%81%E7%82%B9/" title="MySQL连接池设计要点"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MySQL连接池设计要点</div></div><div class="info-2"><div class="info-item-1">MySQL 连接池设计与优化 适用范围：MySQL 连接池核心设计、生产者-消费者模式、RAII 资源管理、超时与熔断、动态扩缩容、性能监控  一、项目&#x2F;模块概述 模块定位：数据库连接池是后端服务的基础设施组件，负责预创建并管理 MySQL 连接的生命周期，通过连接复用避免频繁创建&#x2F;销毁 TCP 连接和 MySQL 握手开销，是高并发服务的核心性能优化手段。 技术栈与依赖：C++17、MySQL Connector&#x2F;C++、std::unique_ptr、std::mutex + std::condition_variable、std::atomic。 模块...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Nameof%E5%BA%93-%E2%80%94%E2%80%94-C-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%8F%8D%E5%B0%84"><span class="toc-number">1.</span> <span class="toc-text">Nameof库 —— C++ 编译期反射</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E7%BC%96%E8%AF%91%E5%99%A8%E5%86%85%E7%BD%AE%E5%AE%8F%E9%80%82%E9%85%8D"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 编译器内置宏适配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-pretty-name-%E2%80%94%E2%80%94-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%A3%E6%9E%90"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 pretty_name —— 编译期字符串解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-cstring-%E2%80%94%E2%80%94-%E7%BC%96%E8%AF%91%E6%9C%9F%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AE%B9%E5%99%A8"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 cstring —— 编译期字符串容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E6%9E%9A%E4%B8%BE%E5%80%BC%E9%81%8D%E5%8E%86"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 枚举值遍历</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.8.1.</span> <span class="toc-text">解决的问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E8%A6%81%E5%8A%9F%E8%83%BD%E5%B1%95%E7%A4%BA"><span class="toc-number">1.8.2.</span> <span class="toc-text">主要功能展示</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E9%99%85%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">1.8.3.</span> <span class="toc-text">实际应用场景</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%89%A9%E5%B1%95"><span class="toc-number">1.8.4.</span> <span class="toc-text">自定义扩展</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E4%BC%98%E5%8A%BF"><span class="toc-number">1.8.5.</span> <span class="toc-text">性能优势</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

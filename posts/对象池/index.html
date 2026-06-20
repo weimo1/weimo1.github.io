@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>对象池 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="对象池12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152#include &lt;string&gt;#include &lt;functional&gt;#include &lt;memory&gt;#include &lt;map&gt;#include">
+<meta property="og:type" content="article">
+<meta property="og:title" content="对象池">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%AF%B9%E8%B1%A1%E6%B1%A0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="对象池12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152#include &lt;string&gt;#include &lt;functional&gt;#include &lt;memory&gt;#include &lt;map&gt;#include">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.569Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "对象池",
+  "url": "https://weimo1.github.io/posts/%E5%AF%B9%E8%B1%A1%E6%B1%A0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.569Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%AF%B9%E8%B1%A1%E6%B1%A0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '对象池',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">对象池</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">对象池</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.569Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B/">对象模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>10分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="对象池"><a href="#对象池" class="headerlink" title="对象池"></a>对象池</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;string&gt;</span><br><span class="line">#include &lt;functional&gt;</span><br><span class="line">#include &lt;memory&gt;</span><br><span class="line">#include &lt;map&gt;</span><br><span class="line">#include &quot;NonCopyable.hpp&quot;</span><br><span class="line">using namespace std;</span><br><span class="line"></span><br><span class="line">const int MaxObjectNum = 10;</span><br><span class="line"></span><br><span class="line">template&lt;typename T&gt;</span><br><span class="line">class ObjectPool : NonCopyable</span><br><span class="line">&#123;</span><br><span class="line">	template&lt;typename... Args&gt;</span><br><span class="line">	using Constructor = std::function&lt;std::shared_ptr&lt;T&gt;(Args...)&gt;;</span><br><span class="line">public:</span><br><span class="line">	//默认创建多少个对象</span><br><span class="line">	template&lt;typename... Args&gt;</span><br><span class="line">	void Init(size_t num, Args&amp;&amp;... args)</span><br><span class="line">	&#123;</span><br><span class="line">		if (num&lt;= 0 || num&gt; MaxObjectNum)</span><br><span class="line">			throw std::logic_error(&quot;object num out of range.&quot;);</span><br><span class="line"></span><br><span class="line">		auto constructName = typeid(Constructor&lt;Args...&gt;).name(); //不区分引用</span><br><span class="line">		for (size_t i = 0; i &lt;num; i++)</span><br><span class="line">		&#123;</span><br><span class="line">			m_object_map.emplace(constructName, shared_ptr&lt;T&gt;(new T(std::forward&lt;Args&gt;(args)...), [this, constructName](T* p) //删除器中不直接删除对象，而是回收到对象池中，以供下次使用</span><br><span class="line">			&#123;</span><br><span class="line">				m_object_map.emplace(std::move(constructName), std::shared_ptr&lt;T&gt;(p));</span><br><span class="line">			&#125;));</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//从对象池中获取一个对象</span><br><span class="line">	template&lt;typename... Args&gt;</span><br><span class="line">	std::shared_ptr&lt;T&gt; Get()</span><br><span class="line">	&#123;</span><br><span class="line">		string constructName = typeid(Constructor&lt;Args...&gt;).name();</span><br><span class="line"></span><br><span class="line">		auto range = m_object_map.equal_range(constructName);</span><br><span class="line">		for (auto it = range.first; it != range.second; ++it)</span><br><span class="line">		&#123;</span><br><span class="line">			auto ptr = it-&gt;second;</span><br><span class="line">			m_object_map.erase(it);</span><br><span class="line">			return ptr;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		return nullptr;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">	multimap&lt;string, std::shared_ptr&lt;T&gt;&gt; m_object_map;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：对象池（Object Pool）是一种对象创建模式，预先构造一定数量的对象缓存在池中，需要时借出、用完归还，避免高频构造&#x2F;析构的开销。本质是<strong>用空间换时间</strong>——用预分配的内存和预构造状态换取零分配延迟</li>
+<li><strong>关键词</strong>：预构造、借出&#x2F;归还、shared_ptr 自定义删除器、multimap 分组、typeid 签名区分、<code>std::pmr::memory_resource</code></li>
+<li><strong>适用场景&#x2F;边界</strong>：对象构造开销大（数据库连接、线程、大缓冲区）；高频分配&#x2F;释放（游戏子弹、网络包）；固定数量对象不超出池容量。不适用：简单对象（构造便宜的不值得池化）、不定数量对象（超出池容量时需退化到 new）、生命周期超越池的对象</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——预构造与缓存</strong>：<code>Init(size, args...)</code> 预先创建 <code>size</code> 个对象，包装为 <code>shared_ptr&lt;T&gt;</code> 存入 <code>multimap&lt;string, shared_ptr&lt;T&gt;&gt;</code>。Key &#x3D; <code>typeid(Constructor&lt;Args...&gt;).name()</code> 区分不同构造参数签名。池满时 Get 返回 nullptr（需检查）</li>
+<li><strong>第二层——借出与归还（自定义删除器）</strong>：<code>Get()</code> 从 multimap 取出一个 shared_ptr，删除对象（erase）。归还机制：借出对象的 shared_ptr 引用计数归零时，自定义删除器被调用——不是 <code>delete</code>，而是将原始指针重新包装为新的 <code>shared_ptr</code> 放回 multimap。<strong>核心风险</strong>：池析构后删除器访问已销毁的容器 → UB</li>
+<li><strong>第三层——生命周期管理</strong>：池必须比所有借出对象长寿，否则悬挂 shared_ptr 析构时删除器访问野引用。解决方案：用 <code>weak_ptr</code> 追踪借出对象数量，或 <code>enable_shared_from_this</code> 让池自身被 shared_ptr 管理</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：<code>multimap&lt;string, shared_ptr&lt;T&gt;&gt;</code> 按构造签名分组；<code>Constructor&lt;Args...&gt;</code> &#x3D; <code>function&lt;shared_ptr&lt;T&gt;(Args...)&gt;</code>；<code>Get&lt;Args...&gt;()</code> 签名必须与 Init 匹配</li>
+<li><strong>关键公式</strong>：池命中延迟 ≈ O(log n)（multimap 查找）；无锁链表实现可达 O(1)；对象池 vs 裸 new 的平衡点在构造开销 &gt; shared_ptr 引用计数原子操作开销</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;map&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SimplePool</span> &#123;</span><br><span class="line">    multimap&lt;string, shared_ptr&lt;T&gt;&gt; pool_;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">    <span class="type">void</span> <span class="title">init</span><span class="params">(<span class="type">size_t</span> n, Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; n; ++i)</span><br><span class="line">            pool_.<span class="built_in">emplace</span>(<span class="string">&quot;default&quot;</span>, <span class="built_in">make_shared</span>&lt;T&gt;(forward&lt;Args&gt;(args)...));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">shared_ptr&lt;T&gt; <span class="title">get</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> it = pool_.<span class="built_in">find</span>(<span class="string">&quot;default&quot;</span>);</span><br><span class="line">        <span class="keyword">if</span> (it == pool_.<span class="built_in">end</span>()) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="keyword">auto</span> ptr = it-&gt;second;</span><br><span class="line">        pool_.<span class="built_in">erase</span>(it);</span><br><span class="line">        <span class="keyword">return</span> ptr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="type">size_t</span> <span class="title">available</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> pool_.<span class="built_in">count</span>(<span class="string">&quot;default&quot;</span>); &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 测试</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    SimplePool&lt;string&gt; pool;</span><br><span class="line">    pool.<span class="built_in">init</span>(<span class="number">3</span>, <span class="string">&quot;hello&quot;</span>);</span><br><span class="line">    cout &lt;&lt; pool.<span class="built_in">available</span>() &lt;&lt; endl;  <span class="comment">// 3</span></span><br><span class="line">    <span class="keyword">auto</span> s = pool.<span class="built_in">get</span>();</span><br><span class="line">    cout &lt;&lt; *s &lt;&lt; endl;                 <span class="comment">// &quot;hello&quot;</span></span><br><span class="line">    cout &lt;&lt; pool.<span class="built_in">available</span>() &lt;&lt; endl;  <span class="comment">// 2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>运行</strong>：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">g++ -std=c++17 pool_demo.cpp -o pool &amp;&amp; ./pool</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="shared-ptr-自定义删除器回收方案"><a href="#shared-ptr-自定义删除器回收方案" class="headerlink" title="shared_ptr 自定义删除器回收方案"></a>shared_ptr 自定义删除器回收方案</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">RecyclePool</span> &#123;</span><br><span class="line">    multimap&lt;string, shared_ptr&lt;T&gt;&gt; pool_;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">    shared_ptr&lt;T&gt; <span class="title">create</span><span class="params">(Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> key = <span class="built_in">typeid</span>(<span class="type">void</span>).<span class="built_in">name</span>();</span><br><span class="line">        <span class="keyword">auto</span> deleter = [<span class="keyword">this</span>, key](T* p) &#123;</span><br><span class="line">            pool_.<span class="built_in">emplace</span>(key, <span class="built_in">shared_ptr</span>&lt;T&gt;(p));  <span class="comment">// 归还</span></span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">shared_ptr</span>&lt;T&gt;(<span class="keyword">new</span> <span class="built_in">T</span>(forward&lt;Args&gt;(args)...), deleter);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 风险：pool_ 析构后 deleter 访问 this → UB</span></span><br><span class="line"><span class="comment">// 安全版：用 weak_ptr&lt;decltype(pool_)&gt; 捕获，deleter 中 lock() 检查</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="C-17-std-pmr-内存池（底层替代）"><a href="#C-17-std-pmr-内存池（底层替代）" class="headerlink" title="C++17 std::pmr 内存池（底层替代）"></a>C++17 std::pmr 内存池（底层替代）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory_resource&gt;</span></span></span><br><span class="line"><span class="type">char</span> buffer[<span class="number">4096</span>];</span><br><span class="line">std::pmr::monotonic_buffer_resource pool&#123;buffer, <span class="built_in">sizeof</span>(buffer)&#125;;</span><br><span class="line">std::pmr::vector&lt;<span class="type">int</span>&gt; vec&#123;&amp;pool&#125;;  <span class="comment">// vector 内存从池中分配</span></span><br><span class="line"><span class="comment">// pmr 只管内存不管对象状态，更底层更通用，可替代对象池的大部分场景</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="无锁对象池（多线程优化）"><a href="#无锁对象池（多线程优化）" class="headerlink" title="无锁对象池（多线程优化）"></a>无锁对象池（多线程优化）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;atomic&gt;</span></span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="type">size_t</span> N&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">LockFreePool</span> &#123;</span><br><span class="line">    T objects_[N];</span><br><span class="line">    atomic&lt;<span class="type">size_t</span>&gt; head_&#123;<span class="number">0</span>&#125;;</span><br><span class="line">    atomic&lt;<span class="type">bool</span>&gt; used_[N]&#123;&#125;;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">T* <span class="title">acquire</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; N; ++i) &#123;</span><br><span class="line">            <span class="type">bool</span> expected = <span class="literal">false</span>;</span><br><span class="line">            <span class="keyword">if</span> (used_[i].<span class="built_in">compare_exchange_weak</span>(expected, <span class="literal">true</span>))</span><br><span class="line">                <span class="keyword">return</span> &amp;objects_[i];</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">release</span><span class="params">(T* p)</span> </span>&#123;</span><br><span class="line">        <span class="type">size_t</span> idx = p - objects_;</span><br><span class="line">        used_[idx].<span class="built_in">store</span>(<span class="literal">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 用 CAS 替代 mutex，单次 acquire 延迟 ~10-20 cycles（无竞争）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="对象池-vs-内存池-vs-直接分配"><a href="#对象池-vs-内存池-vs-直接分配" class="headerlink" title="对象池 vs 内存池 vs 直接分配"></a>对象池 vs 内存池 vs 直接分配</h3><table>
+<thead>
+<tr>
+<th>方案</th>
+<th>构造开销</th>
+<th>内存分配</th>
+<th>线程安全</th>
+<th>碎片</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>对象池</td>
+<td>仅 Init 时一次</td>
+<td>仅 Init 时一次</td>
+<td>需额外加锁</td>
+<td>无</td>
+</tr>
+<tr>
+<td>内存池(pmr)</td>
+<td>每次 acquire</td>
+<td>无（预分配）</td>
+<td>取决于实现</td>
+<td>无</td>
+</tr>
+<tr>
+<td>new&#x2F;delete</td>
+<td>每次构造</td>
+<td>每次分配</td>
+<td>内置(malloc 锁)</td>
+<td>可能</td>
+</tr>
+</tbody></table>
+<p><strong>选择建议</strong>：构造开销 &gt; 100 cycles 且对象数量固定 → 对象池；仅需快速内存分配 → pmr；简单对象 → 直接 new&#x2F;delete 更快（shared_ptr 原子操作可能更贵）。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="1-自定义删除器的回收机制"><a href="#1-自定义删除器的回收机制" class="headerlink" title="1. 自定义删除器的回收机制"></a>1. 自定义删除器的回收机制</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 关键：shared_ptr 的自定义删除器不释放内存，而是回收到池中</span></span><br><span class="line"><span class="keyword">auto</span> deleter = [<span class="keyword">this</span>, constructName](T* p) &#123;</span><br><span class="line">    <span class="comment">// 对象引用计数归零时调用此删除器</span></span><br><span class="line">    <span class="comment">// 不是 delete p，而是将 p 重新包装为 shared_ptr 放回池中</span></span><br><span class="line">    m_object_map.<span class="built_in">emplace</span>(constructName, std::<span class="built_in">shared_ptr</span>&lt;T&gt;(p));</span><br><span class="line">    <span class="comment">// ★ 风险：此处 p 被新的 shared_ptr 接管，旧 shared_ptr 的引用计数已归零</span></span><br><span class="line">    <span class="comment">//   如果池外还有其他 shared_ptr 引用此对象 → 双重释放</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-构造器签名区分"><a href="#2-构造器签名区分" class="headerlink" title="2. 构造器签名区分"></a>2. 构造器签名区分</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 用 typeid 区分不同构造参数签名的对象</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span>... Args&gt;</span><br><span class="line"><span class="keyword">using</span> Constructor = std::function&lt;std::<span class="built_in">shared_ptr</span>&lt;T&gt;(Args...)&gt;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">auto</span> constructName = <span class="built_in">typeid</span>(Constructor&lt;Args...&gt;).<span class="built_in">name</span>();</span><br><span class="line"><span class="comment">// 不同参数类型生成不同的名称，&quot;pool[int]&quot; 和 &quot;pool[int,double]&quot; 分开管理</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 注意：typeid 不区分 int&amp; 和 int（引用被剥离），所有相同值类别参数算同一种</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-对象池与-shared-ptr-的兼容性陷阱"><a href="#3-对象池与-shared-ptr-的兼容性陷阱" class="headerlink" title="3. 对象池与 shared_ptr 的兼容性陷阱"></a>3. 对象池与 shared_ptr 的兼容性陷阱</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 正确：池析构时，map 中所有 shared_ptr 析构，对象才真正释放</span></span><br><span class="line"><span class="keyword">auto</span> pool = <span class="built_in">ObjectPool</span>&lt;Heavy&gt;();</span><br><span class="line">pool.<span class="built_in">Init</span>(<span class="number">5</span>);</span><br><span class="line"><span class="keyword">auto</span> obj = pool.<span class="built_in">Get</span>();  <span class="comment">// 从池中取出</span></span><br><span class="line"><span class="comment">// obj 离开作用域 → 自定义删除器触发 → 对象回收到池中</span></span><br><span class="line"><span class="comment">// pool 析构 → map 中所有 shared_ptr 析构 → 对象最终 delete</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 错误：池已析构后还有外部 shared_ptr 引用</span></span><br><span class="line">std::shared_ptr&lt;Heavy&gt; hanging;</span><br><span class="line">&#123;</span><br><span class="line">    ObjectPool&lt;Heavy&gt; pool;</span><br><span class="line">    pool.<span class="built_in">Init</span>(<span class="number">5</span>);</span><br><span class="line">    hanging = pool.<span class="built_in">Get</span>();</span><br><span class="line">&#125;  <span class="comment">// pool 析构，但 hanging 仍持有对象</span></span><br><span class="line"><span class="comment">// hanging 析构时触发删除器 → 访问已析构的 m_object_map → UB</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="实践经验"><a href="#实践经验" class="headerlink" title="实践经验"></a>实践经验</h3><ol>
+<li><strong>对象池生命周期</strong>：池必须比所有借出对象活得久，否则删除器访问已析构容器</li>
+<li><strong>类型签名区分</strong>：<code>typeid(...).name()</code> 返回值是实现定义的，不同编译器可能不同</li>
+<li><strong>最大数量限制</strong>：<code>MaxObjectNum</code> 硬编码，生产应改为构造函数参数</li>
+<li><strong>线程安全缺失</strong>：multimap 操作无锁保护，多线程需加 mutex</li>
+<li><strong>回收不等于析构</strong>：自定义删除器只是改变了 shared_ptr 引用计数归零时的行为</li>
+<li><strong>更优方案</strong>：用 <code>std::pmr::memory_resource</code>（C++17）做内存池，而非对象池</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="Q-A（8题）"><a href="#Q-A（8题）" class="headerlink" title="Q&amp;A（8题）"></a>Q&amp;A（8题）</h3><p><strong>Q1: 对象池和内存池的区别？</strong><br>A: 对象池缓存已构造的对象（直接复用），内存池缓存裸内存（需重新构造）。对象池多一层构造状态管理</p>
+<p><strong>Q2: shared_ptr 自定义删除器的作用？</strong><br>A: 引用计数归零时调用删除器，默认 delete。可用于对象池回收、资源释放后置、调试日志</p>
+<p><strong>Q3: 自定义删除器实现对象池的风险？</strong><br>A: 池析构后借出对象的删除器访问已销毁的容器 → UB。池必须比所有外部引用长寿</p>
+<p><strong>Q4: 如何区分不同构造参数的对象？</strong><br>A: 用 <code>std::type_index</code> + <code>typeid(Constructor&lt;Args...&gt;)</code> 生成唯一标识</p>
+<p><strong>Q5: 为什么用 multimap 而非 map？</strong><br>A: 同一种构造参数可能有多个对象，multimap 允许重复键</p>
+<p><strong>Q6: 对象池的适用场景？</strong><br>A: 对象构造开销大（数据库连接、线程）、高频分配&#x2F;释放、固定数量对象</p>
+<p><strong>Q7: <code>std::pmr</code> 和自定义对象池的区别？</strong><br>A: pmr 是内存分配层面的池，不管理对象构造状态，更底层更通用</p>
+<p><strong>Q8: 线程安全的对象池怎么做？</strong><br>A: mutex 保护 Get&#x2F;Init，或 <code>std::lock_free</code> 结构。也可用 <code>std::shared_mutex</code> 读写锁</p>
+<h3 id="陷阱与反问（5个）"><a href="#陷阱与反问（5个）" class="headerlink" title="陷阱与反问（5个）"></a>陷阱与反问（5个）</h3><ol>
+<li><strong>陷阱</strong>：池析构后借出对象仍持有 shared_ptr → 删除器访问野引用</li>
+<li><strong>反问</strong>：对象池一定比 new&#x2F;delete 快吗？→ 不一定，shared_ptr 引用计数有原子操作开销，简单对象反而更慢</li>
+<li><strong>陷阱</strong>：<code>typeid(...).name()</code> 跨编译器不兼容 → 改用 <code>std::type_index</code> 做 key</li>
+<li><strong>反问</strong>：能用对象池替代 GC 吗？→ 不能，对象池不追踪引用关系，不能回收循环引用</li>
+<li><strong>陷阱</strong>：池满时 Get 返回 nullptr 未检查 → 空指针解引用</li>
+</ol>
+<h3 id="一句话答案（5个）"><a href="#一句话答案（5个）" class="headerlink" title="一句话答案（5个）"></a>一句话答案（5个）</h3><ol>
+<li><strong>对象池核心</strong>：缓存已构造对象，避免反复构造&#x2F;析构</li>
+<li><strong>删除器回收</strong>：shared_ptr 引用归零时归还池而非 delete</li>
+<li><strong>生命周期铁律</strong>：池必须比所有借出对象长寿</li>
+<li><strong>构造函数区分</strong>：用构造参数类型签名做 key</li>
+<li><strong>线程安全</strong>：多线程访问需加锁</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%AF%B9%E8%B1%A1%E6%B1%A0/">https://weimo1.github.io/posts/%E5%AF%B9%E8%B1%A1%E6%B1%A0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/" title="布隆过滤器"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">布隆过滤器</div></div><div class="info-2"><div class="info-item-1">布隆过滤器google guava 解决方案 白名单里有的才让通过，没有直接返回，但是存在误判由于误判率很小，mysql可以接受。使用时需注: 所有key需要往redis和布隆过滤器里面放入。 布隆过滤器做黑名单使用： 那问题来了，布隆过滤器具体是如何工作的呢？ 接下来，我介绍下。布隆过滤器由「初始值都为 0 的位图数组」和「 N 个哈希函数」两部分组成。当我们在写入数据库数据时，在布隆过滤器里做个标记，这样下次查询数据是否在数据库时，只需要查询布隆过滤器，如果查询到数据没有被标记，说明不在数据库中。 布隆过滤器会通过 3 个操作完成标记：  第一步，使用 N 个哈希函数分别对数据做哈希...</div></div></div></a><a class="pagination-related" href="/posts/%E5%AF%86%E7%A0%81%E5%8A%A0%E5%AF%86%E6%96%B9%E6%A1%88/" title="密码加密方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">密码加密方案</div></div><div class="info-2"><div class="info-item-1">密码加密方案 适用范围：用户密码安全存储、加盐哈希、密钥延申、传输加密、bcrypt&#x2F;Argon2 选型  一、项目&#x2F;模块概述 模块定位：用户密码安全是 IM 系统的基础安全要求，涵盖存储端加盐哈希和传输端加密。密码一旦泄露会导致用户全网账号风险（用户通常多平台共用密码）。 技术栈与依赖：SHA-256 &#x2F; bcrypt &#x2F; Argon2（哈希算法）、HTTPS&#x2F;TLS（传输层加密）、ECC 椭圆曲线（非对称加密）、CSPRNG（安全随机数）。 模块边界：前端加密 → HTTPS 传输 → 服务端验证 → Token 返回。服务端永不存储...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E6%B1%A0"><span class="toc-number">1.</span> <span class="toc-text">对象池</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#shared-ptr-%E8%87%AA%E5%AE%9A%E4%B9%89%E5%88%A0%E9%99%A4%E5%99%A8%E5%9B%9E%E6%94%B6%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.1.</span> <span class="toc-text">shared_ptr 自定义删除器回收方案</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#C-17-std-pmr-%E5%86%85%E5%AD%98%E6%B1%A0%EF%BC%88%E5%BA%95%E5%B1%82%E6%9B%BF%E4%BB%A3%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">C++17 std::pmr 内存池（底层替代）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%A0%E9%94%81%E5%AF%B9%E8%B1%A1%E6%B1%A0%EF%BC%88%E5%A4%9A%E7%BA%BF%E7%A8%8B%E4%BC%98%E5%8C%96%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">无锁对象池（多线程优化）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E6%B1%A0-vs-%E5%86%85%E5%AD%98%E6%B1%A0-vs-%E7%9B%B4%E6%8E%A5%E5%88%86%E9%85%8D"><span class="toc-number">1.4.4.</span> <span class="toc-text">对象池 vs 内存池 vs 直接分配</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E8%87%AA%E5%AE%9A%E4%B9%89%E5%88%A0%E9%99%A4%E5%99%A8%E7%9A%84%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6"><span class="toc-number">1.5.1.</span> <span class="toc-text">1. 自定义删除器的回收机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%9E%84%E9%80%A0%E5%99%A8%E7%AD%BE%E5%90%8D%E5%8C%BA%E5%88%86"><span class="toc-number">1.5.2.</span> <span class="toc-text">2. 构造器签名区分</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%AF%B9%E8%B1%A1%E6%B1%A0%E4%B8%8E-shared-ptr-%E7%9A%84%E5%85%BC%E5%AE%B9%E6%80%A7%E9%99%B7%E9%98%B1"><span class="toc-number">1.5.3.</span> <span class="toc-text">3. 对象池与 shared_ptr 的兼容性陷阱</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.4.</span> <span class="toc-text">实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Q-A%EF%BC%888%E9%A2%98%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">Q&amp;A（8题）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">陷阱与反问（5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%885%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">一句话答案（5个）</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

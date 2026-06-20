@@ -1,0 +1,629 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Hook | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Hook钩子（Hook）是一种技术，用于拦截函数调用、消息或事件，以便在它们被目标处理之前或之后执行自定义代码。 动态插桩（Dynamic Instrumentation）是一种在程序运行时插入代码（桩代码）的技术，用于监控、分析或修改程序的行为。 可以说，钩子是动态插桩的一种特定形式或应用。动态插桩的范围更广，它包括了在程序运行时插入任何类型的监控代码，而钩子通常特指拦截函数调用或事件 linu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hook">
+<meta property="og:url" content="https://weimo1.github.io/posts/Hook/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Hook钩子（Hook）是一种技术，用于拦截函数调用、消息或事件，以便在它们被目标处理之前或之后执行自定义代码。 动态插桩（Dynamic Instrumentation）是一种在程序运行时插入代码（桩代码）的技术，用于监控、分析或修改程序的行为。 可以说，钩子是动态插桩的一种特定形式或应用。动态插桩的范围更广，它包括了在程序运行时插入任何类型的监控代码，而钩子通常特指拦截函数调用或事件 linu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.544Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Hook",
+  "url": "https://weimo1.github.io/posts/Hook/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.544Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Hook/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Hook',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Hook</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Hook</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.544Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/">系统底层408</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%B3%BB%E7%BB%9F%E5%BA%95%E5%B1%82408/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">操作系统</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">8.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>31分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Hook"><a href="#Hook" class="headerlink" title="Hook"></a>Hook</h1><p>钩子（Hook）是一种技术，用于拦截函数调用、消息或事件，以便在它们被目标处理之前或之后执行自定义代码。</p>
+<p>动态插桩（Dynamic Instrumentation）是一种在程序运行时插入代码（桩代码）的技术，用于监控、分析或修改程序的行为。</p>
+<p>可以说，钩子是动态插桩的一种特定形式或应用。动态插桩的范围更广，它包括了在程序运行时插入任何类型的监控代码，而钩子通常特指拦截函数调用或事件</p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/44132805">linux hook机制研究</a><br><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/38339756">Hook原理</a><br><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/1966959962732337134">Linux系统调用Hook：从内核机制到实际落地</a></p>
+<h2 id="文件监控服务"><a href="#文件监控服务" class="headerlink" title="文件监控服务"></a>文件监控服务</h2><h3 id="一、需求"><a href="#一、需求" class="headerlink" title="一、需求"></a>一、需求</h3><h4 id="1-1-文件清单"><a href="#1-1-文件清单" class="headerlink" title="1.1 文件清单"></a>1.1 文件清单</h4><p>用户可以选择文件, 加入<code>文件清单</code>; 程序会记录选择的文件的 绝对路径, 以确保无歧义.</p>
+<h4 id="1-2-指定进程"><a href="#1-2-指定进程" class="headerlink" title="1.2 指定进程"></a>1.2 指定进程</h4><p>用户可以指定进程, 加入<code>白名单</code>; 程序会记录选择的进程的 启动路径 的 绝对路径 作为唯一进程标识.</p>
+<h4 id="1-3-可拦截读写系统调用"><a href="#1-3-可拦截读写系统调用" class="headerlink" title="1.3 可拦截读写系统调用"></a>1.3 可拦截读写系统调用</h4><p>对 <code>文件清单</code> 内的文件进行读写操作时, 需要拦截 非 白名单 的进程.</p>
+<h4 id="1-4-日志系统"><a href="#1-4-日志系统" class="headerlink" title="1.4 日志系统"></a>1.4 日志系统</h4><p>日志记录:</p>
+<p>[触发时间] [触发进程(全路径)] [该进程操作对象(文件)] [该进程操作内容] [本程序处理结果]</p>
+<h3 id="X、技术实现的查询"><a href="#X、技术实现的查询" class="headerlink" title="X、技术实现的查询"></a>X、技术实现的查询</h3><h4 id="x-1-查找关键字及其文章"><a href="#x-1-查找关键字及其文章" class="headerlink" title="x.1 查找关键字及其文章"></a>x.1 查找关键字及其文章</h4><p>系统读写调用拦截</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/weiqifa0/article/details/122571798">手把手教你｜拦截系统调用</a></li>
+</ul>
+<p>linux拦截读写调用</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://juejin.cn/post/7215825282040676412">Linux系统下白名单外进程阻断实现原理</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/549849135">盘点Linux中常见的过滤拦截技术</a> (实际上这篇就是综述, 的说)</li>
+</ul>
+<ol>
+<li>用户态动态库拦截</li>
+<li>内核态系统调用拦截</li>
+<li>堆栈式文件系统拦截</li>
+<li>inline hook拦截</li>
+<li>LSM(Linux Security Modules)</li>
+<li>eBPF Hook拦截</li>
+</ol>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/qq_66359721/article/details/147139241">Linux环境下的拦截技术</a></li>
+</ul>
+<p>有保护文件与网络过滤demo</p>
+<p>系统调用劫持获取文件绝对路径</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="http://edsionte.com/techblog/archives/4406">Linux内核中通过文件描述符获取绝对路径</a></li>
+</ul>
+<p>Linux系统调用劫持</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.freesion.com/article/1205184276/">Linux漏洞挖掘:06—系统调用劫持之（通过&#x2F;boot&#x2F;System.map目录获取sys_call_table系统调用表）</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/LittleHann/p/4127096.html">sys_call_table</a></li>
+</ul>
+<p>需要区分32和64位系统; 并且系统每次重启其 sys_call_table 的内存地址都会变我们需要获取到他们的地址; 并且记得复原, 如果不复原系统会崩掉, 你的程序结束后, 就是野指针了</p>
+<p>堆栈式文件系统</p>
+<ul>
+<li>发现比较难对付, 先略过</li>
+</ul>
+<p>inline hook</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.cnblogs.com/luconsole/p/14813573.html">inline hook 原理&amp;教程</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://eunomia.dev/zh/blogs/inline-hook/">五分钟带你手搓一个简易的 inline hook 实现控制流劫持</a> &amp; <a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/eunomia-bpf/inline-hook-demo">https://github.com/eunomia-bpf/inline-hook-demo</a></li>
+</ul>
+<p>需要考虑线程安全; 跨平台(arm&#x2F;x86)指令集的差异</p>
+<p>内核安全模块 编写</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/420194002">如何编写一个Linux内核模块，这次手把手教你</a></li>
+</ul>
+<p>内核安全模块 编写拦截</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://rivers.chaitin.cn/blog/cqj64sh0lnedo7thptp0">动手写一个基于Linux内核的网络数据包拦截扩展</a></li>
+</ul>
+<p>内核安全模块 可移植性</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hjk.life/posts/linux-kernel-portability/">Linux内核学习笔记之可移植性</a></li>
+</ul>
+<p>Linux Security Modules 可移植性</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/10981876370">Linux 内核的可裁剪性与可移植性底层原理详解</a></li>
+</ul>
+<p>感觉可以插入的点比较受约束?? 再找找看; 感觉和 eBPF 的区别就是是否可以hook用户态? 再找找看</p>
+<p>LSM模块 可作用函数</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/weixin_45030965/article/details/133749748">Linux 安全 - LSM hook点</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://just4coding.com/2023/12/01/lsm-hook/">LSM模块动态Hook实现</a> (CentOS7&#x2F;8的示例)</li>
+</ul>
+<p>LSM模块 hook点</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.neko.ooo/lsm-mod/">LSM 安全模块开发 —— 文件打开 2FA</a></li>
+</ul>
+<p>eBPF Hook 拦截读写</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.eet-china.com/mp/a357540.html">收藏！使用eBPF技术审计和拦截文件读写操作</a></li>
+</ul>
+<p>LSM模块 与 eBPF hook 对比</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/681005652">BPF LSM 完全实践（建议收藏）</a></li>
+</ul>
+<p>lsm hook 读写</p>
+<ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/farsight_2098/article/details/130875915">Linux内核安全模块（Linux Security Module，LSM）例子</a></li>
+</ul>
+<h3 id="二、技术笔记"><a href="#二、技术笔记" class="headerlink" title="二、技术笔记"></a>二、技术笔记</h3><h4 id="2-1-Linux中常见的过滤拦截技术"><a href="#2-1-Linux中常见的过滤拦截技术" class="headerlink" title="2.1 Linux中常见的过滤拦截技术"></a>2.1 Linux中常见的过滤拦截技术</h4><h5 id="2-1-1-用户态动态库拦截"><a href="#2-1-1-用户态动态库拦截" class="headerlink" title="2.1.1 用户态动态库拦截"></a>2.1.1 用户态动态库拦截</h5><p>Linux上的动态库劫持主要是基于 <code>LD_PRELOAD</code> 环境变量，这个环境变量的主要作用是改变动态库的加载顺序，让用户有选择的载入不同动态库中的相同函数。</p>
+<p>但是使用不当就会引起严重的安全问题，我们可以通过它在主程序和动态连接库中加载别的动态函数，这就给我们提供了一个机会，向别人的程序注入恶意的代码。</p>
+<p>Tip</p>
+<p>这是一个最简单的劫持 ，但是如果劫持了类似于 <code>geteuid/getuid/getgid</code>，让其返回<code>0</code>，就相当于暴露了root权限。所以为了安全起见，一般将 <code>LD_PRELOAD</code> 环境变量禁用掉。</p>
+<h5 id="2-1-2-内核态系统调用拦截"><a href="#2-1-2-内核态系统调用拦截" class="headerlink" title="2.1.2 内核态系统调用拦截"></a>2.1.2 内核态系统调用拦截</h5><p>Linux内核中所有的系统调用都是放在一个叫做 <code>sys_call_table</code> 的内核数组中，数组的值就表示这个系统调用服务程序的入口地址。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_21c56424f3f1.png"></p>
+<p>当用户态发起一个系统调用时，会通过80软中断进入到 <code>syscall hander</code>，进而进入全局的系统调用表 <code>sys_call_table</code> 去查找具体的系统调用，那么如果我们将这个数组中的地址改成我们自己的程序地址，就可以实现系统调用劫持。</p>
+<p>但是内核为了安全，对这种操作做了一些限制:</p>
+<ol>
+<li><code>sys_call_table</code> 的符号没有导出, 不能直接获取.</li>
+<li><code>sys_call_table</code> 所在的内存页是只读属性的, 无法直接进行修改.</li>
+</ol>
+<p>解决方法 (不唯一):</p>
+<ol>
+<li>获取 <code>sys_call_table</code> 的地址: <code>grep sys_call_table /boot/System.map-uname -r</code></li>
+<li>控制页表只读属性是由<code>CR0</code>寄存器的<code>WP位</code>控制的，只要将这个位 清零 就可以对只读页表进行修改。</li>
+</ol>
+<p>实例代码在 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/549849135">https://zhuanlan.zhihu.com/p/549849135</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">/* make the page writable */</span><br><span class="line">int make_rw(unsigned long address) &#123;</span><br><span class="line">    unsigned int level;</span><br><span class="line">    pte_t *pte = lookup_address(address, &amp;level); // 查找虚拟地址所在的页表地址</span><br><span class="line">    pte-&gt;pte |= _PAGE_RW; // 设置页表读写属性</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">/* make the page write protected */</span><br><span class="line">int make_ro(unsigned long address) &#123;</span><br><span class="line">    unsigned int level;</span><br><span class="line">    pte_t *pte = lookup_address(address, &amp;level);</span><br><span class="line">    pte-&gt;pte &amp;= ~_PAGE_RW; // 设置只读属性</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 开始替换系统调用</span><br><span class="line">static int syscall_init_module(void) &#123;</span><br><span class="line">    orig_getdents = sys_call_table[__NR_getdents];</span><br><span class="line">    make_rw((unsigned long)sys_call_table); // 修改页属性</span><br><span class="line">    sys_call_table[__NR_getdents] = (unsigned long *)hacked_getdents; // 设置新的系统调用地址</span><br><span class="line">    make_ro((unsigned long)sys_call_table);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 恢复原状</span><br><span class="line">static void syscall_cleanup_module(void) &#123;</span><br><span class="line">    printk(KERN_ALERT &quot;Module syscall unloaded.\n&quot;);</span><br><span class="line">    make_rw((unsigned long)sys_call_table);</span><br><span class="line">    sys_call_table[__NR_getdents] = (unsigned long *)orig_getdents;</span><br><span class="line">    make_ro((unsigned long)sys_call_table);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<h5 id="2-1-3-堆栈式文件系统"><a href="#2-1-3-堆栈式文件系统" class="headerlink" title="2.1.3 堆栈式文件系统"></a>2.1.3 堆栈式文件系统</h5><p>Linux通过<code>vfs虚拟文件系统</code>来统一抽象具体的磁盘文件系统，从上到下的IO栈形成了一个堆栈式。</p>
+<p>通过对内核源码的分析，以一次读操作为例，从上到下所执行的流程如下:</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_bcc389e561b5.png"></p>
+<p>内核中采用了很多c语言形式的面向对象，也就是函数指针的形式，例如read是vfs提供用户的接口，具体底下调用的是ext2的read操作。我们只要实现VFS提供的各种接口，就可以实现一个堆栈式文件系统。L</p>
+<p>实现了一个堆栈式文件系统，相当于所有的读写操作都会进入到我们的文件系统，可以拿到所有的数据，就可以进行做一些拦截过滤。</p>
+<h5 id="2-1-4-inline-hook"><a href="#2-1-4-inline-hook" class="headerlink" title="2.1.4 inline hook"></a>2.1.4 inline hook</h5><p>我们知道内核中的函数不可能把所有功能都在这个函数中全部实现，它必定要调用它的下层函数。</p>
+<p>如果这个下层函数可以得到我们想要的过滤信息内容，就可以把下层函数在上层函数中的offset替换成新的函数的offset，这样上层函数调用下层函数时，就会跳到新的函数中，在新的函数中做过滤和劫持内容的工作。</p>
+<p>所以从原理上来说，inline hook可以想hook哪里就hook哪里。</p>
+<p>但是有两个问题:</p>
+<ol>
+<li>如何定位hook点.</li>
+<li>如何注入hook函数入口.</li>
+</ol>
+<p>第一个需要你看过对应的内核源码</p>
+<ul>
+<li>第二个有两种方法:</li>
+</ul>
+<ol>
+<li>接进行二进制替换，将call指令的操作数替换为hook函数的地址</li>
+<li>Linux内核提供的kprobes机制</li>
+</ol>
+<p>其原理是在hook点注入int 3(x86)的机器码，让cpu运行到这里的时候会触发sig_trap信号，然后将用户自定义的hook函数注入到sig_trap的回调函数中，达到触发hook函数的目的。这个其实也是调试器的原理。</p>
+<h5 id="2-1-5-LSM-内核安全模块"><a href="#2-1-5-LSM-内核安全模块" class="headerlink" title="2.1.5 LSM (内核安全模块)"></a>2.1.5 LSM (内核安全模块)</h5><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_15ade1b43fc2.png"></p>
+<p>LSM在内核中做了以下工作:</p>
+<ol>
+<li>在特定的内核数据结构中加入安全域。</li>
+<li>在内核源代码中不同的关键点插入对安全钩子函数的调用。</li>
+<li>加入一个通用的安全系统调用。</li>
+<li>提供了函数允许内核模块注册为安全模块或者注销。</li>
+<li>将capabilities逻辑的大部分移植为一个可选的安全模块,具有可扩展性。</li>
+</ol>
+<p>实例: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://rivers.chaitin.cn/blog/cqj64sh0lnedo7thptp0">https://rivers.chaitin.cn/blog/cqj64sh0lnedo7thptp0</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;linux/module.h&gt; // included for all kernel modules</span><br><span class="line">#include &lt;linux/kernel.h&gt; // included for KERN_INFO</span><br><span class="line">#include &lt;linux/init.h&gt;   // included for __init and __exit macros</span><br><span class="line">#include &lt;linux/netfilter.h&gt;</span><br><span class="line">#include &lt;linux/netfilter_ipv4.h&gt;</span><br><span class="line">#include &lt;linux/netdevice.h&gt;</span><br><span class="line">#include &lt;linux/vmalloc.h&gt;</span><br><span class="line"></span><br><span class="line">MODULE_LICENSE(&quot;GPL&quot;);</span><br><span class="line">MODULE_DESCRIPTION(&quot;A Simple Hello Packet Module&quot;);</span><br><span class="line"></span><br><span class="line">enum &#123;</span><br><span class="line">    NF_IP_PRE_ROUTING,</span><br><span class="line">    NF_IP_LOCAL_IN,</span><br><span class="line">    NF_IP_FORWARD,</span><br><span class="line">    NF_IP_LOCAL_OUT,</span><br><span class="line">    NF_IP_POST_ROUTING,</span><br><span class="line">    NF_IP_NUMHOOKS</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">static struct nf_hook_ops in_nfho;  // net filter hook option struct</span><br><span class="line">static struct nf_hook_ops out_nfho; // net filter hook option struct</span><br><span class="line"></span><br><span class="line">static void dump_addr(unsigned char *iphdr) &#123;</span><br><span class="line">    int i;</span><br><span class="line">    for (i = 0; i &lt; 4; i++) &#123;</span><br><span class="line">        printk(&quot;%d.&quot;, *(iphdr + 12 + i));</span><br><span class="line">    &#125;</span><br><span class="line">    printk(&quot; -&gt; &quot;);</span><br><span class="line">    for (i = 0; i &lt; 4; i++) &#123;</span><br><span class="line">        printk(&quot;%d.&quot;, *(iphdr + 16 + i));</span><br><span class="line">    &#125;</span><br><span class="line">    printk(&quot;\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">unsigned int my_hook(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) &#123;</span><br><span class="line">    printk(&quot;Hello packet! &quot;);</span><br><span class="line">    // printk(&quot;from %s to %s\n&quot;, in-&gt;name, out-&gt;name);</span><br><span class="line">    unsigned char *iphdr = skb_network_header(skb);</span><br><span class="line">    if (iphdr)</span><br><span class="line">    &#123;</span><br><span class="line">        dump_addr(iphdr);</span><br><span class="line">    &#125;</span><br><span class="line">    return NF_ACCEPT;</span><br><span class="line">    // return NF_DROP;//会导致上不了网</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static int __init init_func(void) &#123;</span><br><span class="line">    // NF_IP_PRE_ROUTING hook</span><br><span class="line">    in_nfho.hook = my_hook;</span><br><span class="line">    in_nfho.hooknum = NF_IP_LOCAL_IN;</span><br><span class="line">    in_nfho.pf = PF_INET;</span><br><span class="line">    in_nfho.priority = NF_IP_PRI_FIRST;</span><br><span class="line"></span><br><span class="line">    nf_register_net_hook(&amp;init_net, &amp;in_nfho);</span><br><span class="line"></span><br><span class="line">    // NF_IP_LOCAL_OUT hook</span><br><span class="line">    out_nfho.hook = my_hook;</span><br><span class="line">    out_nfho.hooknum = NF_IP_LOCAL_OUT;</span><br><span class="line">    out_nfho.pf = PF_INET;</span><br><span class="line">    out_nfho.priority = NF_IP_PRI_FIRST;</span><br><span class="line"></span><br><span class="line">    nf_register_net_hook(&amp;init_net, &amp;out_nfho);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static void __exit exit_func(void) &#123;</span><br><span class="line">    nf_unregister_net_hook(&amp;init_net, &amp;in_nfho);</span><br><span class="line">    nf_unregister_net_hook(&amp;init_net, &amp;out_nfho);</span><br><span class="line">    printk(KERN_INFO &quot;Cleaning up Hello_Packet module.\n&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">module_init(init_func);</span><br><span class="line">module_exit(exit_func);</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<h5 id="2-1-6-ebpf"><a href="#2-1-6-ebpf" class="headerlink" title="2.1.6 ebpf"></a>2.1.6 ebpf</h5><p>eBPF 是一个在内核中运行的虚拟机，它可以去运行用户。在用户态实现的这种 eBPF 的代码，在内核以本地代码的形式和速度去执行，它可以跟内核的 Trace 系统相结合，给我们提供了在线扩展内核功能的技术。</p>
+<p>eBPF的hook点功能包括以下几部分:</p>
+<ol>
+<li>可以在Storage、Network等与内核交互之间；</li>
+<li>也可以在内核中的功能模块交互之间；</li>
+<li>又可以在内核态与用户态交互之间；</li>
+<li>更可以在用户态进程空间。</li>
+</ol>
+<h5 id="2-1-7-总结"><a href="#2-1-7-总结" class="headerlink" title="2.1.7 总结"></a>2.1.7 总结</h5><ol>
+<li>动态库劫持不太完全，劫持的信息有可能满足不了我们的需求，还有可能别人在你之前劫持了，一旦禁用 <code>LD_PRELOAD</code> 就失效了。</li>
+<li>系统调用劫持，劫持的信息有可能满足不了我们的需求，例如不能获取 <code>struct file</code> 结构体，不能获取文件的<code>绝对路径</code>等。</li>
+<li>堆栈式文件系统，依赖于Mount,可能需要重启系统。</li>
+<li>inline hook，灵活性高，随意Hook，即时生效无需重启，但是在不同内核版本之间通用性差，一旦某些函数发生了变化，Hook失效。</li>
+<li>LSM，在早期的内核中，只能允许一个LSM内核模块加载，例如加载了SELinux，就不能加载其他的LSM模块，在最新的内核版本中不存在这个问题。</li>
+<li>eBPF Hook,可以用户态编程控制，灵活性高，即时生效无需重启，但依赖内核的版本，通用性差，一旦某些函数发生了变化，Hook失效。</li>
+</ol>
+<h4 id="2-2-LSM-hook点说明"><a href="#2-2-LSM-hook点说明" class="headerlink" title="2.2 LSM hook点说明"></a>2.2 LSM hook点说明</h4><p>在VFS（虚拟文件系统）层中，定义了三个主要对象，它们封装了低级文件系统开发所使用的接口:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">super_block（超级块）对象</span><br><span class="line">file（文件）对象</span><br><span class="line">inode（索引节点）对象</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>每个对象都包含一组操作，这些操作定义了VFS与实际文件系统之间的接口。LSM（Linux安全模块）利用这些接口来介入文件系统访问。</p>
+<p>LSM使用内核对象中定义的不透明安全指针; 通过在这些结构体中添加安全指针，LSM可以监视和控制与文件系统相关的操作。</p>
+<p>这样，LSM可以在文件系统访问过程中介入，执行安全策略检查、权限控制等操作，以增强系统的安全性。</p>
+<h5 id="2-2-1-LSM-super-block-hooks"><a href="#2-2-1-LSM-super-block-hooks" class="headerlink" title="2.2.1 LSM super_block hooks"></a>2.2.1 LSM super_block hooks</h5><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">struct super_block &#123;</span><br><span class="line">	......</span><br><span class="line">#ifdef CONFIG_SECURITY</span><br><span class="line">	void *s_security;</span><br><span class="line">#endif</span><br><span class="line">	.....</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>当文件系统在内核中表示时, <code>super_block</code> 结构体是代表该文件系统的内核对象。</p>
+<p><code>super_block</code> 结构体在挂载和卸载文件系统以及获取文件系统统计信息时被使用。</p>
+<p>LSM（Linux安全模块）提供了一组钩子函数，用于介入对 <code>super_block</code> 的各种操作。</p>
+<ul>
+<li>在挂载文件系统时，内核首先通过调用 <code>sb_mount()</code> 钩子函数来验证挂载请求的有效性。LSM可以使用该钩子函数执行额外的安全检查，例如验证挂载任务的权限或确保挂载选项的有效性。</li>
+<li>在卸载文件系统时，会调用 <code>sb_umount()</code> 钩子函数来检查卸载文件系统所需的权限。LSM可以利用这个钩子函数来执行访问控制，确保只有授权的任务能够执行卸载操作。</li>
+<li><code>sb_remount()</code> 钩子函数在修改文件系统挂载选项时被调用。LSM可以利用该钩子函数验证请求的挂载选项的有效性和安全性。</li>
+</ul>
+<p>当任务尝试获取文件系统统计信息（如磁盘使用情况或可用空间）时，会调用 <code>sb_statfs()</code> 钩子函数。LSM可以使用该钩子函数执行权限检查，确保只有授权的任务能够访问文件系统统计信息。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">union security_list_options &#123;</span><br><span class="line">	// ......</span><br><span class="line">	int (*sb_remount)(struct super_block *sb, void *mnt_opts);</span><br><span class="line">	int (*sb_statfs)(struct dentry *dentry);</span><br><span class="line">	int (*sb_mount)(const char *dev_name, const struct path *path,</span><br><span class="line">			const char *type, unsigned long flags, void *data);</span><br><span class="line">	int (*sb_umount)(struct vfsmount *mnt, int flags);</span><br><span class="line">	// ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<h5 id="2-2-2-LSM-hooks"><a href="#2-2-2-LSM-hooks" class="headerlink" title="2.2.2 LSM hooks"></a>2.2.2 LSM hooks</h5><p>同理还有以下hook:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">一、LSM file system hooks</span><br><span class="line">    1.1 LSM super_block hooks</span><br><span class="line">    1.2 LSM file hooks</span><br><span class="line">    1.3 LSM inode hooks</span><br><span class="line">二、LSM Task hooks</span><br><span class="line">    &gt; 当任务在内核中表示为可调度任务时，task_struct 结构体是代表该任务的内核对象。</span><br><span class="line">    &gt; task_struct 结构体包含了任务的基本信息，如用户/组 ID、资源限制以及调度策略和优先级等。</span><br><span class="line">三、LSM IPC hooks</span><br><span class="line">    &gt; 当任务需要访问内核中的 SysV IPC 机制时，内核提供了标准的 SysV IPC 机制，包括共享内存、信号量和消息队列等。这些机制允许进程之间进行通信和共享数据。</span><br><span class="line">四、LSM Network hooks</span><br><span class="line">    &gt; 网络是Linux中的一个重要方面，尤其是在保护系统免受网络攻击方面，LSM为内核的这个领域提供了扩展的安全性。应用层对网络的访问是通过一系列与套接字相关的钩子函数进行介入的。</span><br><span class="line">五、LSM Module &amp; System hooks</span><br></pre></td></tr></table></figure>
+
+<p>md</p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/farsight_2098/article/details/130875915">https://blog.csdn.net/farsight_2098/article/details/130875915</a></p>
+<p>代码实例:</p>
+<p>下面是一个基于进程名和文件名实现特定进程可以访问特定文件的LSM示例代码</p>
+<p>这个示例的功能是，只允许特定进程可以访问特定的文件。当进程不在允许访问列表或者访问的文件与被保护路径不匹配时，会返回-EACCES错误，表示拒绝访问。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;linux/lsm_hooks.h&gt;</span><br><span class="line">#include &lt;linux/path.h&gt;</span><br><span class="line">#include &lt;linux/dcache.h&gt;</span><br><span class="line">#include &lt;linux/namei.h&gt;</span><br><span class="line"> </span><br><span class="line">// 定义允许访问文件的进程名称</span><br><span class="line">static char *allowed_process_name = &quot;my_app&quot;;</span><br><span class="line">// 定义需要保护的文件路径</span><br><span class="line">static char *file_path = &quot;path/to/protected/file&quot;;</span><br><span class="line"> </span><br><span class="line">// 在inode对象访问的钩子点上实现自定义钩子函数</span><br><span class="line">static int example_inode_permission(struct inode *inode, int mask) &#123;</span><br><span class="line">    // 获取当前进程的进程组ID和进程ID</span><br><span class="line">    pid_t current_pid = task_tgid_vnr(current);</span><br><span class="line">    // 获取当前进程的进程名称</span><br><span class="line">    char * current_process_name = (char*)get_task_comm(current);</span><br><span class="line"> </span><br><span class="line">    // 判断进程名称和进程组是否匹配</span><br><span class="line">    if (strcmp(current_process_name, allowed_process_name) || current_pid != pid_nr(get_task_pid(current, PIDTYPE_PID))) &#123;</span><br><span class="line">        // 如果当前进程名称和进程组和要求不匹配，则拒绝访问</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    // 判断访问的文件路径是否与被保护路径匹配</span><br><span class="line">    struct path file;</span><br><span class="line">    int err = kern_path(file_path, LOOKUP_FOLLOW, &amp;file);</span><br><span class="line">    if (err) &#123;</span><br><span class="line">        printk(KERN_INFO &quot;%!(NOVERB)s not found.\n&quot;, file_path);</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line">    if (file.dentry != inode-&gt;i_dentry) &#123;</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    // 允许进程访问文件</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 定义自定义钩子函数列表</span><br><span class="line">static struct security_hook_list example_hooks[] = &#123;</span><br><span class="line">    LSM_HOOK_INIT(inode_permission, example_inode_permission),</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line">// 安全模块初始化函数</span><br><span class="line">static __init int example_init(void) &#123;</span><br><span class="line">    printk(KERN_INFO &quot;example LSM initialized\n&quot;);</span><br><span class="line"> </span><br><span class="line">    // 注册自定义钩子函数</span><br><span class="line">    security_add_hooks(example_hooks, ARRAY_SIZE(example_hooks));</span><br><span class="line"> </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 安全模块注销函数</span><br><span class="line">static __exit void example_exit(void) &#123;</span><br><span class="line">    printk(KERN_INFO &quot;example LSM exited\n&quot;);</span><br><span class="line"></span><br><span class="line">    // 删除自定义钩子函数</span><br><span class="line">    security_delete_hooks(example_hooks, ARRAY_SIZE(example_hooks));</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 模块初始化和注销函数</span><br><span class="line">security_initcall(example_init);</span><br><span class="line">module_exit(example_exit);</span><br><span class="line"> </span><br><span class="line">MODULE_LICENSE(&quot;GPL&quot;);</span><br><span class="line">MODULE_DESCRIPTION(&quot;LSM示例：仅特定进程可以访问特定文件&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>下面是一个基于特定进程名实现只有特定进程可以使用网络的LSM示例代码:</p>
+<p>示例的功能是，只允许特定进程可以使用网络。如果进程不在允许使用网络的列表中，会返回-EACCES错误，表示拒绝使用网络。此示例重点测试套接字和连接到远程主机的行为，但可以通过添加其他适当的钩子来扩展其功能。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;linux/lsm_hooks.h&gt;</span><br><span class="line">#include &lt;linux/net.h&gt;</span><br><span class="line">#include &lt;linux/sched.h&gt;</span><br><span class="line"> </span><br><span class="line">// 定义允许使用网络的进程名称</span><br><span class="line">static char *allowed_process_name = &quot;my_network_app&quot;;</span><br><span class="line"> </span><br><span class="line">// 在socket对象访问的钩子点上实现自定义钩子函数</span><br><span class="line">static int example_socket_socket_create(int family, int type, int protocol, int kern) &#123;</span><br><span class="line">    // 获取当前进程的进程名称</span><br><span class="line">    char * current_process_name = (char*)get_task_comm(current);</span><br><span class="line"> </span><br><span class="line">    // 判断当前进程名称是否匹配允许使用网络的进程名称</span><br><span class="line">    if (strcmp(current_process_name, allowed_process_name)) &#123;</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 在bind（绑定套接字）钩子点上实现自定义钩子函数</span><br><span class="line">static int example_socket_socket_bind(struct socket *sock, struct sockaddr *address, int addrlen) &#123;</span><br><span class="line">    // 获取当前进程的进程名称</span><br><span class="line">    char * current_process_name = (char*)get_task_comm(current);</span><br><span class="line"> </span><br><span class="line">    // 判断当前进程名称是否匹配允许使用网络的进程名称</span><br><span class="line">    if (strcmp(current_process_name, allowed_process_name)) &#123;</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 在connect（连接到远程主机）钩子点上实现自定义钩子函数</span><br><span class="line">static int example_socket_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen, int flags) &#123;</span><br><span class="line">    // 获取当前进程的进程名称</span><br><span class="line">    char * current_process_name = (char*)get_task_comm(current);</span><br><span class="line"> </span><br><span class="line">    // 判断当前进程名称是否匹配允许使用网络的进程名称</span><br><span class="line">    if (strcmp(current_process_name, allowed_process_name)) &#123;</span><br><span class="line">        return -EACCES;</span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 定义自定义钩子函数列表</span><br><span class="line">static struct security_hook_list example_hooks[] = &#123;</span><br><span class="line">    LSM_HOOK_INIT(socket_socket_create, example_socket_socket_create),</span><br><span class="line">    LSM_HOOK_INIT(socket_bind, example_socket_socket_bind),</span><br><span class="line">    LSM_HOOK_INIT(socket_connect, example_socket_socket_connect),</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line">// 安全模块初始化函数</span><br><span class="line">static __init int example_init(void) &#123;</span><br><span class="line">    printk(KERN_INFO &quot;example LSM initialized\n&quot;);</span><br><span class="line"> </span><br><span class="line">    // 注册自定义钩子函数</span><br><span class="line">    security_add_hooks(example_hooks, ARRAY_SIZE(example_hooks));</span><br><span class="line"> </span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 安全模块注销函数</span><br><span class="line">static __exit void example_exit(void) &#123;</span><br><span class="line">    printk(KERN_INFO &quot;example LSM exited\n&quot;);</span><br><span class="line"> </span><br><span class="line">    // 删除自定义钩子函数</span><br><span class="line">    security_delete_hooks(example_hooks, ARRAY_SIZE(example_hooks));</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line">// 模块初始化和注销函数</span><br><span class="line">security_initcall(example_init);</span><br><span class="line">module_exit(example_exit);</span><br><span class="line"> </span><br><span class="line">MODULE_LICENSE(&quot;GPL&quot;);</span><br><span class="line">MODULE_DESCRIPTION(&quot;LSM示例：仅特定进程可以使用网络&quot;);</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<h4 id="2-3-LSM-与-BPF"><a href="#2-3-LSM-与-BPF" class="headerlink" title="2.3 LSM 与 BPF"></a>2.3 LSM 与 BPF</h4><h5 id="2-3-1-系统认识-LSM"><a href="#2-3-1-系统认识-LSM" class="headerlink" title="2.3.1 系统认识 LSM"></a>2.3.1 系统认识 LSM</h5><p>LSM（Linux Security Module） 中文翻译为内核安全模块，尽管从名字上是安全模块，但 LSM 其实是一个在内核各个安全模块的基础上提出（抽象出）的轻量级安全访问控制框架。该框架只是提供一个支持安全模块的接口，本身不能增强系统安全性，具体的工作交给各安全模块来做。</p>
+<p>LSM 在内核中体现为一组安全相关的函数，是提供实施强制访问控制（MAC）模块的必要组件，可实现策略与内核源代码解耦。安全函数在系统调用的执行路径中会被调用，对用户态进程访问内核资源对象进行强制访问控制，受保护的对象类型包括文件、目录、任务对象、凭据等。从版本 5.4 开始，该框架目前包括整个内核的 224 个挂钩点、一个用于注册要在这些挂钩点调用的函数的 API，以及一个用于保留与受保护内核对象关联的内存以供 LSM 使用的 API。如果要想要进一步了解可参考内核文档 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://www.kernel.org/doc/html/latest/admin-guide/LSM/index.html">LSM 部分</a> 内容。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_3c201384d774.png"></p>
+<p>LSM 背后的核心概念是 LSM 钩子。LSM 钩子暴露在内核的关键位置，可通过挂钩进行管制的操作示例包括:</p>
+<ul>
+<li>文件系统操作</li>
+<li>打开、创建、移动和删除文件</li>
+<li>挂载和卸载文件系统</li>
+<li>task&#x2F;process operations 任务 &#x2F; 进程操作</li>
+<li>分配和释放任务，更改任务的用户和组标识</li>
+<li>套接字操作</li>
+<li>创建和绑定套接字</li>
+<li>接收和发送消息</li>
+</ul>
+<p>其被定义在 <a target="_blank" rel="noopener external nofollow noreferrer" href="https://elixir.bootlin.com/linux/v6.2/source/include/linux/lsm_hook_defs.h">lsm_hook_defs.h</a> 中:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> * The macro LSM_HOOK is used to define the data structures required by</span><br><span class="line"> * the LSM framework using the pattern:</span><br><span class="line"> *</span><br><span class="line"> *	LSM_HOOK(&lt;return_type&gt;, &lt;default_value&gt;, &lt;hook_name&gt;, args...)</span><br><span class="line"> *</span><br><span class="line"> * struct security_hook_heads &#123;</span><br><span class="line"> *   #define LSM_HOOK(RET, DEFAULT, NAME, ...) struct hlist_head NAME;</span><br><span class="line"> *   #include &lt;linux/lsm_hook_defs.h&gt;</span><br><span class="line"> *   #undef LSM_HOOK</span><br><span class="line"> * &#125;;</span><br><span class="line"> */</span><br><span class="line">LSM_HOOK(int, 0, binder_set_context_mgr, const struct cred *mgr)</span><br><span class="line">LSM_HOOK(int, 0, binder_transaction, const struct cred *from,</span><br><span class="line">	 const struct cred *to)</span><br><span class="line">LSM_HOOK(int, 0, binder_transfer_binder, const struct cred *from,</span><br><span class="line">	 const struct cred *to)</span><br><span class="line">LSM_HOOK(int, 0, binder_transfer_file, const struct cred *from,</span><br><span class="line">	 const struct cred *to, struct file *file)</span><br><span class="line">LSM_HOOK(int, 0, ptrace_access_check, struct task_struct *child,</span><br><span class="line">	 unsigned int mode)</span><br><span class="line">LSM_HOOK(int, 0, ptrace_traceme, struct task_struct *parent)</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>格式为:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">LSM_HOOK(&lt;return_type&gt;, &lt;default_value&gt;, &lt;hook_name&gt;, args...)</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>LSM 提供的大多数钩子都需要返回一个整数值（也有部分返回 <code>void</code>, 表示忽略运行结果），返回值中的值一般定义如下:</p>
+<ul>
+<li>0 等同于授权；</li>
+<li>ENOMEM 无可用内存；</li>
+<li>EACCESS，安全策略拒绝访问；</li>
+<li>EPERM，执行此操作需要权限。</li>
+</ul>
+<h5 id="2-3-2-LSM-BPF"><a href="#2-3-2-LSM-BPF" class="headerlink" title="2.3.2 LSM BPF"></a>2.3.2 LSM BPF</h5><p>在 LSM BPF 出现之前，能够实现实施安全策略目标的方式有两种选择：配置现有的 LSM 模块（如 AppArmor、SELinux），或编写自定义内核模块。LSM BPF 则提供了第三种实现的方案 ，灵活且安全，具有可编程性。</p>
+<p>使用 LSM BPF，开发人员能够在无需配置或加载内核模块的情况下编写精细策略。LSM BPF 程序会在加载时进行验证，然后在调用路径中到达 LSM hook 时执行。这些 BPF 程序允许特权用户对 LSM 钩子进行运行时检测，以使用 eBPF 实现系统范围的 MAC（强制访问控制）和审计策略。</p>
+<p>截止到内核 6.2.0 版本， BPF 自身安全相关的 LSM hook 函数有 7 个 ，通过编译条件宏 CONFIG_BPF_SYSCALL 控制，主要设涉及 bpf 系统调用、BPF 程序和 BPF map 相关操作:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#ifdef CONFIG_BPF_SYSCALL</span><br><span class="line">LSM_HOOK(int, 0, bpf, int cmd, union bpf_attr *attr, unsigned int size)</span><br><span class="line">LSM_HOOK(int, 0, bpf_map, struct bpf_map *map, fmode_t fmode)</span><br><span class="line">LSM_HOOK(int, 0, bpf_prog, struct bpf_prog *prog)</span><br><span class="line">LSM_HOOK(int, 0, bpf_map_alloc_security, struct bpf_map *map)</span><br><span class="line">LSM_HOOK(void, LSM_RET_VOID, bpf_map_free_security, struct bpf_map *map)</span><br><span class="line">LSM_HOOK(int, 0, bpf_prog_alloc_security, struct bpf_prog_aux *aux)</span><br><span class="line">LSM_HOOK(void, LSM_RET_VOID, bpf_prog_free_security, struct bpf_prog_aux *aux)</span><br><span class="line">#endif /* CONFIG_BPF_SYSCALL */</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>在继续并尝试编写 LSM BPF 程序之前，请确保：</p>
+<ul>
+<li>内核版本至少为 5.7；</li>
+<li>LSM BPF 已启用。</li>
+</ul>
+<p>LSM BPF 的启用可以通过以下方式进行验证，正确的输出应包含 bpf:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cat /sys/kernel/security/lsm</span><br><span class="line">capability,lockdown,landlock,yama,apparmor,bpf</span><br></pre></td></tr></table></figure>
+
+<p>bash</p>
+<p>如果没有，则必须通过将 LSM BPF 添加到内核配置参数中来手动启用它。 …</p>
+<h3 id="三、决策"><a href="#三、决策" class="headerlink" title="三、决策"></a>三、决策</h3><h4 id="3-1-Hook-技术选型-LSM"><a href="#3-1-Hook-技术选型-LSM" class="headerlink" title="3.1 Hook 技术选型: LSM"></a>3.1 Hook 技术选型: LSM</h4><p>我们认识了 常见的 Linux 的拦截技术:</p>
+<ol>
+<li>用户态动态库拦截</li>
+<li>内核态系统调用拦截</li>
+<li>堆栈式文件系统拦截</li>
+<li>inline hook拦截</li>
+<li>LSM(Linux Security Modules)</li>
+<li>eBPF Hook拦截</li>
+</ol>
+<p>先说结论, 选择 [5]LSM(Linux Security Modules) 作为 Hook 技术</p>
+<p>好处: 这个是系统内核提供的API, 相对于我们自己对非公开的函数进行hook, 显然操作系统本身提供的API会更加稳定</p>
+<p>Note</p>
+<p>最新的变化, 可以直接看 Linux 的git开发日志: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/torvalds/linux/commits/master/include/linux/lsm_hook_defs.h">https://github.com/torvalds/linux/commits/master/include/linux/lsm_hook_defs.h</a></p>
+<p>历史版本api变化对比, 可以参考: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://depsurf.github.io/index/lsm.html">https://depsurf.github.io/index/lsm.html</a></p>
+<p>而且它已经满足我需要的功能:</p>
+<ol>
+<li>可以 hook 文件、网络的读写操作</li>
+<li>api 比较容易适配</li>
+</ol>
+<p>然后是为什么不选择其他的:</p>
+<p>对于[1]用户态动态库拦截, 它非常的不稳定; 如果 <code>LD_PRELOAD</code> 环境变量被禁用就无效了; pass</p>
+<p>对于[2]内核态系统调用拦截, 需要找到内核运行时的 <code>sys_call_table</code> 函数指针数组, 然后想办法修改我们需要的那个函数的函数指针; 并且需要处理 x86&#x2F;arm、 64&#x2F;32 上的一些差异问题; 而且劫持的信息量太少了, 不能获取 <code>struct file</code> 结构体，不能获取文件的<code>绝对路径</code>等; 完全不满足我们之前的需求. pass</p>
+<p>对于[3]堆栈式文件系统拦截, 个人认为这个太复杂了, 看别人实现的简易demo都是1300行的; 而且依赖于Mount, 可能需要重启系统才能生效; 所有pass掉, 因为有更好的选择</p>
+<p>对于[4]inline hook拦截, 它虽然似乎是万能的, 但是有两个难点:</p>
+<ol>
+<li>找hook点, 一般是需要对操作系统内核有一定了解的, 才可以找到hook点 (知道调用链路, 知道应该hook谁), 又因为它hook的是操作系统内部的私有函数, 所以可能会因为系统更新、不同发行版的差异, 导致接口对不上, 比较难适配各个发行版;</li>
+<li>注入hook函数的入口, 解决方案都是比较难适配各个发行版的;</li>
+</ol>
+<p>对于[6]eBPF Hook拦截, 它很强大, 但是可能过于新了, 要求操作系统内核 需要 5.7 以上的版本; 而且就算是支持, 也不一定是默认开启的, 需要自己设置开启; 就比如:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">kylin@tq:~/hx$ lsb_release -a</span><br><span class="line">No LSB modules are available.</span><br><span class="line">Distributor ID:	Kylin</span><br><span class="line">Description:	Kylin V10 SP1</span><br><span class="line">Release:	v10</span><br><span class="line">Codename:	kylin</span><br><span class="line"></span><br><span class="line">kylin@tq:~/hx$ uname -a</span><br><span class="line">Linux tq 5.10.0-8-generic #33~v10pro-KYLINOS SMP Wed Mar 22 07:21:49 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux</span><br></pre></td></tr></table></figure>
+
+<p>bash</p>
+<p>以及教程使用的 乌班图-22.04 也是默认不开启的; 可见支持比较麻烦, 日后可以作为可选组件加上, 但是初步开发就先 pass</p>
+<h4 id="3-2-其他细节"><a href="#3-2-其他细节" class="headerlink" title="3.2 其他细节"></a>3.2 其他细节</h4><h5 id="3-2-1-如何获取-被hook的操作的执行-进程pid"><a href="#3-2-1-如何获取-被hook的操作的执行-进程pid" class="headerlink" title="3.2.1 如何获取 被hook的操作的执行 进程pid"></a>3.2.1 如何获取 被hook的操作的执行 进程pid</h5><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/farsight_2098/article/details/130875915">https://blog.csdn.net/farsight_2098/article/details/130875915</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// 获取当前进程的进程组ID和进程ID</span><br><span class="line">pid_t current_pid = task_tgid_vnr(current);</span><br><span class="line">// 获取当前进程的进程名称</span><br><span class="line">char * current_process_name = (char*)get_task_comm(current);</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<p>或者是</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">// Linux LSM(Linux Security Modules) Hook Technology</span><br><span class="line">// https://www.cnblogs.com/LittleHann/p/4134939.html</span><br><span class="line">int execve_lsm_hook(struct linux_binprm* bprm) &#123;</span><br><span class="line">    struct cred* currentCred;</span><br><span class="line"></span><br><span class="line">    if (bprm-&gt;filename) &#123;</span><br><span class="line">        printk(&quot;file: %s\n&quot;, bprm-&gt;filename);</span><br><span class="line">        //printk(&quot;file argument: %s\n&quot;,bprm-&gt;p);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        printk(&quot;file exec\n&quot;);</span><br><span class="line">    &#125; </span><br><span class="line">    </span><br><span class="line">    currentCred = current-&gt;cred;    </span><br><span class="line">    printk(KERN_INFO &quot;uid = %d\n&quot;, currentCred-&gt;uid);</span><br><span class="line">    printk(KERN_INFO &quot;gid = %d\n&quot;, currentCred-&gt;gid);</span><br><span class="line">    printk(KERN_INFO &quot;suid = %d\n&quot;, currentCred-&gt;suid);</span><br><span class="line">    printk(KERN_INFO &quot;sgid = %d\n&quot;, currentCred-&gt;sgid);</span><br><span class="line">    printk(KERN_INFO &quot;euid = %d\n&quot;, currentCred-&gt;euid);</span><br><span class="line">    printk(KERN_INFO &quot;egid = %d\n&quot;, currentCred-&gt;egid);  </span><br><span class="line"></span><br><span class="line">    printk(&quot;comm: %s\n&quot;, current-&gt;comm);</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>cpp</p>
+<h5 id="3-2-2-获取进程的绝对启动路径"><a href="#3-2-2-获取进程的绝对启动路径" class="headerlink" title="3.2.2 获取进程的绝对启动路径"></a>3.2.2 获取进程的绝对启动路径</h5><p>Note</p>
+<p>可以进一步的, 获取其inode, 以防止程序重命名了带来的问题?</p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.51cto.com/u_15803983/9231946">[linux c&#x2F;c++] 通过读取 &#x2F;proc 路径获取指定进程名的信息</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/qq_22613757/article/details/88828424">Linux C语言 获取可执行文件的绝对路径、进程运行目录【cwd】</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line">#include &lt;unistd.h&gt;</span><br><span class="line">char * get_exe_path( char * buf, int count) &#123;</span><br><span class="line">    int i;</span><br><span class="line">    int rslt = readlink(&quot;/proc/self/cwd&quot;, buf, count - 1);</span><br><span class="line">    if (rslt &lt; 0 || (rslt &gt;= count - 1)) &#123;</span><br><span class="line">        return NULL;</span><br><span class="line">    &#125;</span><br><span class="line">    buf[rslt] = &#x27;\0&#x27;;</span><br><span class="line">    for (i = rslt; i &gt;= 0; i--) &#123;</span><br><span class="line">        printf(&quot;buf[%d] %c\n&quot;, i, buf[i]);</span><br><span class="line">        if (buf[i] == &#x27;/&#x27;) &#123;</span><br><span class="line">            buf[i + 1] = &#x27;\0&#x27;;</span><br><span class="line">            break;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return buf;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main(int argc, char ** argv) &#123;</span><br><span class="line">    char path[1024];</span><br><span class="line">    printf(&quot;%s\n&quot;, get_exe_path(path, 1024));</span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="sys-call-table-劫持的内核实现——CR0-写保护绕过"><a href="#sys-call-table-劫持的内核实现——CR0-写保护绕过" class="headerlink" title="sys_call_table 劫持的内核实现——CR0 写保护绕过"></a>sys_call_table 劫持的内核实现——CR0 写保护绕过</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 绕过写保护，修改 sys_call_table</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> orig_cr0 = read_cr0();           <span class="comment">// ① 保存原始 CR0</span></span><br><span class="line">write_cr0(orig_cr0 &amp; ~<span class="number">0x10000</span>);               <span class="comment">// ② 清除 WP 位（第16位）</span></span><br><span class="line"><span class="comment">// 现在 sys_call_table 所在页可写</span></span><br><span class="line">orig_open = (<span class="type">void</span>*)sys_call_table[__NR_open];  <span class="comment">// ③ 保存原始函数指针</span></span><br><span class="line">sys_call_table[__NR_open] = (<span class="type">unsigned</span> <span class="type">long</span>)hooked_open; <span class="comment">// ④ 替换</span></span><br><span class="line">write_cr0(orig_cr0);                           <span class="comment">// ⑤ 恢复 WP 保护</span></span><br></pre></td></tr></table></figure>
+
+<p>CR0 的 WP 位（Write Protect）控制内核是否允许写入只读页。清零后 <code>sys_call_table</code> 变为可写。但注意：多核下其他 CPU 在此期间也可能修改——需配合 <code>stop_machine()</code> 或 <code>text_poke_smp()</code>。</p>
+<h4 id="inline-hook-的跳转指令注入"><a href="#inline-hook-的跳转指令注入" class="headerlink" title="inline hook 的跳转指令注入"></a>inline hook 的跳转指令注入</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// x86 inline hook：在目标函数开头注入 5 字节 JMP</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">install_hook</span><span class="params">(<span class="type">void</span>* target, <span class="type">void</span>* hook)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> jmp_code[<span class="number">5</span>];</span><br><span class="line">    jmp_code[<span class="number">0</span>] = <span class="number">0xE9</span>;  <span class="comment">// JMP 相对地址 操作码</span></span><br><span class="line">    <span class="comment">// 计算相对偏移：目标地址 = JMP指令后地址 + 偏移</span></span><br><span class="line">    *(<span class="type">int</span>*)(jmp_code + <span class="number">1</span>) = (<span class="type">char</span>*)hook - ((<span class="type">char</span>*)target + <span class="number">5</span>);</span><br><span class="line">    <span class="comment">// 保存原始指令（用于还原/调用原函数）</span></span><br><span class="line">    <span class="built_in">memcpy</span>(original_bytes, target, <span class="number">5</span>);</span><br><span class="line">    <span class="built_in">memcpy</span>(target, jmp_code, <span class="number">5</span>);  <span class="comment">// 写入跳转</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键：① 保存被覆盖的原始指令（<code>original_bytes</code>）——后续还原或调用原函数；② 跨平台差异：x86 用 5 字节 JMP，ARM64 需用 LDR+BR（16 字节）；③ 线程安全：修改指令时其他线程可能正在执行该函数。</p>
+<h4 id="eBPF-的内核安全沙箱验证"><a href="#eBPF-的内核安全沙箱验证" class="headerlink" title="eBPF 的内核安全沙箱验证"></a>eBPF 的内核安全沙箱验证</h4><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// BPF 验证器的核心检查逻辑（简化）</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">bpf_check</span><span class="params">(<span class="keyword">struct</span> bpf_prog* prog)</span> &#123;</span><br><span class="line">    <span class="comment">// ① DAG 生成：构建程序的控制流图</span></span><br><span class="line">    <span class="comment">// ② 路径追踪：遍历所有可能的执行路径</span></span><br><span class="line">    <span class="keyword">for</span> each path in prog:</span><br><span class="line">        <span class="comment">// ③ 寄存器类型追踪（type tracking）</span></span><br><span class="line">        <span class="comment">//    确保指针运算不会越界</span></span><br><span class="line">        <span class="comment">// ④ 死循环检测：路径长度必须有限</span></span><br><span class="line">        <span class="keyword">if</span> (path_length &gt; MAX_INSNS) <span class="keyword">return</span> -E2BIG;</span><br><span class="line">        <span class="comment">// ⑤ 辅助函数权限检查</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;  <span class="comment">// 验证通过</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>eBPF 比内核模块更安全的核心原因：验证器在加载前静态分析所有路径——无法通过编译的 BPF 程序不会进入内核。这是与 LSM 内核模块方式最本质的区别。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>LD_PRELOAD 是最简单的 hook 方式</strong>：无需 root，适合应用层拦截。但不能 hook 静态链接的程序和直接 syscall</li>
+<li><strong>sys_call_table 劫持在现代内核已不推荐</strong>：内核 5.7+ 已将 <code>sys_call_table</code> 标记为 <code>__ro_after_init</code>，单靠 CR0 写保护绕过不够</li>
+<li><strong>inline hook 的线程安全问题</strong>：修改指令时机不对会导致其他 CPU 执行到”半修改”的指令——应使用 <code>stop_machine()</code> 或 Intel 的 <code>CMPXCHG16B</code> 原子修改</li>
+<li><strong>eBPF 是生产环境首选</strong>：相比内核模块，eBPF 崩溃不会导致内核 panic，且有验证器兜底</li>
+<li><strong>Hook 技术的真实应用场景</strong>：AIOps 的故障注入、APM 的调用链追踪、安全产品的文件审计</li>
+<li><strong>hook 后一定要复原</strong>：dynamically loaded module 的 <code>exit</code> 函数必须还原所有修改——否则程序退出后野指针导致 kernel panic</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试-Q-A"><a href="#6-1-面试-Q-A" class="headerlink" title="6.1 面试 Q&amp;A"></a>6.1 面试 Q&amp;A</h3><p><strong>Q1: 用户态 hook 和内核态 hook 的区别？</strong></p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>用户态 (LD_PRELOAD)</th>
+<th>内核态 (sys_call_table&#x2F;eBPF)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>权限</td>
+<td>普通用户</td>
+<td>root</td>
+</tr>
+<tr>
+<td>范围</td>
+<td>单进程</td>
+<td>系统全局</td>
+</tr>
+<tr>
+<td>绕过</td>
+<td>直接 syscall&#x2F;静态链接</td>
+<td>无法绕过（内核路径）</td>
+</tr>
+<tr>
+<td>风险</td>
+<td>低（进程级隔离）</td>
+<td>高（内核 panic 风险）</td>
+</tr>
+</tbody></table>
+<p><strong>Q2: sys_call_table 劫持的原理和限制？</strong></p>
+<p>原理：在系统调用表中把目标函数的入口地址替换为自定义函数地址，自定义函数中可做拦截、修改参数、调用原函数。限制：① 表地址需从 <code>/boot/System.map</code> 或 kallsyms 获取；② 所在页只读，需清除 CR0.WP 位；③ 内核 5.7+ 不再导出符号。</p>
+<p><strong>Q3: inline hook 如何实现？步骤是什么？</strong></p>
+<p>① 保存目标函数前 N 字节（x86 5 字节，ARM 16 字节）；② 写入 JMP 指令跳转到 hook 函数；③ hook 函数中可构造 trampoline（恢复原指令→调用→再 hook）来调用原函数。关键是处理指令边界（不能从指令中间截断）和跨 CPU 同步。</p>
+<p><strong>Q4: eBPF 相比内核模块有什么优势？</strong></p>
+<p>① 安全：验证器保证不会越界&#x2F;死循环；② 隔离：eBPF 程序崩溃不会 panic；③ 热加载：无需重启或 insmod；④ JIT 编译：性能接近原生。代价：指令数限制（1M）、不能任意访问内核内存。</p>
+<p><strong>Q5: LSM 和 eBPF 的 hook 点有什么区别？</strong></p>
+<p>LSM 提供固定的安全 hook 点（如 <code>security_file_open</code>），数量有限、需要内核模块。eBPF 有 kprobe&#x2F;tracepoint 几乎可 hook 任意内核函数，加载更灵活。eBPF-LSM 则结合两者：用 eBPF 实现 LSM hook 回调。</p>
+<p><strong>Q6: Hook 后如何调用原函数？</strong></p>
+<p>① 保存被覆盖的原始指令 + 构造 trampoline（执行原指令 → JMP 回原函数偏移处）；② sys_call_table 劫持则直接调用保存的原始函数指针；③ inline hook 用反汇编引擎（如 udis86）确定需保存的完整指令数。</p>
+<p><strong>Q7: CR0 寄存器的作用？WP 位是什么？</strong></p>
+<p>CR0 是 x86 控制寄存器，WP 位（第 16 位）控制写保护——置位时内核也不能写入只读页，清零后允许写入。hook 时清 WP 修改 sys_call_table，完成后立即恢复。</p>
+<p><strong>Q8: Hook 技术在生产环境有哪些实际应用？</strong></p>
+<p>① APM 全链路追踪：hook RPC 调用入口&#x2F;出口记录 span；② 混沌工程：注入网络延迟、系统调用错误；③ 安全审计：记录文件访问和网络连接；④ 热修复：线上问题不重启临时修复。</p>
+<h3 id="6-2-常见陷阱与面试反问"><a href="#6-2-常见陷阱与面试反问" class="headerlink" title="6.2 常见陷阱与面试反问"></a>6.2 常见陷阱与面试反问</h3><ol>
+<li><p><strong>陷阱</strong>：hook 函数签名不匹配原函数 → 栈错乱。<strong>修复</strong>：严格匹配参数类型和调用约定。</p>
+</li>
+<li><p><strong>陷阱</strong>：hook 函数中调用可能被 hook 的函数 → 无限递归。<strong>修复</strong>：用 trampoline 调用原始版本而非符号名。</p>
+</li>
+<li><p><strong>陷阱</strong>：卸载 hook 时还原指令时机不对 → 其他 CPU 崩溃。<strong>修复</strong>：用 <code>stop_machine()</code> 或 RCU 同步等待所有 CPU 离开临界区。</p>
+</li>
+<li><p><strong>反问</strong>：「如果让你设计一个文件读写审计系统，你会选哪种 hook 方式？」希望听到：生产环境选 eBPF（安全、可卸载），性能敏感可考虑内核模块 + LSM。用户态 LD_PRELOAD 覆盖不完整。</p>
+</li>
+<li><p><strong>反问</strong>：「用户态 hook 能被绕过吗？怎么绕过？」希望听到：① 直接 syscall 指令（不经过 libc）；② 静态链接的程序；③ 检查 <code>/proc/self/maps</code> 发现被注入的 so。</p>
+</li>
+</ol>
+<h3 id="6-3-一句话答案速记"><a href="#6-3-一句话答案速记" class="headerlink" title="6.3 一句话答案速记"></a>6.3 一句话答案速记</h3><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>一句话答案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hook 原理？</td>
+<td>拦截函数调用链，插入自定义逻辑</td>
+</tr>
+<tr>
+<td>LD_PRELOAD？</td>
+<td>动态链接器优先加载指定 so，覆盖同名符号</td>
+</tr>
+<tr>
+<td>sys_call_table？</td>
+<td>内核系统调用表，替换函数指针实现劫持</td>
+</tr>
+<tr>
+<td>inline hook？</td>
+<td>修改函数开头指令为 JMP，跳转到自定义代码</td>
+</tr>
+<tr>
+<td>eBPF 优势？</td>
+<td>验证器+沙箱隔离，安全的热加载</td>
+</tr>
+<tr>
+<td>CR0.WP？</td>
+<td>x86 写保护位，清零后内核可写只读页</td>
+</tr>
+<tr>
+<td>trampoline？</td>
+<td>执行原指令后跳回，实现调用原函数</td>
+</tr>
+</tbody></table>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Hook/">https://weimo1.github.io/posts/Hook/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/IM%E6%95%B0%E6%8D%AE%E5%BA%93%E8%A1%A8%E8%AE%BE%E8%AE%A1/" title="IM数据库表设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">IM数据库表设计</div></div><div class="info-2"><div class="info-item-1">IM 数据库表设计 适用范围：即时通讯系统数据库表设计、用户表、消息表、会话表、好友关系表、群聊表  一、项目&#x2F;模块概述 模块定位：IM 聊天系统的数据库表设计是整个系统数据持久化的基础，涵盖用户、消息、会话、好友关系、群聊等核心实体。设计质量直接影响查询性能、扩展性和数据一致性。 技术栈与依赖：MySQL InnoDB、UTF8MB4 字符集、BIGINT 主键、复合索引。 模块边界：上游为业务逻辑层（LogicSystem、MysqlDao），下游为 MySQL 存储引擎。数据库仅负责持久化，实时消息推送由应用层处理。  二、架构设计表关系总览123456789101112...</div></div></div></a><a class="pagination-related" href="/posts/IM-Gateway/" title="IM Gateway"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">IM Gateway</div></div><div class="info-2"><div class="info-item-1">IM Gateway IM Gateway（长连接网关）是 IM 系统接入层的核心，负责管理客户端的 TCP 长连接。它承担连接管理、协议解析、消息路由、心跳维护等职责，是客户端和 IM 业务层之间的桥梁。  一、核心概念 定义：IM Gateway 是客户端与服务端建立 TCP 长连接的入口服务，负责管理连接生命周期（建立&#x2F;维持&#x2F;断开）、收发消息、与 State Server 配合完成消息可靠推送。 关键词：TCP 长连接、epoll、协议解析、消息路由、心跳保活、断线重连、State Server 适用场景&#x2F;边界： 客户端与服务端的长连接管理 消息的接入...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Hook"><span class="toc-number">1.</span> <span class="toc-text">Hook</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9B%91%E6%8E%A7%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.1.</span> <span class="toc-text">文件监控服务</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%9C%80%E6%B1%82"><span class="toc-number">1.1.1.</span> <span class="toc-text">一、需求</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-1-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="toc-number">1.1.1.1.</span> <span class="toc-text">1.1 文件清单</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-2-%E6%8C%87%E5%AE%9A%E8%BF%9B%E7%A8%8B"><span class="toc-number">1.1.1.2.</span> <span class="toc-text">1.2 指定进程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-3-%E5%8F%AF%E6%8B%A6%E6%88%AA%E8%AF%BB%E5%86%99%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="toc-number">1.1.1.3.</span> <span class="toc-text">1.3 可拦截读写系统调用</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#1-4-%E6%97%A5%E5%BF%97%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.1.1.4.</span> <span class="toc-text">1.4 日志系统</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#X%E3%80%81%E6%8A%80%E6%9C%AF%E5%AE%9E%E7%8E%B0%E7%9A%84%E6%9F%A5%E8%AF%A2"><span class="toc-number">1.1.2.</span> <span class="toc-text">X、技术实现的查询</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#x-1-%E6%9F%A5%E6%89%BE%E5%85%B3%E9%94%AE%E5%AD%97%E5%8F%8A%E5%85%B6%E6%96%87%E7%AB%A0"><span class="toc-number">1.1.2.1.</span> <span class="toc-text">x.1 查找关键字及其文章</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%8A%80%E6%9C%AF%E7%AC%94%E8%AE%B0"><span class="toc-number">1.1.3.</span> <span class="toc-text">二、技术笔记</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-Linux%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E8%BF%87%E6%BB%A4%E6%8B%A6%E6%88%AA%E6%8A%80%E6%9C%AF"><span class="toc-number">1.1.3.1.</span> <span class="toc-text">2.1 Linux中常见的过滤拦截技术</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-1-%E7%94%A8%E6%88%B7%E6%80%81%E5%8A%A8%E6%80%81%E5%BA%93%E6%8B%A6%E6%88%AA"><span class="toc-number">1.1.3.1.1.</span> <span class="toc-text">2.1.1 用户态动态库拦截</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-2-%E5%86%85%E6%A0%B8%E6%80%81%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E6%8B%A6%E6%88%AA"><span class="toc-number">1.1.3.1.2.</span> <span class="toc-text">2.1.2 内核态系统调用拦截</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-3-%E5%A0%86%E6%A0%88%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="toc-number">1.1.3.1.3.</span> <span class="toc-text">2.1.3 堆栈式文件系统</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-4-inline-hook"><span class="toc-number">1.1.3.1.4.</span> <span class="toc-text">2.1.4 inline hook</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-5-LSM-%E5%86%85%E6%A0%B8%E5%AE%89%E5%85%A8%E6%A8%A1%E5%9D%97"><span class="toc-number">1.1.3.1.5.</span> <span class="toc-text">2.1.5 LSM (内核安全模块)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-6-ebpf"><span class="toc-number">1.1.3.1.6.</span> <span class="toc-text">2.1.6 ebpf</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-1-7-%E6%80%BB%E7%BB%93"><span class="toc-number">1.1.3.1.7.</span> <span class="toc-text">2.1.7 总结</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-2-LSM-hook%E7%82%B9%E8%AF%B4%E6%98%8E"><span class="toc-number">1.1.3.2.</span> <span class="toc-text">2.2 LSM hook点说明</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-1-LSM-super-block-hooks"><span class="toc-number">1.1.3.2.1.</span> <span class="toc-text">2.2.1 LSM super_block hooks</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-2-2-LSM-hooks"><span class="toc-number">1.1.3.2.2.</span> <span class="toc-text">2.2.2 LSM hooks</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-3-LSM-%E4%B8%8E-BPF"><span class="toc-number">1.1.3.3.</span> <span class="toc-text">2.3 LSM 与 BPF</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#2-3-1-%E7%B3%BB%E7%BB%9F%E8%AE%A4%E8%AF%86-LSM"><span class="toc-number">1.1.3.3.1.</span> <span class="toc-text">2.3.1 系统认识 LSM</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#2-3-2-LSM-BPF"><span class="toc-number">1.1.3.3.2.</span> <span class="toc-text">2.3.2 LSM BPF</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%86%B3%E7%AD%96"><span class="toc-number">1.1.4.</span> <span class="toc-text">三、决策</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#3-1-Hook-%E6%8A%80%E6%9C%AF%E9%80%89%E5%9E%8B-LSM"><span class="toc-number">1.1.4.1.</span> <span class="toc-text">3.1 Hook 技术选型: LSM</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-2-%E5%85%B6%E4%BB%96%E7%BB%86%E8%8A%82"><span class="toc-number">1.1.4.2.</span> <span class="toc-text">3.2 其他细节</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#3-2-1-%E5%A6%82%E4%BD%95%E8%8E%B7%E5%8F%96-%E8%A2%ABhook%E7%9A%84%E6%93%8D%E4%BD%9C%E7%9A%84%E6%89%A7%E8%A1%8C-%E8%BF%9B%E7%A8%8Bpid"><span class="toc-number">1.1.4.2.1.</span> <span class="toc-text">3.2.1 如何获取 被hook的操作的执行 进程pid</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#3-2-2-%E8%8E%B7%E5%8F%96%E8%BF%9B%E7%A8%8B%E7%9A%84%E7%BB%9D%E5%AF%B9%E5%90%AF%E5%8A%A8%E8%B7%AF%E5%BE%84"><span class="toc-number">1.1.4.2.2.</span> <span class="toc-text">3.2.2 获取进程的绝对启动路径</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.2.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.2.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#sys-call-table-%E5%8A%AB%E6%8C%81%E7%9A%84%E5%86%85%E6%A0%B8%E5%AE%9E%E7%8E%B0%E2%80%94%E2%80%94CR0-%E5%86%99%E4%BF%9D%E6%8A%A4%E7%BB%95%E8%BF%87"><span class="toc-number">1.2.1.1.</span> <span class="toc-text">sys_call_table 劫持的内核实现——CR0 写保护绕过</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#inline-hook-%E7%9A%84%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4%E6%B3%A8%E5%85%A5"><span class="toc-number">1.2.1.2.</span> <span class="toc-text">inline hook 的跳转指令注入</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#eBPF-%E7%9A%84%E5%86%85%E6%A0%B8%E5%AE%89%E5%85%A8%E6%B2%99%E7%AE%B1%E9%AA%8C%E8%AF%81"><span class="toc-number">1.2.1.3.</span> <span class="toc-text">eBPF 的内核安全沙箱验证</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.2.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.3.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95-Q-A"><span class="toc-number">1.3.1.</span> <span class="toc-text">6.1 面试 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E4%B8%8E%E9%9D%A2%E8%AF%95%E5%8F%8D%E9%97%AE"><span class="toc-number">1.3.2.</span> <span class="toc-text">6.2 常见陷阱与面试反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E9%80%9F%E8%AE%B0"><span class="toc-number">1.3.3.</span> <span class="toc-text">6.3 一句话答案速记</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

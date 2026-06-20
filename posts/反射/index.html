@@ -1,0 +1,338 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>反射 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="反射 适用范围：C++静态反射（编译期反射）&#x2F;动态反射（RTTI）、枚举反射（magicenum）、C++26反射提案P2996  一、核心概念 定义：反射(Reflection)是程序在编译期或运行期检查和操作自身结构（类型、成员、方法、枚举值）的能力。C++通过RTTI提供有限动态反射，通过模板元编程和编译器扩展实现静态反射 关键词：静态反射(static reflection)、动">
+<meta property="og:type" content="article">
+<meta property="og:title" content="反射">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E5%8F%8D%E5%B0%84/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="反射 适用范围：C++静态反射（编译期反射）&#x2F;动态反射（RTTI）、枚举反射（magicenum）、C++26反射提案P2996  一、核心概念 定义：反射(Reflection)是程序在编译期或运行期检查和操作自身结构（类型、成员、方法、枚举值）的能力。C++通过RTTI提供有限动态反射，通过模板元编程和编译器扩展实现静态反射 关键词：静态反射(static reflection)、动">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.566Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "反射",
+  "url": "https://weimo1.github.io/posts/%E5%8F%8D%E5%B0%84/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.566Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E5%8F%8D%E5%B0%84/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '反射',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">反射</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">反射</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.566Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">3.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>12分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="反射"><a href="#反射" class="headerlink" title="反射"></a>反射</h1><blockquote>
+<p>适用范围：C++静态反射（编译期反射）&#x2F;动态反射（RTTI）、枚举反射（magicenum）、C++26反射提案P2996</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：反射(Reflection)是程序在编译期或运行期检查和操作自身结构（类型、成员、方法、枚举值）的能力。C++通过RTTI提供有限动态反射，通过模板元编程和编译器扩展实现静态反射</li>
+<li><strong>关键词</strong>：静态反射(static reflection)、动态反射(dynamic reflection)、RTTI、magicenum、<code>__PRETTY_FUNCTION__</code>、<code>__FUNCSIG__</code>、X-Macro、P2996</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>序列化&#x2F;反序列化（JSON绑定、protobuf）</li>
+<li>枚举值到字符串转换（日志、调试输出）</li>
+<li>ORM框架（数据库表与C++结构体映射）</li>
+<li>GUI属性编辑器（运行时遍历成员变量）</li>
+<li>边界：C++目前无标准反射，依赖编译器扩展或宏技术</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-反射的分类（三层递进）"><a href="#2-1-反射的分类（三层递进）" class="headerlink" title="2.1 反射的分类（三层递进）"></a>2.1 反射的分类（三层递进）</h3><p><strong>第一层：动态反射（运行期）</strong>。C++通过RTTI提供有限的动态反射：<code>typeid</code>获取类型信息、<code>dynamic_cast</code>安全向下转型。但RTTI不提供成员变量&#x2F;函数名称、不支持枚举名获取，且可被<code>-fno-rtti</code>禁用。Java&#x2F;C#的动态反射比C++强大得多，但需要运行时元数据支持，有额外内存和性能开销。</p>
+<p><strong>第二层：静态反射（编译期）</strong>。利用模板元编程在编译期获取类型信息：<code>std::is_class_v&lt;T&gt;</code>、<code>std::is_enum_v&lt;T&gt;</code>等type_traits属于基础编译期反射。第三方库如magicenum更进一步，利用<code>__PRETTY_FUNCTION__</code>或<code>__FUNCSIG__</code>从编译器函数签名中提取枚举值名称。</p>
+<p><strong>第三层：标准反射（C++26）</strong>。P2996提案引入<code>^</code>反射运算符和<code>[: :]</code>拼接语法，在编译期直接获取类型成员列表、枚举值名称等信息，无需依赖编译器扩展或宏技巧。</p>
+<h3 id="2-2-当前C-反射技术路线"><a href="#2-2-当前C-反射技术路线" class="headerlink" title="2.2 当前C++反射技术路线"></a>2.2 当前C++反射技术路线</h3><ul>
+<li>静态反射 (static reflection)——编译期获取类型信息</li>
+<li>动态反射 (dynamic reflection)——运行时通过RTTI获取信息</li>
+<li>编译期反射 (compile time reflection)——模板+trait实现</li>
+<li>运行期反射 (runtime reflection)——typeid&#x2F;dynamic_cast</li>
+</ul>
+<h3 id="2-3-magicenum原理"><a href="#2-3-magicenum原理" class="headerlink" title="2.3 magicenum原理"></a>2.3 magicenum原理</h3><p><strong>magicenum</strong>利用编译器在模板实例化时将类型名写入<code>__PRETTY_FUNCTION__</code>（GCC&#x2F;Clang）或<code>__FUNCSIG__</code>（MSVC）的特性。通过<code>get_enum_name_static&lt;Color, Color::Red&gt;()</code>获得包含枚举名的函数签名字符串，解析提取枚举名。配合编译期循环（<code>static_for</code>）穷举0~256范围查找匹配值。</p>
+<h2 id="三、动手实践（代码案例"><a href="#三、动手实践（代码案例" class="headerlink" title="三、动手实践（代码案例)"></a>三、动手实践（代码案例)</h2><h3 id="3-1-magicenum-简化实现"><a href="#3-1-magicenum-简化实现" class="headerlink" title="3.1 magicenum 简化实现"></a>3.1 magicenum 简化实现</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br></pre></td><td class="code"><pre><span class="line">#pragma once</span><br><span class="line"></span><br><span class="line">#include &lt;string&gt;</span><br><span class="line"></span><br><span class="line">namespace scienum &#123;</span><br><span class="line"></span><br><span class="line">namespace details &#123;</span><br><span class="line"></span><br><span class="line">template &lt;class T, T N&gt;</span><br><span class="line">const char *get_enum_name_static() &#123;</span><br><span class="line">#if defined(_MSC_VER)</span><br><span class="line">    return __FUNCSIG__;</span><br><span class="line">#else</span><br><span class="line">    return __PRETTY_FUNCTION__;</span><br><span class="line">#endif</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;bool Cond&gt;</span><br><span class="line">struct my_enable_if &#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;&gt;</span><br><span class="line">struct my_enable_if&lt;true&gt; &#123;</span><br><span class="line">    typedef void type;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;int Beg, int End, class F&gt;</span><br><span class="line">typename my_enable_if&lt;Beg == End&gt;::type static_for(F const &amp;func) &#123;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;int Beg, int End, class F&gt;</span><br><span class="line">typename my_enable_if&lt;Beg != End&gt;::type static_for(F const &amp;func) &#123;</span><br><span class="line">    func.template call&lt;Beg&gt;();</span><br><span class="line">    static_for&lt;Beg + 1, End&gt;(func);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;class T&gt;</span><br><span class="line">struct get_enum_name_functor &#123;</span><br><span class="line">    int n;</span><br><span class="line">    std::string &amp;s;</span><br><span class="line"></span><br><span class="line">    get_enum_name_functor(int n, std::string &amp;s) : n(n), s(s) &#123;&#125;</span><br><span class="line"></span><br><span class="line">    template &lt;int I&gt;</span><br><span class="line">    void call() const &#123;</span><br><span class="line">        if (n == I) s = details::get_enum_name_static&lt;T, (T)I&gt;();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;class T, T Beg, T End&gt;</span><br><span class="line">std::string get_enum_name(T n) &#123;</span><br><span class="line">    std::string s;</span><br><span class="line">    details::static_for&lt;Beg, End + 1&gt;(details::get_enum_name_functor&lt;T&gt;(n, s));</span><br><span class="line">    if (s.empty())</span><br><span class="line">        return &quot;&quot;;</span><br><span class="line">#if defined(_MSC_VER)</span><br><span class="line">    size_t pos = s.find(&#x27;,&#x27;);</span><br><span class="line">    pos += 1;</span><br><span class="line">    size_t pos2 = s.find(&#x27;&gt;&#x27;, pos);</span><br><span class="line">#else</span><br><span class="line">    size_t pos = s.find(&quot;N = &quot;);</span><br><span class="line">    pos += 4;</span><br><span class="line">    size_t pos2 = s.find_first_of(&quot;;]&quot;, pos);</span><br><span class="line">#endif</span><br><span class="line">    s = s.substr(pos, pos2 - pos);</span><br><span class="line">    size_t pos3 = s.find(&quot;::&quot;);</span><br><span class="line">    if (pos3 != s.npos)</span><br><span class="line">        s = s.substr(pos3 + 2);</span><br><span class="line">    return s;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;class T&gt;</span><br><span class="line">std::string get_enum_name(T n) &#123;</span><br><span class="line">    return get_enum_name&lt;T, (T)0, (T)256&gt;(n);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;class T, T Beg, T End&gt;</span><br><span class="line">T enum_from_name(std::string const &amp;s) &#123;</span><br><span class="line">    for (int i = (int)Beg; i &lt; (int)End; i++) &#123;</span><br><span class="line">        if (s == get_enum_name((T)i)) &#123;</span><br><span class="line">            return (T)i;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    throw;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">template &lt;class T&gt;</span><br><span class="line">T enum_from_name(std::string const &amp;s) &#123;</span><br><span class="line">    return enum_from_name&lt;T, (T)0, (T)256&gt;(s);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-magicenum-的核心价值与局限"><a href="#4-1-magicenum-的核心价值与局限" class="headerlink" title="4.1 magicenum 的核心价值与局限"></a>4.1 magicenum 的核心价值与局限</h3><p><strong>核心价值</strong>：无需宏定义、无需代码生成器、无需修改枚举定义，仅通过 <code>magicenum::enum_name(MyEnum::Value)</code> 即可获取枚举值的字符串名称。这在日志系统、序列化库、调试工具中极为实用。</p>
+<p><strong>局限性</strong>：</p>
+<ul>
+<li>依赖编译器扩展（<code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code>），不同编译器&#x2F;版本的签名格式可能不同</li>
+<li>枚举值范围需在 <code>static_for</code> 遍历范围内（默认 0~256）</li>
+<li>稀疏枚举（如 {Red&#x3D;0, Blue&#x3D;1000}）会产生大量无效 <code>get_enum_name_static</code> 调用</li>
+<li>编译时间随枚举范围线性增长</li>
+</ul>
+<h3 id="4-2-C-26-反射提案-P2996"><a href="#4-2-C-26-反射提案-P2996" class="headerlink" title="4.2 C++26 反射提案 P2996"></a>4.2 C++26 反射提案 P2996</h3><p>P2996（Reflection for C++26）将提供标准化的静态反射能力：</p>
+<ul>
+<li><code>^T</code> 反射运算符：获取类型的反射信息</li>
+<li><code>[: :]</code> 拼接语法：将反射信息拼接回类型&#x2F;表达式</li>
+<li><code>[:enumerator_name_of(^Enumerator):]</code> 直接获取枚举名</li>
+<li>支持遍历成员变量、成员函数、基类等</li>
+</ul>
+<p>一旦落实，magicenum 的技术将成为过渡方案。</p>
+<h3 id="4-3-与其他主题的关联"><a href="#4-3-与其他主题的关联" class="headerlink" title="4.3 与其他主题的关联"></a>4.3 与其他主题的关联</h3><ul>
+<li><strong>RTTI</strong>：<code>typeid</code>&#x2F;<code>dynamic_cast</code> 是 C++ 唯一的动态反射机制，有运行时开销，可被 <code>-fno-rtti</code> 禁用</li>
+<li><strong>type_traits</strong>：<code>std::is_enum_v&lt;T&gt;</code> 等是编译期反射的基础设施，无需编译器扩展</li>
+<li><strong>X-Macro</strong>：通过预处理器 <code>#define</code> 重复展开实现枚举-字符串映射，兼容性好但可维护性差</li>
+<li><strong>protobuf&#x2F;FlatBuffers</strong>：通过代码生成器实现强反射（IDL + 生成的 C++ 代码包含完整元数据）</li>
+<li><strong>C++23 std::to_underlying</strong>：枚举值转底层整数类型，是反射生态的基础组件</li>
+</ul>
+<h3 id="4-4-工程中的最佳实践"><a href="#4-4-工程中的最佳实践" class="headerlink" title="4.4 工程中的最佳实践"></a>4.4 工程中的最佳实践</h3><ul>
+<li><strong>枚举名获取</strong>：优先使用成熟的第三方库（magicenum &#x2F; wise_enum），而非自研</li>
+<li><strong>序列化框架</strong>：考虑代码生成方案（protobuf）或等待 C++26 标准反射</li>
+<li><strong>编译时间敏感项目</strong>：避免大规模 static_for 展开，控制在数百以内</li>
+<li><strong>跨平台代码</strong>：<code>__PRETTY_FUNCTION__</code> 格式不保证稳定，做好多编译器测试</li>
+</ul>
+<h3 id="4-5-参考资源"><a href="#4-5-参考资源" class="headerlink" title="4.5 参考资源"></a>4.5 参考资源</h3><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/1949496">C++反射：深入探究function实现机制！-腾讯云开发者社区-腾讯云</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/669358870">写给 C++ 程序员的反射教程</a></p>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/165993590">如何优雅的实现C++编译期静态反射</a></p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="magicenum-的核心机制：利用编译器函数签名提取枚举名"><a href="#magicenum-的核心机制：利用编译器函数签名提取枚举名" class="headerlink" title="magicenum 的核心机制：利用编译器函数签名提取枚举名"></a>magicenum 的核心机制：利用编译器函数签名提取枚举名</h4><p><code>magicenum</code> 实现静态反射的原理极其巧妙——<strong>从编译器的 <code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code> 中解析出枚举值对应的字符串</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">class</span> <span class="title class_">T</span>, T N&gt;</span><br><span class="line"><span class="function"><span class="type">const</span> <span class="type">char</span>* <span class="title">get_enum_name_static</span><span class="params">()</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> defined(_MSC_VER)</span></span><br><span class="line">    <span class="keyword">return</span> __FUNCSIG__;           <span class="comment">// MSVC: &quot;const char *scienum::details::get_enum_name_static&lt;Color,Color::Red&gt;(void)&quot;</span></span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">    <span class="keyword">return</span> __PRETTY_FUNCTION__;   <span class="comment">// GCC/Clang: &quot;const char* scienum::details::get_enum_name_static() [with T = Color; T N = Color::Red]&quot;</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键点：编译器在编译期将模板实参实例化进函数签名，运行时字符串中包含了 <code>N</code> 的完整名称（如 <code>Color::Red</code>）。通过字符串解析即可提取枚举名。</p>
+<h4 id="static-for：编译期循环展开"><a href="#static-for：编译期循环展开" class="headerlink" title="static_for：编译期循环展开"></a>static_for：编译期循环展开</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="type">int</span> Beg, <span class="type">int</span> End, <span class="keyword">class</span> <span class="title class_">F</span>&gt;</span><br><span class="line"><span class="keyword">typename</span> my_enable_if&lt;Beg == End&gt;::type <span class="built_in">static_for</span>(F <span class="type">const</span> &amp;func) &#123;&#125;  <span class="comment">// 终止</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="type">int</span> Beg, <span class="type">int</span> End, <span class="keyword">class</span> F&gt;</span><br><span class="line"><span class="keyword">typename</span> my_enable_if&lt;Beg != End&gt;::type <span class="built_in">static_for</span>(F <span class="type">const</span> &amp;func) &#123;</span><br><span class="line">    func.<span class="keyword">template</span> <span class="built_in">call</span>&lt;Beg&gt;();</span><br><span class="line">    <span class="built_in">static_for</span>&lt;Beg + <span class="number">1</span>, End&gt;(func);  <span class="comment">// 编译期递归</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这不是运行时循环——编译器会在编译期展开为 <code>func.call&lt;0&gt;(); func.call&lt;1&gt;(); ... func.call&lt;255&gt;();</code>。对于 0~256 范围内的枚举值，全部生成对应的字符串查找代码。</p>
+<h4 id="get-enum-name-的字符串解析逻辑"><a href="#get-enum-name-的字符串解析逻辑" class="headerlink" title="get_enum_name 的字符串解析逻辑"></a>get_enum_name 的字符串解析逻辑</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// MSVC: 函数签名格式 &quot;...get_enum_name_static&lt;Color,0&gt;(void)&quot; → 解析出 &quot;Color::Red&quot;</span></span><br><span class="line"><span class="type">size_t</span> pos = s.<span class="built_in">find</span>(<span class="string">&#x27;,&#x27;</span>); pos += <span class="number">1</span>;        <span class="comment">// 跳过第一个逗号，定位到值</span></span><br><span class="line"><span class="type">size_t</span> pos2 = s.<span class="built_in">find</span>(<span class="string">&#x27;&gt;&#x27;</span>, pos);            <span class="comment">// 找到结束尖括号</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// GCC/Clang: 函数签名格式 &quot;... [with T = Color; T N = Color::Red]&quot;</span></span><br><span class="line"><span class="type">size_t</span> pos = s.<span class="built_in">find</span>(<span class="string">&quot;N = &quot;</span>);  pos += <span class="number">4</span>;   <span class="comment">// 定位到 &quot;Color::Red&quot;</span></span><br><span class="line"><span class="type">size_t</span> pos2 = s.<span class="built_in">find_first_of</span>(<span class="string">&quot;;]&quot;</span>, pos);  <span class="comment">// 找到结束分隔符</span></span><br><span class="line"></span><br><span class="line">s = s.<span class="built_in">substr</span>(pos, pos2 - pos);             <span class="comment">// 提取 &quot;Color::Red&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>通过各编译器特定的签名格式规则，精确提取枚举值名称字符串。</p>
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li><strong>magicenum 适合低范围枚举</strong>：遍历范围 0~256，枚举值超出此范围需要调整模板参数 <code>Beg</code>&#x2F;<code>End</code>，或使用 C++23 的 <code>std::to_underlying</code></li>
+<li><strong>编译器依赖</strong>：<code>__PRETTY_FUNCTION__</code> 的输出格式不保证跨版本一致，生产中优先使用第三方库而非自研</li>
+<li><strong>C++26 静态反射即将到来</strong>：P2996（Reflection for C++26）将提供 <code>^</code> 运算符和 <code>[: :]</code> 拼接语法，届时 <code>magicenum</code> 的技术将成为历史</li>
+<li><strong>编译时间代价</strong>：<code>static_for</code> 对每个枚举值生成一个函数模板实例，256 个值 &#x3D; 256 个实例，范围越大编译越慢</li>
+<li><strong>运行时字符串操作开销</strong>：<code>get_enum_name</code> 涉及 <code>std::string::find</code> 和 <code>substr</code>，返回的是 <code>std::string</code>，不是编译期常量</li>
+<li><strong>枚举值稀疏性问题</strong>：如果枚举只有 {Red&#x3D;0, Blue&#x3D;100}，遍历 0~100 会调用 99 次无效的 <code>get_enum_name_static</code>，浪费编译时间</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：C++ 为什么没有内置反射？</strong></p>
+<p>A：C++ 的设计哲学是”不为不使用的特性付出代价”（zero-overhead principle）。反射需要编译器保留大量元数据（类型名、成员信息），这会增加二进制体积和运行时开销。但 C++26 已加入静态反射提案 P2996，提供可选的编译期反射能力。</p>
+<p><strong>Q2：magicenum 的原理是什么？</strong></p>
+<p>A：利用编译器在模板实例化时将类型名写入 <code>__PRETTY_FUNCTION__</code> &#x2F; <code>__FUNCSIG__</code> 的特性。通过 <code>get_enum_name_static&lt;Color, Color::Red&gt;()</code> 获得含枚举名的函数签名字符串，再解析提取枚举名。同时用编译期循环（<code>static_for</code>）穷举 0~256 范围查找匹配。</p>
+<p><strong>Q3：C++ 中静态反射和动态反射有什么区别？</strong></p>
+<p>A：静态反射在<strong>编译期</strong>获取类型信息并通过模板&#x2F;constexpr 处理，零运行时开销（如 <code>magicenum</code> 的名字提取发生在编译期）；动态反射在<strong>运行时</strong>通过虚表或 RTTI 获取信息，有运行时开销（如 <code>typeid</code>、<code>dynamic_cast</code>）。</p>
+<p><strong>Q4：除了 magicenum，还有哪些 C++ 反射方案？</strong></p>
+<p>A：(1) 宏预处理器（<code>#define ENUM_VALUES X(Red) X(Green) X(Blue)</code> + X-Macro 技术）；(2) 代码生成器（如 protobuf 的反射）；(3) 编译器扩展（如 Clang 的 <code>__attribute__((annotate))</code>）；(4) C++26 标准反射（<code>^T</code> 反射运算符）。</p>
+<p><strong>Q5：<code>__PRETTY_FUNCTION__</code> 和 <code>__FUNCSIG__</code> 是什么？</strong></p>
+<p>A：编译器预定义宏——GCC&#x2F;Clang 的 <code>__PRETTY_FUNCTION__</code> 返回包含模板参数信息的函数签名字符串；MSVC 的 <code>__FUNCSIG__</code> 同理。标准 C++ 没有规定这些宏，属于编译器扩展。</p>
+<p><strong>Q6：RTTI 能提供哪些反射信息？</strong></p>
+<p>A：<code>typeid</code> 返回 <code>std::type_info</code>（含类型名 + 比较）；<code>dynamic_cast</code> 支持运行时向下转型。但 RTTI 不提供成员变量&#x2F;函数信息、不支持枚举名获取、有运行时开销且可被 <code>-fno-rtti</code> 禁用。</p>
+<p><strong>Q7：static_for 和普通 for 循环的本质区别？</strong></p>
+<p>A：<code>static_for</code> 是编译期循环——编译器在编译时展开为 N 个独立的函数调用 <code>func.call&lt;0&gt;()</code>, <code>func.call&lt;1&gt;()</code>, … <code>func.call&lt;N-1&gt;()</code>，每次循环使用不同的编译期常量；普通 for 是运行时循环——生成循环体代码，运行时重复执行。</p>
+<p><strong>Q8：X-Macro 技术如何实现枚举反射？</strong></p>
+<p>A：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> COLORS X(Red) X(Green) X(Blue)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X(name) name,</span></span><br><span class="line"><span class="keyword">enum class</span> <span class="title class_">Color</span> &#123; COLORS &#125;;</span><br><span class="line"><span class="meta">#<span class="keyword">undef</span> X</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> X(name) #name,</span></span><br><span class="line"><span class="type">const</span> <span class="type">char</span>* ColorNames[] = &#123; COLORS &#125;;</span><br></pre></td></tr></table></figure>
+<p>通过两次定义同一宏实现”一次定义，多次使用”，但代码可维护性差。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：<code>magicenum</code> 依赖未标准化的编译器扩展，不同编译器版本可能产生不同格式的函数签名，导致解析失败</p>
+<p><strong>陷阱2</strong>：枚举值范围超出 <code>static_for</code> 的遍历范围时，<code>get_enum_name</code> 返回空字符串，需手动调整模板参数</p>
+<p><strong>陷阱3</strong>：<code>get_enum_name_static</code> 返回的 <code>const char*</code> 指向只读数据段（字符串字面量），但字符串解析生成的 <code>std::string</code> 是动态分配的</p>
+<p><strong>陷阱4</strong>：匿名枚举或 <code>enum</code>（非 <code>enum class</code>）的值可能在不同编译器中有不同的 <code>__PRETTY_FUNCTION__</code> 表示</p>
+<p><strong>陷阱5</strong>：在头文件中大量使用 <code>static_for</code> 展开会导致编译单元膨胀，每个包含该头文件的 <code>.cpp</code> 都会重新实例化所有模板</p>
+<p><strong>反问</strong>：C++26 的反射提案 P2996 能解决 magicenum 的哪些痛点？</p>
+<p><em>答案要点：标准反射不需要 <code>__PRETTY_FUNCTION__</code> 解析，可直接用 <code>[:enumerator_name_of(^Enumerator):]</code> 获取枚举名；不需要穷举范围（<code>static_for</code>）；不依赖编译器特定扩展；可在 constexpr 上下文中直接使用。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>反射</strong>：程序在运行时（或编译期）检查自身结构（类型、成员、方法）的能力</li>
+<li><strong>magicenum</strong>：利用 <code>__PRETTY_FUNCTION__</code> 解析枚举名的第三方库，无需宏&#x2F;代码生成</li>
+<li><strong>RTTI</strong>：C++ 动态反射机制，<code>typeid</code> + <code>dynamic_cast</code>，有运行时开销</li>
+<li><strong>static_for</strong>：编译期循环展开技术，模板递归 + 编译期常量索引</li>
+<li><strong><strong>PRETTY_FUNCTION</strong></strong>：GCC&#x2F;Clang 的编译器扩展，模板实例化时输出含参数名的函数签名</li>
+<li><strong>X-Macro</strong>：通过多次定义同一宏实现枚举到字符串映射的预处理器技术</li>
+<li><strong>P2996</strong>：C++26 静态反射提案，提供 <code>^</code> 运算符和 <code>[: :]</code> 语法，标准化反射</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E5%8F%8D%E5%B0%84/">https://weimo1.github.io/posts/%E5%8F%8D%E5%B0%84/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E5%90%8E%E5%8F%B0%E7%BA%BF%E7%A8%8B/" title="后台线程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">后台线程</div></div><div class="info-2"><div class="info-item-1">后台线程 InnoDB 中负责异步执行维护任务的后台线程体系，保证存储引擎数据一致性、持久性和性能。  一、核心概念补充  定义：后台线程是 InnoDB 存储引擎中独立于用户请求、异步执行的系统线程，负责脏页刷新、日志刷盘、undo 回收等维护操作。 关键词：Master Thread、IO Thread、Purge Thread、Page Cleaner Thread、checkpoint 适用场景：理解 InnoDB 存储引擎内部工作机制、数据库性能调优 注意：此处讨论的是 InnoDB 内部的后台线程，非 C++ 标准库的 std::thread 线程管理  二、详细解析  Ma...</div></div></div></a><a class="pagination-related" href="/posts/%E5%8D%8F%E7%A8%8B/" title="协程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">协程</div></div><div class="info-2"><div class="info-item-1">协程 C++20 无栈协程：可暂停恢复的函数，状态在堆上、线程无关、切换极轻。配合 co_await &#x2F; promise_type &#x2F; Awaitable 构建异步任务调度器。  https://lewissbaker.github.io/ 非常好的博客 无栈协程到C++异步框架—多线程环境下的协程调度 C++ 协程式微服务框架：构建可复用模块、路由注册与任务协同执行系统-腾讯云开发者社区-腾讯云 从无栈协程到 C++异步框架-腾讯云开发者社区-腾讯云 协程及c++ 20原生协程研究报告 上-腾讯云开发者社区-腾讯云协程及c++ 20原生协程研究报告 下-腾讯云开发者...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%8D%E5%B0%84"><span class="toc-number">1.</span> <span class="toc-text">反射</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%8F%8D%E5%B0%84%E7%9A%84%E5%88%86%E7%B1%BB%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 反射的分类（三层递进）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%BD%93%E5%89%8DC-%E5%8F%8D%E5%B0%84%E6%8A%80%E6%9C%AF%E8%B7%AF%E7%BA%BF"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 当前C++反射技术路线</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-magicenum%E5%8E%9F%E7%90%86"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 magicenum原理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-magicenum-%E7%AE%80%E5%8C%96%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 magicenum 简化实现</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-magicenum-%E7%9A%84%E6%A0%B8%E5%BF%83%E4%BB%B7%E5%80%BC%E4%B8%8E%E5%B1%80%E9%99%90"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 magicenum 的核心价值与局限</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-C-26-%E5%8F%8D%E5%B0%84%E6%8F%90%E6%A1%88-P2996"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 C++26 反射提案 P2996</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 工程中的最佳实践</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E5%8F%82%E8%80%83%E8%B5%84%E6%BA%90"><span class="toc-number">1.4.5.</span> <span class="toc-text">4.5 参考资源</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#magicenum-%E7%9A%84%E6%A0%B8%E5%BF%83%E6%9C%BA%E5%88%B6%EF%BC%9A%E5%88%A9%E7%94%A8%E7%BC%96%E8%AF%91%E5%99%A8%E5%87%BD%E6%95%B0%E7%AD%BE%E5%90%8D%E6%8F%90%E5%8F%96%E6%9E%9A%E4%B8%BE%E5%90%8D"><span class="toc-number">1.5.1.1.</span> <span class="toc-text">magicenum 的核心机制：利用编译器函数签名提取枚举名</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#static-for%EF%BC%9A%E7%BC%96%E8%AF%91%E6%9C%9F%E5%BE%AA%E7%8E%AF%E5%B1%95%E5%BC%80"><span class="toc-number">1.5.1.2.</span> <span class="toc-text">static_for：编译期循环展开</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#get-enum-name-%E7%9A%84%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%A3%E6%9E%90%E9%80%BB%E8%BE%91"><span class="toc-number">1.5.1.3.</span> <span class="toc-text">get_enum_name 的字符串解析逻辑</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

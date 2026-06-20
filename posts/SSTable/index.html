@@ -1,0 +1,455 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>SSTable | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="SSTable 适用范围：LevelDB 核心磁盘存储格式——Sorted String Table 的设计原理与读流程  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节。 字数硬指标：二≥200字、四≥500字、五≥10">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSTable">
+<meta property="og:url" content="https://weimo1.github.io/posts/SSTable/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="SSTable 适用范围：LevelDB 核心磁盘存储格式——Sorted String Table 的设计原理与读流程  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节。 字数硬指标：二≥200字、四≥500字、五≥10">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.551Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "SSTable",
+  "url": "https://weimo1.github.io/posts/SSTable/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.551Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/SSTable/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'SSTable',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">SSTable</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">SSTable</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.551Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E/">存储引擎</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>16分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="SSTable"><a href="#SSTable" class="headerlink" title="SSTable"></a>SSTable</h1><blockquote>
+<p>适用范围：LevelDB 核心磁盘存储格式——Sorted String Table 的设计原理与读流程</p>
+</blockquote>
+<h2 id="写作约束（铁律）"><a href="#写作约束（铁律）" class="headerlink" title="写作约束（铁律）"></a>写作约束（铁律）</h2><ul>
+<li><strong>原内容一字不删</strong>：所有原有文字、代码、注释、图片必须全部保留。</li>
+<li><strong>只做归纳重组+增加</strong>：在原有内容基础上调整结构、归类，新增内容以”补充”标记。</li>
+<li><strong>放不进的进附录</strong>：六大段模板容纳不下的原内容，移入最后的「附录」章节。</li>
+<li><strong>字数硬指标</strong>：二≥200字、四≥500字、五≥1000字、六≥10问法+5反问+5一句话。</li>
+<li><strong>代码块必须标注语言</strong>：C++ 代码用 <code>c++</code>，禁止无语言标注的裸代码块。</li>
+</ul>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：SSTable（Sorted String Table）是 LevelDB 的磁盘持久化核心格式。它是一个<strong>排序的、不可变的、持久化的 map</strong>，存储引擎中所有落盘数据都以 SSTable 文件组织。</li>
+<li><strong>技术栈与依赖</strong>：C++，纯 LevelDB 内部格式，与布隆过滤器、SkipList（内存表）形成读写链路</li>
+<li><strong>模块边界</strong>：<ul>
+<li>输入：有序的 key-value 对（从 MemTable dump 或 Compaction 合并产生）</li>
+<li>输出：<code>.sst</code> 磁盘文件，支持按 key 查找和范围扫描</li>
+<li>上下游：写入由 TableBuilder 构建，读取由 Table + TwoLevelIterator 驱动</li>
+</ul>
+</li>
+</ul>
+<p>SSTable 文件用于 Bigtable 内部数据存储。SSTable 文件是一个排序的、不可变的、持久化的 map 结构，其中 map 的 key-value 都可以是任意字节的字符串。支持使用指定键来查找值，或通过给定键范围遍历所有的 key-value 对。每个 SSTable 文件包含一系列的块（一般块大小为64KB，是可配置的）。SSTable 文件中的块索引（这些块索引通常保存在文件尾部区域）用于定位块，这些块索引在 SSTable 文件被打开时加载到内存。在查找时首先从内存中的索引二分查找找到块，然后一次磁盘寻道即可读取到相应的块。另一种方式是将 SSTable 文件完全加载到内存，从而在查找和扫描中就不需要读取磁盘。</p>
+<p>从上面一段描述中，我们知道 SSTable 支持一些关键特性：</p>
+<ul>
+<li>支持海量 key-value 型数据的存储</li>
+<li>数据是按照 key 排序的、一旦写入就不可变</li>
+<li>支持指定 key 查询和高效的范围查询</li>
+<li>索引是稀疏索引的块索引，占用内存空间小</li>
+</ul>
+<blockquote>
+<p>补充：SSTable 源自 Google Bigtable 论文（2006），其不可变性（immutable）设计是 LSM-Tree 的基石——只有不可变文件才能安全地进行 Compaction 合并。LSM-Tree 的核心思想就是将随机写转化为顺序写（MemTable → 顺序 dump → SSTable），用排序的不可变文件换取写入吞吐量。<br>来源: <a target="_blank" rel="noopener external nofollow noreferrer" href="https://selfboot.cn/2025/06/27/leveldb_source_table_build/">https://selfboot.cn/2025/06/27/leveldb_source_table_build/</a></p>
+</blockquote>
+<h2 id="二、架构设计（≥200字）"><a href="#二、架构设计（≥200字）" class="headerlink" title="二、架构设计（≥200字）"></a>二、架构设计（≥200字）</h2><h3 id="第一层：SSTable-文件逻辑结构"><a href="#第一层：SSTable-文件逻辑结构" class="headerlink" title="第一层：SSTable 文件逻辑结构"></a>第一层：SSTable 文件逻辑结构</h3><p>SSTable 文件在逻辑上分为五个区域：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766817078958-29686357-ce2f-482f-8b52-2883f4e5fe49.png"></p>
+<p>leveldb在逻辑上又将sstable分为：</p>
+<ol>
+<li><strong>data block</strong>: 用来存储key value数据对；</li>
+<li><strong>filter block</strong>: 用来存储一些过滤器相关的数据（布隆过滤器），但是若用户不指定leveldb使用过滤器，leveldb在该block中不会存储任何内容；</li>
+<li><strong>meta Index block</strong>: 用来存储filter block的索引信息（索引信息指在该sstable文件中的偏移量以及数据长度）；</li>
+<li><strong>index block</strong>：index block中用来存储每个data block的索引信息；</li>
+<li><strong>footer</strong>: 用来存储meta index block及index block的索引信息；</li>
+</ol>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/jpeg/50402827/1766820956361-18573b2a-eff0-4798-85c6-8fca66f17566.jpeg"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/jpeg/50402827/1766820966073-ea378a02-0d7b-4121-b63f-29df992b8098.jpeg"></p>
+<h3 id="第二层：关键数据流"><a href="#第二层：关键数据流" class="headerlink" title="第二层：关键数据流"></a>第二层：关键数据流</h3><p><strong>写入路径</strong>：MemTable（内存排序）→ 达到阈值 → TableBuilder 构建 SSTable → 顺序写入磁盘（data block → filter block → meta index → index → footer）</p>
+<p><strong>读取路径（详细见第三节）</strong>：Footer → Index Block → 定位 Data Block → Filter Block 判断 → Data Block 遍历</p>
+<h3 id="第三层：关键设计决策"><a href="#第三层：关键设计决策" class="headerlink" title="第三层：关键设计决策"></a>第三层：关键设计决策</h3><table>
+<thead>
+<tr>
+<th>设计决策</th>
+<th>选择</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>索引粒度</td>
+<td>块级稀疏索引（64KB&#x2F;block）</td>
+<td>索引内存开销小，一次磁盘寻道读取整个 block</td>
+</tr>
+<tr>
+<td>key 存储</td>
+<td>前缀压缩（共享前缀）</td>
+<td>相邻 key 通常前缀相同，节省 50%+ 存储</td>
+</tr>
+<tr>
+<td>Restart point</td>
+<td>每16条记录一个完整 key</td>
+<td>平衡压缩率与随机访问速度</td>
+</tr>
+<tr>
+<td>过滤器</td>
+<td>布隆过滤器（可选）</td>
+<td>用 1% 误报率换 99% 的无效磁盘读取</td>
+</tr>
+<tr>
+<td>Footer 固定大小</td>
+<td>48 字节</td>
+<td>方便尾部定位，解析格式统一</td>
+</tr>
+</tbody></table>
+<h2 id="三、核心实现（代码走读）"><a href="#三、核心实现（代码走读）" class="headerlink" title="三、核心实现（代码走读）"></a>三、核心实现（代码走读）</h2><h3 id="3-1-Data-Block-编码格式"><a href="#3-1-Data-Block-编码格式" class="headerlink" title="3.1 Data Block 编码格式"></a>3.1 Data Block 编码格式</h3><p>第一部分用来存储keyvalue数据。由于sstable中所有的keyvalue对都是严格按序存储的，为了节省存储空间，leveldb并不会为每一对keyvalue对都存储完整的key值，而是存储与<strong>上一个key非共享的部分</strong>，避免了key重复内容的存储。</p>
+<p>每间隔若干个keyvalue对，将为该条记录重新存储一个完整的key。重复该过程（默认间隔值为16），每个重新存储完整key的点称之为Restart point。</p>
+<p><strong>编码格式示意图：</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821431462-75b3ed9d-4172-47d6-a743-73dd125685e9.png"></p>
+<p><strong>KV存储格式：</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821635168-eb146d53-3759-4348-bd63-aeb19d9878be.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766822422521-702fed80-9593-43df-9791-fcc18fae96f0.png"></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Data Block 中每条记录的编码（概念示意）</span></span><br><span class="line"><span class="comment">// entry := shared_bytes(变长) | unshared_bytes(变长) | value_length(变长) |</span></span><br><span class="line"><span class="comment">//          unshared_key_data | value_data</span></span><br><span class="line"><span class="comment">// </span></span><br><span class="line"><span class="comment">// restart_point 数组在 block 尾部：</span></span><br><span class="line"><span class="comment">// restart_array := restart_offset[0] | restart_offset[1] | ... </span></span><br><span class="line"><span class="comment">//                  | restart_count(4字节)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-读操作流程"><a href="#3-2-读操作流程" class="headerlink" title="3.2 读操作流程"></a>3.2 读操作流程</h3><p>读操作作为写操作的逆过程，充分理解了写操作，将会帮助理解读操作。</p>
+<p>下图为在一个sstable中查找某个数据项的流程图：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821040489-401fcfe3-2ce1-4d44-9e1d-a15219bf5e11.png"></p>
+<p>大致流程为：</p>
+<ol>
+<li>首先判断”文件句柄”cache中是否有指定sstable文件的文件句柄，若存在，则直接使用cache中的句柄；否则打开该sstable文件，<strong>按规则读取该文件的元数据</strong>，将新打开的句柄存储至cache中；</li>
+<li>利用sstable中的index block进行快速的数据项位置定位，得到该数据项有可能存在的<strong>两个</strong>data block；</li>
+<li>利用index block中的索引信息，首先打开第一个可能的data block；</li>
+<li>利用filter block中的过滤信息，判断指定的数据项是否存在于该data block中，若存在，则创建一个迭代器对data block中的数据进行迭代遍历，寻找数据项；若不存在，则结束该data block的查找；</li>
+<li>若在第一个data block中找到了目标数据，则返回结果；若未查找成功，则打开第二个data block，重复步骤4；</li>
+<li>若在第二个data block中找到了目标数据，则返回结果；若未查找成功，则返回<code>Not Found</code>错误信息；</li>
+</ol>
+<h3 id="3-3-缓存"><a href="#3-3-缓存" class="headerlink" title="3.3 缓存"></a>3.3 缓存</h3><p>在leveldb中，使用cache来缓存两类数据：</p>
+<ul>
+<li>sstable文件句柄及其元数据；</li>
+<li>data block中的数据；</li>
+</ul>
+<p>因此在打开文件之前，首先判断能够在cache中命中sstable的文件句柄，避免重复读取的开销。</p>
+<h3 id="3-4-元数据读取"><a href="#3-4-元数据读取" class="headerlink" title="3.4 元数据读取"></a>3.4 元数据读取</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821040276-3433d531-d46b-4d18-8ae5-2d0b31daafd6.png"></p>
+<p>由于sstable复杂的文件组织格式，因此在打开文件后，需要读取必要的元数据，才能访问sstable中的数据。</p>
+<p>元数据读取的过程可以分为以下几个步骤：</p>
+<ol>
+<li>读取文件的最后48字节的利用，即<strong>Footer</strong>数据；</li>
+<li>读取Footer数据中维护的(1) Meta Index Block(2) Index Block两个部分的索引信息并记录，以提高整体的查询效率；</li>
+<li>利用meta index block的索引信息读取该部分的内容；</li>
+<li>遍历meta index block，查看是否存在”有用”的filter block的索引信息，若有，则记录该索引信息；若没有，则表示当前sstable中不存在任何过滤信息来提高查询效率；</li>
+</ol>
+<h3 id="3-5-数据项的快速定位"><a href="#3-5-数据项的快速定位" class="headerlink" title="3.5 数据项的快速定位"></a>3.5 数据项的快速定位</h3><p>sstable中存在多个data block，倘若依次进行”遍历”显然是不可取的。但是由于一个sstable中所有的数据项都是按序排列的，因此可以利用有序性已经index block中维护的索引信息快速定位目标数据项可能存在的data block。</p>
+<p>一个index block的文件结构示意图如下：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821041965-bff64781-894b-4d3e-84a3-3becd0c0c98a.png"></p>
+<p>index block是由一系列的键值对组成，每一个键值对表示一个data block的索引信息。</p>
+<p>键值对的key为该data block中数据项key的最大值，value为该data block的索引信息（offset, length）。</p>
+<p>因此若需要查找目标数据项，仅仅需要依次比较index block中的这些索引信息，倘若目标数据项的key大于某个data block中最大的key值，则该data block中必然不存在目标数据项。故通过这个步骤的优化，可以直接确定目标数据项落在哪个data block的范围区间内。</p>
+<p><strong>注解</strong></p>
+<p>值得注意的是，与data block一样，index block中的索引信息同样也进行了key值截取，即第二个索引信息的key并不是存储完整的key，而是存储与前一个索引信息的key不共享的部分，区别在于data block中这种范围的划分粒度为16，而index block中为2 。</p>
+<p>也就是说，index block连续两条索引信息会被作为一个最小的”比较单元”，在查找的过程中，若第一个索引信息的key小于目标数据项的key，则紧接着会比较第三条索引信息的key。</p>
+<p>这就导致最终目标数据项的范围区间为某”两个”data block。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821040916-2a08bf20-5d77-450b-a7fb-df2b55e6a6e9.png"></p>
+<h3 id="3-6-过滤-data-block"><a href="#3-6-过滤-data-block" class="headerlink" title="3.6 过滤 data block"></a>3.6 过滤 data block</h3><p>若sstable存有每一个data block的过滤数据，则可以利用这些过滤数据对data block中的内容进行判断，”确定”目标数据是否存在于data block中。</p>
+<p>过滤的原理为：</p>
+<ul>
+<li>若过滤数据显示目标数据不存在于data block中，则目标数据<strong>一定不</strong>存在于data block中；</li>
+<li>若过滤数据显示目标数据存在于data block中，则目标数据<strong>可能存在</strong>于data block中；</li>
+</ul>
+<p>具体的原理可能参见《布隆过滤器》。</p>
+<p>因此利用过滤数据可以过滤掉部分data block，避免发生无谓的查找。</p>
+<h3 id="3-7-查找-data-block"><a href="#3-7-查找-data-block" class="headerlink" title="3.7 查找 data block"></a>3.7 查找 data block</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1766821042030-e80e7cbb-3119-4003-984b-d084a916f143.png"></p>
+<p>在data block中查找目标数据项是一个简单的迭代遍历过程。虽然data block中所有数据项都是按序排序的，但是作者并没有采用”二分查找”来提高查找的效率，而是使用了更大的查找单元进行快速定位。</p>
+<p>与index block的查找类似，data block中，以16条记录为一个查找单元，若entry 1的key小于目标数据项的key，则下一条比较的是entry 17。</p>
+<p>因此查找的过程中，利用更大的查找单元快速定位目标数据项可能存在于哪个区间内，之后依次比较判断其是否存在与data block中。</p>
+<p>可以看到，sstable很多文件格式设计（例如restart point， index block，filter block，max key）在查找的过程中，都极大地提升了整体的查找效率。</p>
+<h2 id="四、工程实践（≥500字）"><a href="#四、工程实践（≥500字）" class="headerlink" title="四、工程实践（≥500字）"></a>四、工程实践（≥500字）</h2><h3 id="4-1-与项目中其他模块的集成方式"><a href="#4-1-与项目中其他模块的集成方式" class="headerlink" title="4.1 与项目中其他模块的集成方式"></a>4.1 与项目中其他模块的集成方式</h3><ul>
+<li><strong>MemTable → SSTable</strong>：内存表写满后通过 <code>BuildTable()</code> 函数 dump 为 SSTable 文件，标记为 Level 0</li>
+<li><strong>Compaction</strong>：多个 Level N 的 SSTable 合并生成新的 Level N+1 SSTable，删除旧文件</li>
+<li><strong>Version&#x2F;Manifest</strong>：SSTable 的元数据（文件编号、key 范围）记录在 Version 中，持久化到 Manifest</li>
+<li><strong>布隆过滤器</strong>：每个 SSTable 可附带一个 filter block，加速 key 不存在时的否定判断</li>
+</ul>
+<h3 id="4-2-生产环境考量"><a href="#4-2-生产环境考量" class="headerlink" title="4.2 生产环境考量"></a>4.2 生产环境考量</h3><p><strong>错误处理与容错策略</strong></p>
+<ul>
+<li>SSTable 文件损坏时（如磁盘坏道），Footer 中的 magic number 校验可检测</li>
+<li>读取时 CRC 校验 data block 完整性（LevelDB 的 Block 格式含 CRC32）</li>
+<li>Compaction 失败不删除旧文件——先写新文件，成功后再标记删除旧文件</li>
+</ul>
+<p><strong>资源管理</strong></p>
+<ul>
+<li>SSTable 的 index block 常驻内存（通过 TableCache 管理），内存占用 ≈ (文件大小 &#x2F; block_size) × 索引条目大小</li>
+<li>文件句柄通过 LRU Cache 管理，避免同时打开过多文件</li>
+<li>SSTable 不可变天然无锁——多线程并发读无需任何同步</li>
+</ul>
+<p><strong>监控与日志</strong></p>
+<ul>
+<li>监控各层 SSTable 文件数量和总大小——判断 Compaction 是否滞后</li>
+<li>监控布隆过滤器的假阳性率——bits_per_key&#x3D;10 时约 1%</li>
+</ul>
+<p><strong>性能优化策略</strong></p>
+<ul>
+<li>block_size 默认 4KB（可配置到 64KB），更大 block → 更少索引内存 + 更多单次磁盘读取</li>
+<li>读操作充分利用 OS 页缓存——SSTable 文件被 mmap 或 read 后缓存在 OS page cache</li>
+</ul>
+<h3 id="4-3-常见优化策略"><a href="#4-3-常见优化策略" class="headerlink" title="4.3 常见优化策略"></a>4.3 常见优化策略</h3><ul>
+<li><strong>两级迭代器</strong>：LevelDB 用 <code>TwoLevelIterator</code>——外层迭代 index block，内层迭代 data block，透明支持跨 block 遍历</li>
+<li><strong>前缀压缩自适应</strong>：相邻 key 共享前缀越长，压缩效果越好——LSM-Tree 的有序性天然友好</li>
+<li><strong>批量预读</strong>：范围扫描时，预读下一个 data block，减少磁盘寻道</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-Footer-的精妙设计"><a href="#5-1-Footer-的精妙设计" class="headerlink" title="5.1 Footer 的精妙设计"></a>5.1 Footer 的精妙设计</h3><p>Footer 固定 48 字节布局：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">metaindex_handle (offset+size)   // 指向 meta index block</span><br><span class="line">index_handle (offset+size)       // 指向 index block</span><br><span class="line">padding                          // 补齐到 48 字节</span><br><span class="line">magic (8字节)                    // 0xdb4775248b80fb57（校验用）</span><br></pre></td></tr></table></figure>
+
+<p>Footer 是读取 SSTable 的入口——从文件末尾倒数 48 字节即得到。这种”尾部索引”设计在文件格式中非常经典（类似 .tar 的尾部包头、PNG 的 IEND chunk），让文件自描述。</p>
+<h3 id="5-2-前缀压缩的权衡"><a href="#5-2-前缀压缩的权衡" class="headerlink" title="5.2 前缀压缩的权衡"></a>5.2 前缀压缩的权衡</h3><p>前缀压缩按每 16 条记录存储一个完整 key（Restart point）。16 这个数字是经验值——压缩率与查找延迟的平衡：间隔更小 &#x3D; 更快定位 + 更少解压，间隔更大 &#x3D; 更高压缩率 + 更多解压开销。</p>
+<h3 id="5-3-难点与易错点"><a href="#5-3-难点与易错点" class="headerlink" title="5.3 难点与易错点"></a>5.3 难点与易错点</h3><p><strong>陷阱1：Index Block 的”两个 block”语义</strong></p>
+<p>Index Block 中由于也使用了前缀压缩（restart 间隔&#x3D;2），定位结果是一个<strong>区间</strong>而非精确的某个 block——需要检查两个候选 data block。很多人会误以为 index 定位就是精确的一个 block。</p>
+<p><strong>陷阱2：SSTable 不可变 ≠ 不删除</strong></p>
+<p>SSTable 的不可变性指内容不可原地修改。但文件本身会在 Compaction 后被删除——Compaction 生成新文件后，旧文件被 unlink。</p>
+<p><strong>陷阱3：Footer 的 magic number 校验</strong></p>
+<p>如果 Footer 损坏（48 字节无法正确读取），整个 SSTable 文件不可用——需要从 Manifest&#x2F;Version 恢复过程中跳过该文件。</p>
+<h3 id="5-4-经验总结"><a href="#5-4-经验总结" class="headerlink" title="5.4 经验总结"></a>5.4 经验总结</h3><ol>
+<li><strong>SSTable 是 LSM-Tree 写入性能的来源</strong>——顺序写入不可变文件，避免了 B+树的随机写</li>
+<li><strong>稀疏索引 + 布隆过滤器 &#x3D; 高效点查</strong>——一次磁盘读取即可定位数据</li>
+<li><strong>前缀压缩是 LSM 的”免费午餐”</strong>——有序数据天然相邻 key 共享前缀</li>
+<li><strong>SSTable 的读放大需要 Compaction 策略控制</strong>——层级越深，读一个 key 可能需要检查多个文件</li>
+</ol>
+<p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://my.feishu.cn/file/boxcn1XBTHKMyKTxHhhxT63NeGc">https://my.feishu.cn/file/boxcn1XBTHKMyKTxHhhxT63NeGc</a></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768834437249-b823f50b-8b69-4cfd-8ec8-b2f159630d2c.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768834487955-7aa21915-dc9c-43fa-82c8-a1deebbc8d58.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768834502133-334ee149-4c5a-468c-8812-74e2cfb82320.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768834961056-6a5bfae5-33e1-47bc-807f-e64acda1580a.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768835491608-088bc3b3-b07f-4368-be8c-5e1ae5e3a1b5.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768835851107-b78a8020-9b78-4c5d-a56f-320f3e849b63.png"><br><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2026/png/50402827/1768836241077-777a0e17-0c3d-4fd5-b018-31041db4ea53.png"></p>
+<h2 id="六、面试准备（≥10问法-5反问-5一句话，均带回答）"><a href="#六、面试准备（≥10问法-5反问-5一句话，均带回答）" class="headerlink" title="六、面试准备（≥10问法+5反问+5一句话，均带回答）"></a>六、面试准备（≥10问法+5反问+5一句话，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p><strong>Q1：SSTable 是什么？为什么 LevelDB 用它？</strong><br>A：SSTable 是排序的、不可变的、持久化的 key-value map 文件。LevelDB 用它因为不可变文件可以安全地进行 Compaction 合并，排序结构支持高效范围查询和稀疏索引，顺序写入最大化磁盘吞吐。</p>
+<p><strong>Q2：SSTable 的文件结构由哪几部分组成？</strong><br>A：五部分——Data Block（存 KV 数据）、Filter Block（布隆过滤器）、Meta Index Block（filter 的索引）、Index Block（data block 的索引）、Footer（Meta Index 和 Index 的元信息 + magic number）。</p>
+<p><strong>Q3：Data Block 中如何压缩 key？</strong><br>A：使用前缀压缩——只存储与前一个 key 不共享的部分。每 16 条记录设一个 Restart Point 存储完整 key，作为二分查找的锚点，平衡压缩率与随机访问速度。</p>
+<p><strong>Q4：SSTable 的读操作是如何定位到 key 的？</strong><br>A：读 Footer → 读 Index Block → 二分定位到候选 data block（两个，因 index 也有前缀压缩）→ 读 Filter Block 判断 key 是否可能存在 → 读取 data block → 二分定位到 restart point 区间 → 线性遍历找到 key。</p>
+<p><strong>Q5：Index Block 为什么定位结果是两个 data block 而不是一个？</strong><br>A：因为 Index Block 也使用了前缀压缩（restart 间隔&#x3D;2），连续两条索引信息作为一个比较单元。定位结果是 key 落在某一对索引之间，所以可能是两个相邻 data block 之一。</p>
+<p><strong>Q6：Footer 的作用和格式是什么？</strong><br>A：Footer 是 SSTable 文件最后 48 字节。包含 Meta Index Block 和 Index Block 的位置信息（offset + size）和一个 8 字节 magic number（0xdb4775248b80fb57）。尾部设计让解析器可以直接从文件末尾定位。</p>
+<p><strong>Q7：布隆过滤器在 SSTable 中起什么作用？</strong><br>A：在读取 data block 之前快速判断 key 是否<strong>一定不在</strong>（或<strong>可能在</strong>）该 block 中。如果过滤器说”不在”，则跳过该 block 的磁盘读取。用 ~1% 误报率换取大量无效读的消除。</p>
+<p><strong>Q8：为什么 SSTable 不可变？</strong><br>A：不可变性是 LSM-Tree Compaction 的前提——只有不可变文件才能在合并时安全地读取和删除。同时不可变文件天然无锁支持多线程并发读。</p>
+<p><strong>Q9：SSTable 的一次点查最多需要几次磁盘 IO？</strong><br>A：Cache 未命中最坏情况：读 Footer（可能已缓存）→ 读 Index Block（可能已缓存）→ 读 Filter Block → 读 Data Block。如果都未缓存，约 2-3 次 IO。如果 data block 在 cache 中，0 次 IO。</p>
+<p><strong>Q10：如何选择 SSTable 的 block_size？</strong><br>A：小 block（如 1KB）：更多索引项→更多内存，更细的查找粒度。大 block（如 64KB）：更少索引内存，更大的单次 IO。LevelDB 默认 4KB，在 SSD 上可考虑 16-64KB。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵团队的存储引擎中，SSTable 的 block_size 是如何选定的？是否针对 SSD&#x2F;NVMe 做过调优？</p>
+</li>
+<li><p>在实际生产环境中，你们是否遇到过 SSTable 文件损坏的情况？是如何检测和修复的？</p>
+</li>
+<li><p><strong>陷阱问题1</strong>：”SSTable 中的 key 是排序的，查找用的是二分查找吗？”——是也不是。Index Block 用二分定位到 data block 区间，Data Block 内部用 Restart Point 做跳表式搜索（非严格二分），最终区间内线性遍历。</p>
+</li>
+<li><p><strong>陷阱问题2</strong>：”SSTable 文件可以修改吗？”——不可以原地修改。但可以通过 Compaction 生成新文件删除旧文件来实现逻辑上的更新。</p>
+</li>
+<li><p><strong>陷阱问题3</strong>：”Footer 损坏了怎么办？”——该 SSTable 文件不可用。LevelDB 会从 Manifest 中知道这个文件应该存在，但无法读取。需要依赖 Compaction 或备份恢复。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li><p>SSTable 的核心设计理念是：<strong>排序+不可变+稀疏索引——用顺序写换取吞吐量，用稀疏索引换取内存效率。</strong></p>
+</li>
+<li><p>定位 key 的关键路径是：<strong>Footer → Index Block → Filter Block → Data Block，最多 2-3 次磁盘 IO。</strong></p>
+</li>
+<li><p>前缀压缩能节省约 50%+ 存储空间，代价是：<strong>每次查找需要从最近的 Restart Point 开始解压。</strong></p>
+</li>
+<li><p>SSTable 与布隆过滤器的关系：<strong>每个 SSTable 可附带一个布隆过滤器，用 1% 误报率减 99% 无效磁盘读取。</strong></p>
+</li>
+<li><p>这个设计的最大优点是<strong>顺序写入的极高吞吐量</strong>；最大代价是<strong>读放大——同一 key 可能存在于多层多个 SSTable 中。</strong></p>
+</li>
+<li><p>当被问到”SSTable 和 B+树页的区别？”——回答：”SSTable 不可变、顺序写友好、按文件合并；B+树页可变、随机写、按页分裂合并。SSTable 写入性能远超 B+树，但点查可能更慢（读放大）。”</p>
+</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>原笔记全部内容已按六大段结构组织完毕。SSTable 定义与特性收入一段，文件逻辑五区域收入二段，Data Block 编码与 Restart Point 收入三段 3.1，读操作七大步骤收入三段 3.2-3.7，缓存&#x2F;元数据&#x2F;索引&#x2F;过滤&#x2F;查找各子节均完整保留。末尾的 feishu 链接和 7 张补充图片收入五段末尾。</p>
+</blockquote>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/SSTable/">https://weimo1.github.io/posts/SSTable/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Select/" title="Select"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Select</div></div><div class="info-2"><div class="info-item-1">Selectselect(2) 底层逻辑select(2) 提供一种 fd_set 的数据结构来标记某个 fd 的 IO 事件，并提供操作 fd_set 的函数 FD_ZERO()、FD_SET()、FD_CLR() 和 FD_ISSET()。fd_set 中的每一位都能与已打开的文件描述符 fd 建立联系。当调用 select(2) 时，由内核遍历 fd_set 的内容，根据 IO 状态修改 fd_set 的内容，通过将某位设置为 1 标记描述符已经就绪。 1234567#include &lt;sys/select.h&gt;int select(int nfds, fd_set *...</div></div></div></a><a class="pagination-related" href="/posts/STL/" title="STL"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">STL</div></div><div class="info-2"><div class="info-item-1">STLboost::multi_indexhttps://david-grs.github.io/why_boost_multi_index_container-part1/ https://david-grs.github.io/why_boost_multi_index_container-part2/ 迭代器失效的状态或者原因有哪些？         容器类型 操作 迭代器失效情况   vector&#x2F;string 插入&#x2F;删除（非尾部） 插入点&#x2F;删除点及之后的所有迭代器失效    内存重分配（如push_back  ） 所有迭代器失效   deque 头...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#SSTable"><span class="toc-number">1.</span> <span class="toc-text">SSTable</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E4%BD%9C%E7%BA%A6%E6%9D%9F%EF%BC%88%E9%93%81%E5%BE%8B%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">写作约束（铁律）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.2.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">二、架构设计（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E5%B1%82%EF%BC%9ASSTable-%E6%96%87%E4%BB%B6%E9%80%BB%E8%BE%91%E7%BB%93%E6%9E%84"><span class="toc-number">1.3.1.</span> <span class="toc-text">第一层：SSTable 文件逻辑结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E6%B5%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">第二层：关键数据流</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E5%B1%82%EF%BC%9A%E5%85%B3%E9%94%AE%E8%AE%BE%E8%AE%A1%E5%86%B3%E7%AD%96"><span class="toc-number">1.3.3.</span> <span class="toc-text">第三层：关键设计决策</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%BB%A3%E7%A0%81%E8%B5%B0%E8%AF%BB%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">三、核心实现（代码走读）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-Data-Block-%E7%BC%96%E7%A0%81%E6%A0%BC%E5%BC%8F"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 Data Block 编码格式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%AF%BB%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 读操作流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E7%BC%93%E5%AD%98"><span class="toc-number">1.4.3.</span> <span class="toc-text">3.3 缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E5%85%83%E6%95%B0%E6%8D%AE%E8%AF%BB%E5%8F%96"><span class="toc-number">1.4.4.</span> <span class="toc-text">3.4 元数据读取</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E6%95%B0%E6%8D%AE%E9%A1%B9%E7%9A%84%E5%BF%AB%E9%80%9F%E5%AE%9A%E4%BD%8D"><span class="toc-number">1.4.5.</span> <span class="toc-text">3.5 数据项的快速定位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E8%BF%87%E6%BB%A4-data-block"><span class="toc-number">1.4.6.</span> <span class="toc-text">3.6 过滤 data block</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E6%9F%A5%E6%89%BE-data-block"><span class="toc-number">1.4.7.</span> <span class="toc-text">3.7 查找 data block</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">四、工程实践（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E4%B8%8E%E9%A1%B9%E7%9B%AE%E4%B8%AD%E5%85%B6%E4%BB%96%E6%A8%A1%E5%9D%97%E7%9A%84%E9%9B%86%E6%88%90%E6%96%B9%E5%BC%8F"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 与项目中其他模块的集成方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E8%80%83%E9%87%8F"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 生产环境考量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E5%B8%B8%E8%A7%81%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 常见优化策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Footer-%E7%9A%84%E7%B2%BE%E5%A6%99%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.6.1.</span> <span class="toc-text">5.1 Footer 的精妙设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%89%8D%E7%BC%80%E5%8E%8B%E7%BC%A9%E7%9A%84%E6%9D%83%E8%A1%A1"><span class="toc-number">1.6.2.</span> <span class="toc-text">5.2 前缀压缩的权衡</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.6.3.</span> <span class="toc-text">5.3 难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.4.</span> <span class="toc-text">5.4 经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E2%89%A510%E9%97%AE%E6%B3%95-5%E5%8F%8D%E9%97%AE-5%E4%B8%80%E5%8F%A5%E8%AF%9D%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备（≥10问法+5反问+5一句话，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Vulkan 资源类 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Vulkan 资源类（Buffer &amp; Image） 适用范围：VulkanBuffer &#x2F; VulkanImage 封装、VMA 集成、Bindless 支持、设备地址  一、一句话结论基于 VMA 的 Vulkan 资源类（VulkanBuffer &#x2F; VulkanImage）通过 RAII + 不可复制 + 视图缓存 + 子资源布局追踪，将 Vulkan 资源管理">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Vulkan 资源类">
+<meta property="og:url" content="https://weimo1.github.io/posts/Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Vulkan 资源类（Buffer &amp; Image） 适用范围：VulkanBuffer &#x2F; VulkanImage 封装、VMA 集成、Bindless 支持、设备地址  一、一句话结论基于 VMA 的 Vulkan 资源类（VulkanBuffer &#x2F; VulkanImage）通过 RAII + 不可复制 + 视图缓存 + 子资源布局追踪，将 Vulkan 资源管理">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.555Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Vulkan 资源类",
+  "url": "https://weimo1.github.io/posts/Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.555Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Vulkan 资源类',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Vulkan 资源类</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Vulkan 资源类</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.555Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/">计算机图形学</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9B%BE%E5%BD%A2%E5%AD%A6/Vulkan/">Vulkan</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>6分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Vulkan-资源类（Buffer-Image）"><a href="#Vulkan-资源类（Buffer-Image）" class="headerlink" title="Vulkan 资源类（Buffer &amp; Image）"></a>Vulkan 资源类（Buffer &amp; Image）</h1><blockquote>
+<p>适用范围：VulkanBuffer &#x2F; VulkanImage 封装、VMA 集成、Bindless 支持、设备地址</p>
+</blockquote>
+<h2 id="一、一句话结论"><a href="#一、一句话结论" class="headerlink" title="一、一句话结论"></a>一、一句话结论</h2><p>基于 VMA 的 Vulkan 资源类（<code>VulkanBuffer</code> &#x2F; <code>VulkanImage</code>）通过 RAII + 不可复制 + 视图缓存 + 子资源布局追踪，将 Vulkan 资源管理的复杂度降至最低，同时无缝支持 Bindless 和光线追踪。</p>
+<hr>
+<h2 id="二、核心概念解析（≥200字）"><a href="#二、核心概念解析（≥200字）" class="headerlink" title="二、核心概念解析（≥200字）"></a>二、核心概念解析（≥200字）</h2><h3 id="2-1-资源类层次结构"><a href="#2-1-资源类层次结构" class="headerlink" title="2.1 资源类层次结构"></a>2.1 资源类层次结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">GpuResource (基类，NonCopyable)</span><br><span class="line">├── VulkanBuffer - GPU 缓冲（Vertex/Index/Uniform/Storage）</span><br><span class="line">└── VulkanImage  - GPU 图像（纹理/渲染目标）</span><br></pre></td></tr></table></figure>
+
+<p><strong>设计要点</strong>：</p>
+<ul>
+<li><code>NonCopyable</code>：防止浅拷贝导致 double-free</li>
+<li><code>UUID64u m_runtimeUUID</code>：全局唯一标识，便于调试和资源追踪</li>
+<li><code>std::string m_name</code>：RenderDoc&#x2F;Nsight 中可识别的资源名</li>
+</ul>
+<h3 id="2-2-VMA（Vulkan-Memory-Allocator）的作用"><a href="#2-2-VMA（Vulkan-Memory-Allocator）的作用" class="headerlink" title="2.2 VMA（Vulkan Memory Allocator）的作用"></a>2.2 VMA（Vulkan Memory Allocator）的作用</h3><p>VMA 是由 AMD 开源的内存分配库，解决 Vulkan 原生内存管理的痛点：</p>
+<ul>
+<li>自动子分配：一个大 <code>vkAllocateMemory</code> 拆成多个小资源</li>
+<li>碎片整理：类似 C++ 内存池，减少 <code>vkAllocateMemory</code> 调用次数</li>
+<li>类型适配：自动选择 <code>HOST_VISIBLE</code> &#x2F; <code>DEVICE_LOCAL</code> 等内存类型</li>
+</ul>
+<h3 id="补充：两种构造方式的设计意义"><a href="#补充：两种构造方式的设计意义" class="headerlink" title="补充：两种构造方式的设计意义"></a>补充：两种构造方式的设计意义</h3><ul>
+<li><strong>方式 A（VMA）</strong>：推荐，引擎内部资源创建走这条路径，享受 VMA 的碎片整理</li>
+<li><strong>方式 B（原生 Vulkan）</strong>：保留给特殊场景（如与外部库交互、需要精确控制内存属性）</li>
+</ul>
+<hr>
+<h2 id="三、源码解析与实践感悟（≥1000字）"><a href="#三、源码解析与实践感悟（≥1000字）" class="headerlink" title="三、源码解析与实践感悟（≥1000字）"></a>三、源码解析与实践感悟（≥1000字）</h2><h3 id="3-1-GpuResource-基类"><a href="#3-1-GpuResource-基类" class="headerlink" title="3.1 GpuResource 基类"></a>3.1 GpuResource 基类</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GpuResource</span> : NonCopyable  <span class="comment">// 禁止复制</span></span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    std::string m_name;        <span class="comment">// 资源名称（用于调试）</span></span><br><span class="line">    VkDeviceSize m_size;       <span class="comment">// 资源大小（字节）</span></span><br><span class="line">    UUID64u m_runtimeUUID;     <span class="comment">// 运行时唯一标识符</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么禁止复制</strong>：Vulkan 资源句柄（<code>VkBuffer</code>、<code>VkImage</code>）的本质是 <code>uint64_t</code>，浅拷贝后两个对象持有相同句柄，析构时会 double-free。<code>NonCopyable</code> 在编译期阻止这种风险。</p>
+<h3 id="3-2-VulkanBuffer：VMA-构造"><a href="#3-2-VulkanBuffer：VMA-构造" class="headerlink" title="3.2 VulkanBuffer：VMA 构造"></a>3.2 VulkanBuffer：VMA 构造</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">VulkanBuffer</span>(</span><br><span class="line">    VmaAllocator vma,                     <span class="comment">// VMA 分配器</span></span><br><span class="line">    <span class="type">const</span> std::string&amp; name,              <span class="comment">// 资源名称</span></span><br><span class="line">    VkBufferUsageFlags usageFlags,        <span class="comment">// 缓冲用途</span></span><br><span class="line">    VmaAllocationCreateFlags vmaUsage,    <span class="comment">// VMA 分配标志</span></span><br><span class="line">    VkDeviceSize size,                    <span class="comment">// 缓冲大小</span></span><br><span class="line">    <span class="type">void</span>* data = <span class="literal">nullptr</span>);                <span class="comment">// 初始数据</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>便捷方法</strong>：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">static</span> VmaAllocationCreateFlags <span class="title">getStageCopyForUploadBufferFlags</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">static</span> VmaAllocationCreateFlags <span class="title">getReadBackFlags</span><span class="params">()</span></span>;</span><br></pre></td></tr></table></figure>
+<p>两个静态方法分别返回上传和回读时推荐的内存分配标志，避免每次手动拼参数。</p>
+<h3 id="3-3-内存映射与一致性"><a href="#3-3-内存映射与一致性" class="headerlink" title="3.3 内存映射与一致性"></a>3.3 内存映射与一致性</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">map</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span>* <span class="title">getMapped</span><span class="params">()</span> <span class="type">const</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">unmap</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">invalidate</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = <span class="number">0</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">flush</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = <span class="number">0</span>)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>invalidate vs flush 的区别</strong>：</p>
+<ul>
+<li><code>flush</code>：CPU 写 → GPU 读（Host → Device）</li>
+<li><code>invalidate</code>：GPU 写 → CPU 读（Device → Host）</li>
+</ul>
+<h3 id="3-4-设备地址（Device-Address）"><a href="#3-4-设备地址（Device-Address）" class="headerlink" title="3.4 设备地址（Device Address）"></a>3.4 设备地址（Device Address）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> m_bSupportDeviceAddress = <span class="literal">false</span>;</span><br><span class="line"><span class="type">uint64_t</span> m_deviceAddress = <span class="number">0</span>;</span><br><span class="line"><span class="function"><span class="type">uint64_t</span> <span class="title">getDeviceAddress</span><span class="params">()</span> <span class="type">const</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>用于光线追踪中的 <code>VK_KHR_buffer_device_address</code> 扩展。GPU 端可以直接通过 64 位地址访问缓冲区，无需先绑定描述符——这对 DXR&#x2F;VKR 光追管线中的 Shader Binding Table 和 Acceleration Structure 构建至关重要。</p>
+<p><strong>获取地址的前置条件</strong>：创建 Buffer 时必须带 <code>VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR</code>。</p>
+<h3 id="3-5-VulkanImage：视图缓存"><a href="#3-5-VulkanImage：视图缓存" class="headerlink" title="3.5 VulkanImage：视图缓存"></a>3.5 VulkanImage：视图缓存</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">ViewAndBindlessIndex</span> &#123;</span><br><span class="line">    VkImageView view = VK_NULL_HANDLE;</span><br><span class="line">    <span class="type">uint32_t</span> srvBindless = ~<span class="number">0U</span>;  <span class="comment">// bindless 渲染索引</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">std::unordered_map&lt;<span class="type">uint64_t</span>, ViewAndBindlessIndex&gt; m_cacheImageViews;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么缓存 ImageView</strong>：</p>
+<ul>
+<li><code>vkCreateImageView</code> 每次都要驱动调用，有一定开销</li>
+<li>同一 Texture 经常需要多个 View（如不同 mip 级别、不同 array layer）</li>
+<li>用 <code>VkImageSubresourceRange</code> 的哈希作为 key，避免重复创建</li>
+</ul>
+<h3 id="3-6-图像布局转换"><a href="#3-6-图像布局转换" class="headerlink" title="3.6 图像布局转换"></a>3.6 图像布局转换</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionLayout</span><span class="params">(VkCommandBuffer cmd, VkImageLayout newLayout, VkImageSubresourceRange range)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionShaderReadOnly</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionAttachment</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionTransferDst</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionGeneral</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>典型纹理加载流程</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">1. 创建图像（初始布局：UNDEFINED）</span><br><span class="line">2. transitionTransferDst()    → 转换为 TRANSFER_DST_OPTIMAL</span><br><span class="line">3. vkCmdCopyBufferToImage()   → 上传数据</span><br><span class="line">4. transitionShaderReadOnly() → 转换为 SHADER_READ_ONLY_OPTIMAL</span><br><span class="line">5. 着色器采样</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-7-子资源状态追踪"><a href="#3-7-子资源状态追踪" class="headerlink" title="3.7 子资源状态追踪"></a>3.7 子资源状态追踪</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">SubResourceState</span> &#123;</span><br><span class="line">    <span class="type">uint32_t</span> ownerQueueFamilyIndex;</span><br><span class="line">    VkImageLayout imageLayout;</span><br><span class="line">&#125;;</span><br><span class="line">std::vector&lt;SubResourceState&gt; m_subresourceStates;</span><br><span class="line"></span><br><span class="line"><span class="function">VkImageLayout <span class="title">getCurrentLayout</span><span class="params">(<span class="type">uint32_t</span> layerIndex, <span class="type">uint32_t</span> mipLevel)</span> <span class="type">const</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么需要</strong>：不同 mip 级别和 array layer 可以有不同布局。如果一个 mip 已经被设为 <code>SHADER_READ_ONLY</code>，另一个还在 <code>TRANSFER_DST</code>，需要分别跟踪，避免不必要的 barrier。</p>
+<hr>
+<h2 id="四、面试准备"><a href="#四、面试准备" class="headerlink" title="四、面试准备"></a>四、面试准备</h2><h3 id="高频问法（≥8个）"><a href="#高频问法（≥8个）" class="headerlink" title="高频问法（≥8个）"></a>高频问法（≥8个）</h3><ol>
+<li><strong>VMA 的作用是什么？为什么不直接用 vkAllocateMemory？</strong> → VMA 自动子分配、减少 Allocation 数量、碎片整理，大幅度减少 vulkan 内存管理的 boilerplate</li>
+<li><strong>GpuResource 为什么继承 NonCopyable？</strong> → 防止浅拷贝导致 Vulkan 句柄 double-free</li>
+<li><strong>Device Address 在光追中怎么用？</strong> → 通过 <code>VK_KHR_buffer_device_address</code> 扩展，GPU 可直接用 64 位地址访问 Buffer，用于 SBT 和 AS 构建</li>
+<li><strong>ImageView 为什么要缓存？</strong> → 避免重复 <code>vkCreateImageView</code> 驱动调用，用 subresource range 哈希做 key</li>
+<li><strong>图像布局转换的典型流程？</strong> → UNDEFINED → TRANSFER_DST（上传） → SHADER_READ_ONLY（采样）</li>
+<li><strong>flush 和 invalidate 的区别？</strong> → flush &#x3D; CPU→GPU，invalidate &#x3D; GPU→CPU；本质是缓存一致性操作</li>
+<li><strong>子资源状态为什么要逐个追踪？</strong> → 不同 mip&#x2F;array layer 可同时处于不同布局，统一 barrier 会浪费</li>
+<li><strong>VulkanBuffer 的两种构造方式何时用？</strong> → VMA 方式用于引擎内部资源；原生方式用于外部库交互或精确控制</li>
+<li><strong>如何获取 Bindless 纹理索引？</strong> → 通过 <code>VulkanImage::getOrCreateView()</code> 返回的 <code>ViewAndBindlessIndex.srvBindless</code></li>
+</ol>
+<h3 id="反问点（≥5个）"><a href="#反问点（≥5个）" class="headerlink" title="反问点（≥5个）"></a>反问点（≥5个）</h3><ul>
+<li>VMA 的内存碎片如何整理？</li>
+<li>如果没有 <code>VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT</code> 会怎样？</li>
+<li><code>vkFlushMappedMemoryRanges</code> 和 Buffer::flush 的关系？</li>
+<li>为什么 Undefined 布局转换时不需要 pipeline barrier？</li>
+<li>Bindless 索引是在什么时候分配的？</li>
+</ul>
+<h3 id="一句话答案（≥5个）"><a href="#一句话答案（≥5个）" class="headerlink" title="一句话答案（≥5个）"></a>一句话答案（≥5个）</h3><ul>
+<li>VMA &#x3D; Vulkan 世界的 tcmalloc&#x2F;jemalloc</li>
+<li>NonCopyable &#x3D; 编译期防 double-free</li>
+<li>Device Address &#x3D; GPU 端裸指针，光追必需</li>
+<li>ImageView 缓存 &#x3D; 用哈希换掉驱动调用</li>
+<li>布局转换 &#x3D; GPU 内部数据重排，必须显式声明</li>
+</ul>
+<hr>
+<h2 id="附录（原内容完整保留）"><a href="#附录（原内容完整保留）" class="headerlink" title="附录（原内容完整保留）"></a>附录（原内容完整保留）</h2><h3 id="原：GpuResource-基类"><a href="#原：GpuResource-基类" class="headerlink" title="原：GpuResource 基类"></a>原：GpuResource 基类</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">GpuResource</span> : NonCopyable  <span class="comment">// 禁止复制</span></span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    std::string m_name;        <span class="comment">// 资源名称（用于调试）</span></span><br><span class="line">    VkDeviceSize m_size;       <span class="comment">// 资源大小（字节）</span></span><br><span class="line">    UUID64u m_runtimeUUID;     <span class="comment">// 运行时唯一标识符</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：VulkanBuffer-构造（方式-A：VMA）"><a href="#原：VulkanBuffer-构造（方式-A：VMA）" class="headerlink" title="原：VulkanBuffer 构造（方式 A：VMA）"></a>原：VulkanBuffer 构造（方式 A：VMA）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">VulkanBuffer</span>(</span><br><span class="line">    VmaAllocator vma,</span><br><span class="line">    <span class="type">const</span> std::string&amp; name,</span><br><span class="line">    VkBufferUsageFlags usageFlags,</span><br><span class="line">    VmaAllocationCreateFlags vmaUsage,</span><br><span class="line">    VkDeviceSize size,</span><br><span class="line">    <span class="type">void</span>* data = <span class="literal">nullptr</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：VulkanBuffer-构造（方式-B：原生）"><a href="#原：VulkanBuffer-构造（方式-B：原生）" class="headerlink" title="原：VulkanBuffer 构造（方式 B：原生）"></a>原：VulkanBuffer 构造（方式 B：原生）</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">VulkanBuffer</span>(</span><br><span class="line">    VkBufferUsageFlags usageFlags,</span><br><span class="line">    VkMemoryPropertyFlags memoryPropertyFlags,</span><br><span class="line">    <span class="type">const</span> std::string&amp; name,</span><br><span class="line">    VkDeviceSize size,</span><br><span class="line">    <span class="type">void</span>* data = <span class="literal">nullptr</span>,</span><br><span class="line">    <span class="type">bool</span> bBindAfterCreate = <span class="literal">true</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：内存操作"><a href="#原：内存操作" class="headerlink" title="原：内存操作"></a>原：内存操作</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">map</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span>* <span class="title">getMapped</span><span class="params">()</span> <span class="type">const</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">unmap</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">copyTo</span><span class="params">(<span class="type">const</span> <span class="type">void</span>* data, VkDeviceSize size)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">copyAndUpload</span><span class="params">(VkCommandBuffer cmd, <span class="type">const</span> <span class="type">void</span>* data, VulkanBuffer* dstBuffer)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">invalidate</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = <span class="number">0</span>)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">flush</span><span class="params">(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = <span class="number">0</span>)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：图像布局转换"><a href="#原：图像布局转换" class="headerlink" title="原：图像布局转换"></a>原：图像布局转换</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionLayout</span><span class="params">(VkCommandBuffer cmd, VkImageLayout newLayout, VkImageSubresourceRange range)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionShaderReadOnly</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionAttachment</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionTransferDst</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">transitionGeneral</span><span class="params">(VkCommandBuffer cmd, ...)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：子资源状态"><a href="#原：子资源状态" class="headerlink" title="原：子资源状态"></a>原：子资源状态</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">SubResourceState</span> &#123;</span><br><span class="line">    <span class="type">uint32_t</span> ownerQueueFamilyIndex;</span><br><span class="line">    VkImageLayout imageLayout;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：创建顶点缓冲"><a href="#原：创建顶点缓冲" class="headerlink" title="原：创建顶点缓冲"></a>原：创建顶点缓冲</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">VulkanBuffer* vertexBuffer = <span class="keyword">new</span> <span class="built_in">VulkanBuffer</span>(</span><br><span class="line">    vma, <span class="string">&quot;MeshVertices&quot;</span>,</span><br><span class="line">    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,</span><br><span class="line">    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,</span><br><span class="line">    vertices.<span class="built_in">size</span>() * <span class="built_in">sizeof</span>(Vertex),</span><br><span class="line">    vertices.<span class="built_in">data</span>());</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：创建-Uniform-缓冲"><a href="#原：创建-Uniform-缓冲" class="headerlink" title="原：创建 Uniform 缓冲"></a>原：创建 Uniform 缓冲</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">VulkanBuffer* uniformBuffer = <span class="keyword">new</span> <span class="built_in">VulkanBuffer</span>(</span><br><span class="line">    vma, <span class="string">&quot;CameraUBO&quot;</span>,</span><br><span class="line">    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,</span><br><span class="line">    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,</span><br><span class="line">    <span class="built_in">sizeof</span>(UniformData));</span><br><span class="line">uniformBuffer-&gt;<span class="built_in">map</span>();</span><br><span class="line">UniformData* data = (UniformData*)uniformBuffer-&gt;<span class="built_in">getMapped</span>();</span><br><span class="line">data-&gt;view = camera.<span class="built_in">getViewMatrix</span>();</span><br><span class="line">uniformBuffer-&gt;<span class="built_in">unmap</span>();</span><br></pre></td></tr></table></figure>
+
+<h3 id="原：Bindless-渲染支持"><a href="#原：Bindless-渲染支持" class="headerlink" title="原：Bindless 渲染支持"></a>原：Bindless 渲染支持</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ViewAndBindlessIndex viewInfo = texture-&gt;<span class="built_in">getOrCreateView</span>();</span><br><span class="line"><span class="type">uint32_t</span> bindlessIndex = viewInfo.srvBindless;</span><br><span class="line"><span class="comment">// 在着色器中使用</span></span><br><span class="line"><span class="comment">// layout(binding = 0) uniform texture2D textures[];</span></span><br><span class="line"><span class="comment">// 通过bindlessIndex索引访问特定纹理</span></span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB/">https://weimo1.github.io/posts/Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Vulkan/" title="Vulkan"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Vulkan</div></div><div class="info-2"><div class="info-item-1">Vulkan 适用范围：Vulkan 渲染引擎的整体架构——RHI 抽象层、核心分层、静态延迟加载模式、资源管理全景。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要点。 代码块必须标注语言。  一、核心概念 定义：Vulkan 是 Khronos 推出的新一代跨平台显式图形 API，相比 OpenGL 提供更低的驱动开销、显式的内存&#x2F;同步控制...</div></div></div></a><a class="pagination-related" href="/posts/Vulkan-%E5%BC%82%E6%AD%A5%E8%B5%84%E6%BA%90%E4%B8%8A%E4%BC%A0%E7%B3%BB%E7%BB%9F/" title="Vulkan 异步资源上传系统"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Vulkan 异步资源上传系统</div></div><div class="info-2"><div class="info-item-1">Vulkan 异步资源上传系统 适用范围：CPU→GPU 纹理&#x2F;模型上传、Staging Buffer 管理、异步命令提交  一、一句话结论异步上传系统 &#x3D; 生产者-消费者模型 + 静态&#x2F;动态双通道 + 专用传输队列。小资源批量静态上传器处理、大资源按需动态上传器处理，通过 Fence 非阻塞同步，主线程零卡顿。  二、核心概念解析（≥200字）2.1 生产者-消费者架构1234567891011主线程（生产者）          上传器线程（消费者）    ↓                         ↑创建 AssetLoadTask → 塞入任务...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Vulkan-%E8%B5%84%E6%BA%90%E7%B1%BB%EF%BC%88Buffer-Image%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">Vulkan 资源类（Buffer &amp; Image）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%BB%93%E8%AE%BA"><span class="toc-number">1.1.</span> <span class="toc-text">一、一句话结论</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、核心概念解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E8%B5%84%E6%BA%90%E7%B1%BB%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 资源类层次结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-VMA%EF%BC%88Vulkan-Memory-Allocator%EF%BC%89%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 VMA（Vulkan Memory Allocator）的作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A1%A5%E5%85%85%EF%BC%9A%E4%B8%A4%E7%A7%8D%E6%9E%84%E9%80%A0%E6%96%B9%E5%BC%8F%E7%9A%84%E8%AE%BE%E8%AE%A1%E6%84%8F%E4%B9%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">补充：两种构造方式的设计意义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E4%B8%8E%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码解析与实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-GpuResource-%E5%9F%BA%E7%B1%BB"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 GpuResource 基类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-VulkanBuffer%EF%BC%9AVMA-%E6%9E%84%E9%80%A0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 VulkanBuffer：VMA 构造</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 内存映射与一致性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E8%AE%BE%E5%A4%87%E5%9C%B0%E5%9D%80%EF%BC%88Device-Address%EF%BC%89"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 设备地址（Device Address）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-VulkanImage%EF%BC%9A%E8%A7%86%E5%9B%BE%E7%BC%93%E5%AD%98"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 VulkanImage：视图缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E5%9B%BE%E5%83%8F%E5%B8%83%E5%B1%80%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 图像布局转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-7-%E5%AD%90%E8%B5%84%E6%BA%90%E7%8A%B6%E6%80%81%E8%BF%BD%E8%B8%AA"><span class="toc-number">1.3.7.</span> <span class="toc-text">3.7 子资源状态追踪</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.4.</span> <span class="toc-text">四、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A58%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.1.</span> <span class="toc-text">高频问法（≥8个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%8D%E9%97%AE%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.2.</span> <span class="toc-text">反问点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E5%AE%8C%E6%95%B4%E4%BF%9D%E7%95%99%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">附录（原内容完整保留）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AGpuResource-%E5%9F%BA%E7%B1%BB"><span class="toc-number">1.5.1.</span> <span class="toc-text">原：GpuResource 基类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AVulkanBuffer-%E6%9E%84%E9%80%A0%EF%BC%88%E6%96%B9%E5%BC%8F-A%EF%BC%9AVMA%EF%BC%89"><span class="toc-number">1.5.2.</span> <span class="toc-text">原：VulkanBuffer 构造（方式 A：VMA）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9AVulkanBuffer-%E6%9E%84%E9%80%A0%EF%BC%88%E6%96%B9%E5%BC%8F-B%EF%BC%9A%E5%8E%9F%E7%94%9F%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">原：VulkanBuffer 构造（方式 B：原生）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%86%85%E5%AD%98%E6%93%8D%E4%BD%9C"><span class="toc-number">1.5.4.</span> <span class="toc-text">原：内存操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%9B%BE%E5%83%8F%E5%B8%83%E5%B1%80%E8%BD%AC%E6%8D%A2"><span class="toc-number">1.5.5.</span> <span class="toc-text">原：图像布局转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%AD%90%E8%B5%84%E6%BA%90%E7%8A%B6%E6%80%81"><span class="toc-number">1.5.6.</span> <span class="toc-text">原：子资源状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%88%9B%E5%BB%BA%E9%A1%B6%E7%82%B9%E7%BC%93%E5%86%B2"><span class="toc-number">1.5.7.</span> <span class="toc-text">原：创建顶点缓冲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9A%E5%88%9B%E5%BB%BA-Uniform-%E7%BC%93%E5%86%B2"><span class="toc-number">1.5.8.</span> <span class="toc-text">原：创建 Uniform 缓冲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%EF%BC%9ABindless-%E6%B8%B2%E6%9F%93%E6%94%AF%E6%8C%81"><span class="toc-number">1.5.9.</span> <span class="toc-text">原：Bindless 渲染支持</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

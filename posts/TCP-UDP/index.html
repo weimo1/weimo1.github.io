@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>TCP  UDP | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="TCP  UDPUDP(User Datagram Protocol)传输与IP传输非常类似，它的传输方式也是”Best Effort“的，所以UDP协议也是不可靠的当应用程序对传输的可靠性要求不高，但是对传输速度和延迟要求较高时，可以用UDP协议来替代TCP协议在传输层控制数据的转发。 UDP 协议头UDP报文分为UDP报文头和UDP数据区域两部分。报头由源端口、目的端口、报文长度以及校验和组成">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP  UDP">
+<meta property="og:url" content="https://weimo1.github.io/posts/TCP-UDP/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="TCP  UDPUDP(User Datagram Protocol)传输与IP传输非常类似，它的传输方式也是”Best Effort“的，所以UDP协议也是不可靠的当应用程序对传输的可靠性要求不高，但是对传输速度和延迟要求较高时，可以用UDP协议来替代TCP协议在传输层控制数据的转发。 UDP 协议头UDP报文分为UDP报文头和UDP数据区域两部分。报头由源端口、目的端口、报文长度以及校验和组成">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.553Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "TCP  UDP",
+  "url": "https://weimo1.github.io/posts/TCP-UDP/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.553Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/TCP-UDP/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'TCP  UDP',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">TCP  UDP</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">TCP  UDP</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.553Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">6.9k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>22分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="TCP-UDP"><a href="#TCP-UDP" class="headerlink" title="TCP  UDP"></a>TCP  UDP</h1><h2 id="UDP-User-Datagram-Protocol-传输与IP传输非常类似，它的传输方式也是”Best-Effort“的，所以UDP协议也是不可靠的"><a href="#UDP-User-Datagram-Protocol-传输与IP传输非常类似，它的传输方式也是”Best-Effort“的，所以UDP协议也是不可靠的" class="headerlink" title="UDP(User Datagram Protocol)传输与IP传输非常类似，它的传输方式也是”Best Effort“的，所以UDP协议也是不可靠的"></a><strong>UDP(User Datagram Protocol)传输</strong>与<strong>IP传输</strong>非常类似，它的传输方式也是”<strong>Best</strong> <strong>Effort</strong>“的，所以<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=120565168&content_type=Article&match_order=1&q=UDP%E5%8D%8F%E8%AE%AE&zhida_source=entity"><strong>UDP协议</strong></a>也是<strong>不可靠</strong>的</h2><p>当应用程序<strong>对传输的可靠性要求不高</strong>，但是对<strong>传输速度和延迟要求较高</strong>时，可以用UDP协议来替代TCP协议在传输层控制数据的转发。</p>
+<h2 id="UDP-协议头"><a href="#UDP-协议头" class="headerlink" title="UDP 协议头"></a>UDP 协议头</h2><p>UDP报文分为<strong>UDP报文头</strong>和<strong>UDP数据区域</strong>两部分。报头由源端口、目的端口、报文长度以及校验和组成。</p>
+<p>UDP头部的标识如下：</p>
+<p>**16位源端口号：**源主机的应用程序使用的端口号。</p>
+<p>**16位目的端口号：**目的主机的应用程序使用的端口号。</p>
+<p>**16位UDP长度：**是指UDP头部和UDP数据的字节长度。因为UDP头部长度为8字节，所以该字段的最小值为8。</p>
+<p>**16位UDP校验和：**该字段提供了与TCP校验字段同样的功能；该字段是可选的。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_671be3806022.png"></p>
+<p><strong>每个 UDP socket 都有一个接收缓冲区，但没有发送缓冲区</strong></p>
+<h4 id="UDP数据包"><a href="#UDP数据包" class="headerlink" title="UDP数据包"></a>UDP数据包</h4><p>UDP数据包的最大大小应该是1500字节 – IP头(20字节) – UDP头(8字节) &#x3D; 1472字节。不过鉴于Internet上的标准MTU值为576字节，所以建议在进行Internet的UDP编程时，最好将UDP的数据长度控制在 (576-8-20)548字节以内</p>
+<h3 id="粘包-拆包-问题产生原因："><a href="#粘包-拆包-问题产生原因：" class="headerlink" title="粘包&#x2F;拆包 问题产生原因："></a>粘包&#x2F;拆包 问题产生原因：</h3><p>发生TCP粘包或拆包有很多原因，现列出常见的几点：</p>
+<ol>
+<li>要发送的数据大于TCP发送缓冲区剩余空间大小，将会发生拆包。</li>
+<li>待发送数据大于MSS（TCP报文长度 - TCP头部长度 &gt; MSS最大报文长度），TCP在传输前将根据MSS大小进行拆包分段发送。</li>
+<li>要发送的数据小于TCP发送缓冲区的大小，TCP将多次写入缓冲区的数据包合并为一次发送，将发生粘包（Nagle算法优化，避免tcp报文头重脚轻的情况发生）</li>
+<li>接收数据端的应用层没有及时读取接收缓冲区中的数据，将发生粘包。</li>
+</ol>
+<p><strong>补充：</strong></p>
+<p>MTU 最大传输单元 （链路层）：</p>
+<p>数据链路层传输的帧大小是有限制的，不能把一个太大的包直接塞给链路层，这个限制被称为「最大传输单元（Maximum Transmission Unit, MTU）」</p>
+<p>以太网的帧最大的帧是 1518 字节，除去 14 字节头部和 4 字节 CRC，有效荷载最大为 1500，这个值就是以太网的 MTU。</p>
+<p> </p>
+<p>MSS TCP最大段大小 Maximum Segment Size（传输层，可传输tcp数据包大小）：</p>
+<p>TCP 为了避免被发送方分片，会主动把数据分割成小段再交给网络层，最大的分段大小称之为 MSS（Max Segment Size）。</p>
+<p>这样一个 MSS 的数据恰好能装进一个 MTU 而不用分片。</p>
+<p>一般，在以太网中 TCP 的 MSS &#x3D; 1500（MTU） - 20（IP 头大小） - 20（TCP 头大小）&#x3D; <strong>1460</strong></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_e7c2605674e7.png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_828d3c83c69d.gif">编辑</p>
+<p>**总结：**IP 数据包长度超过链路的 MTU 时，在发送之前需要分片，而 TCP 层为了 IP 层不用分片主动将包切割成 MSS 大小。</p>
+<h3 id="解决-粘包-拆包-问题："><a href="#解决-粘包-拆包-问题：" class="headerlink" title="解决 粘包&#x2F;拆包 问题："></a>解决 粘包&#x2F;拆包 问题：</h3><p>解决问题关键在于如何给每个数据包添加边界信息用于区分不同数据包</p>
+<ol>
+<li>消息分为tcp首部和tcp消息体，tcp首部中应保存数据包的长度（<strong>TCP的首部原本是没有表示数据长度的字段，因为可由IP层计算出：TCP数据包长度 &#x3D; IP首部的数据包长度 - IP首部长度（20字节 ）- TCP包首部长度（20字节 ）</strong>）。这样接收端在接收到数据后，通过读取包首部的长度字段，就知道每个数据包的实际长度了。</li>
+<li>发送端在每个包的末尾使用固定的分隔符（如 \r\n），这样接收端通过这个边界就可以将不同的数据包拆分开（如 FTP协议）。</li>
+<li>发送端将每个数据包封装为固定长度（不够的可以通过补0填充），这样接收端每次从接收缓冲区中读取固定长度的数据就自然而然的把每个数据包拆分开来。不推荐这种方式，尤其是在高并发大流量的业务场景下，会消耗不必要的资源…</li>
+</ol>
+<p>**补充：**TCP报文格式图</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_c84db60df803.png"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_df20eebe26e0.gif">编辑</p>
+<h3 id="为什么TCP有粘包？"><a href="#为什么TCP有粘包？" class="headerlink" title="为什么TCP有粘包？"></a>为什么TCP有粘包？</h3><p>TCP协议粘包拆包问题是因为TCP协议数据传输是基于 “字节流” 的，它不包含消息、数据包等概念，需要应用层协议自己设计消息边界。日常网络应用开发大都在传输层进行，因此粘包拆包问题大都只发生在TCP协议中。</p>
+<h3 id="为什么UDP没有粘包？"><a href="#为什么UDP没有粘包？" class="headerlink" title="为什么UDP没有粘包？"></a>为什么UDP没有粘包？</h3><ol>
+<li>UDP有消息保护边界，不会发生粘包拆包问题</li>
+<li>UDP发送的时候，不经过<strong>Nagle</strong>算法优化，不会将多个小包合并一次发送出去。</li>
+<li>UDP协议的接收端，采用了链式结构来记录每一个到达的UDP包。UDP是基于报文发送的，从UDP的帧结构可以看出，在UDP首部采用了16bit字段来指示UDP数据报文的长度，因此在应用层能很好的将不同的数据报文区分开，从而避免粘包和拆包的问题。</li>
+</ol>
+<p><strong>补充：</strong>“消息保护边界”，就是指传输协议把数据当作一条独立的消息在网络上传输，接收端只能接收独立消息。也就是说存在保护消息边界，接收端一次只能接收发送端发出的一个数据包。而面向字节流是指无消息保护边界的，如果发送端连续发送数据，接收端有可能在一次接收动作中，会接收两个或者更多的数据包。</p>
+<h3 id="1-UDP-与-IP-分片：一个“懒惰”的组合"><a href="#1-UDP-与-IP-分片：一个“懒惰”的组合" class="headerlink" title="1. UDP 与 IP 分片：一个“懒惰”的组合"></a>1. UDP 与 IP 分片：一个“懒惰”的组合</h3><ul>
+<li><strong>UDP的职责</strong>：UDP协议本身非常简单。它的唯一职责是从应用程序接收数据块，加上一个简单的8字节头（源端口、目标端口、长度、校验和），然后就将整个东西扔给IP层去处理。<strong>它不关心也不感知MTU的存在。</strong></li>
+<li><strong>IP层的职责</strong>：当IP层从UDP收到一个数据报（Datagram）时，它会检查这个数据报的大小是否大于出口链路的MTU。</li>
+</ul>
+<ul>
+<li>如果 <strong>是</strong>，IP层会自动将这个UDP数据报<strong>分片（Fragment）</strong> 成多个小的IP包，每个都小于MTU。</li>
+<li>如果 <strong>否</strong>，则直接发送。</li>
+</ul>
+<p>所以，从协议栈的角度看，UDP+IP的组合可以处理任意大小的数据（受限于最大IP包长度65535字节），分片是IP层自动、透明完成的。</p>
+<h3 id="2-为什么避免分片如此重要？（“稳定性”的真正含义）"><a href="#2-为什么避免分片如此重要？（“稳定性”的真正含义）" class="headerlink" title="2. 为什么避免分片如此重要？（“稳定性”的真正含义）"></a>2. 为什么避免分片如此重要？（“稳定性”的真正含义）</h3><p>您提到的“稳定性”，在实际网络中更多地表现为 <strong>“更高的成功送达率”</strong> 和 <strong>“更可预测的性能”</strong> 。而IP分片会严重破坏这种稳定性，原因如下：</p>
+<ol>
+<li><strong>分片丢失，全部重传</strong>：一个UDP数据报被分成3个IP分片。如果其中任意1个分片在网络传输中丢失，整个原始UDP数据报就无法在目的地重组。对于UDP而言，这意味着整个数据报就丢了。发送方需要重传整个原始的大数据报，而不是只重传丢失的那个小分片。<strong>效率极其低下。</strong></li>
+<li><strong>无重传机制</strong>：UDP本身没有重传机制，重传依赖于应用程序。如果应用层不知道底层发生了分片，它很难实现高效的重传逻辑。</li>
+<li><strong>增加延迟和抖动</strong>：分片和重组操作需要消耗路由器和服务器的CPU和内存资源。这可能会引入不可预测的延迟（抖动），对于音视频、游戏等实时应用是致命的。</li>
+<li><strong>防火墙&#x2F;NAT兼容性问题</strong>：许多严格的网络防火墙和NAT设备配置为丢弃分片包，因为它们无法完整检查被分片的包的内容（第一个分片之后的分片没有传输层头信息）。这意味着你的大数据报很可能根本无法到达目的地。</li>
+</ol>
+<h3 id="3-最佳实践：应用程序主动管理包大小"><a href="#3-最佳实践：应用程序主动管理包大小" class="headerlink" title="3. 最佳实践：应用程序主动管理包大小"></a>3. 最佳实践：应用程序主动管理包大小</h3><p>因此，为了获得“稳定性”，<strong>最佳实践是由应用程序负责确保发出的UDP数据报不会在路径上触发IP分片。</strong></p>
+<p>如何做到这一点呢？</p>
+<ul>
+<li><strong>路径MTU发现（PMTUD）</strong>：这是一种技术，主机通过发送不允许分片的大包，并监听来自路由器的“需要分片”ICMP错误消息，来动态发现到达目的地的整条路径上的最小MTU。然而，PMTUD在实践中常常因为网络设备禁用ICMP而失败。</li>
+<li><strong>保守的默认值</strong>：由于PMTUD不可靠，应用程序通常会采用一个<strong>保守的、公认安全的大小</strong>。互联网的默认最小MTU是576字节。因此，一个常见的策略是：<br><strong>应用层数据 + UDP头(8B) + IP头(20B) ≤ 576字节</strong><br>计算得出：<strong>应用层数据最大 ≤ 576 - 28 &#x3D; 548字节</strong>。</li>
+</ul>
+<p>这样生成的IP包总长为576字节，保证了它在互联网的任何路径上传输都<strong>绝对不会被分片</strong>。</p>
+<p>由于IP协议提供为上层协议切割和重组报文的功能，因此传输层协议的数据包长度原则上来说没有限制。</p>
+<p>实际上限制还是有的，由于IP包的标识字段终究不可能无限长，依照IPv4。好像上限应该是4G(64K*64K)。</p>
+<p>依靠这样的机制。<strong>TCP包头中就没有“包长度”字段。而全然依靠IP层去处理分帧。</strong></p>
+<p><strong>这就是为什么TCP经常被称作一种“流协议”的原因</strong>。开发人员在使用TCP服务的时候，不必去关心数据包的大小。仅仅需讲SOCKET看作一条数据流的入口。往里面放数据就是了，TCP协议本身会进行拥塞&#x2F;流量控制</p>
+<h2 id="UDP协议的正确使用场合"><a href="#UDP协议的正确使用场合" class="headerlink" title="UDP协议的正确使用场合"></a>UDP协议的正确使用场合</h2><p><a target="_blank" rel="noopener external nofollow noreferrer" href="http://www.52im.net/forum.php?mod=viewthread&tid=1277&highlight=UDP">网络编程懒人入门(五)：快速理解为什么说UDP有时比TCP更有优势-网络编程&#x2F;专项技术区 - 即时通讯开发者社区!</a></p>
+<h3 id="1-高通信实时性要求和低持续性要求的场景下："><a href="#1-高通信实时性要求和低持续性要求的场景下：" class="headerlink" title="1.高通信实时性要求和低持续性要求的场景下："></a>1.高通信实时性要求和低持续性要求的场景下：</h3><p><strong>在分组交换通信当中，协议栈的成本主要表现在以下两方面：</strong></p>
+<ul>
+<li>[1] 封装带来的空间复杂度；</li>
+<li>[2] 缓存带来的时间复杂度。</li>
+</ul>
+<p>以上两者是对立影响的，如果想减少封装消耗，那么就必须缓存用户数据到一定量在一次性封装发送出去，这样每个协议包的有效载荷将达到最大化，这无疑是节省了带宽空间，带宽利用率较高，但是延时增大了。如果想降低延时，那么就需要将用户数据立马封装发出去，这样显然会造成消耗更多的协议头等消耗，浪费带宽空间。<br>因此，我们进行协议选择的时候，需要重点考虑一下空间复杂度和时间复杂度间的平衡。<br><strong>通信的持续性对两者的影响比较大，根据通信的持续性有两种通信类型：</strong></p>
+<ul>
+<li>[1] 短连接通信；</li>
+<li>[2] 长连接通信。</li>
+</ul>
+<p>对于短连接通信，一方面如果业务只需要发一两个包并且对丢包有一定的容忍度，同时业务自己有简单的轮询或重复机制，那么采用UDP会较为好些。在这样的场景下，如果用TCP，仅仅握手就需要3个包，这样显然有点不划算，一个典型的例子是DNS查询。另一方面，如果业务实时性要求非常高，并且不能忍受重传，那么首先就是UDP了或者只能用UDP了，例如NTP 协议，重传NTP消息纯属添乱(为什么呢？重传一个过期的时间包过来，还不如发一个新的UDP包同步新的时间过来)。如果NTP协议采用TCP，撇开握手消耗较多数据包交互的问题，由于TCP受Nagel算法等影响，用户数据会在一定情况下会被内核缓存延后发送出去，这样时间同步就会出现比较大的偏差，协议将不可用。</p>
+<h3 id="2-多点通信"><a href="#2-多点通信" class="headerlink" title="2.多点通信"></a>2.多点通信</h3><p>对于一些多点通信的场景，如果采用有连接的TCP，那么就需要和多个通信节点建立其双向连接，然后有时在NAT环境下，两个通信节点建立其直接的TCP连接不是一个容易的事情，在涉及NAT穿越的时候，UDP协议的无连接性使得穿透成功率更高（原因详见：由于UDP的无连接性，那么其完全可以向一个组播地址发送数据或者轮转地向多个目的地持续发送相同的数据，从而更为容易实现多点通信。）<br>一个典型的场景是多人实时音视频通信，这种场景下实时性要求比较高，可以容忍一定的丢包率。比如：对于音频，对端连续发送p1、p2、p3三个包，另一端收到了p1和p3，在没收到p2的保持p1的最后一个音（也是为什么有时候网络丢包就会听到嗞嗞嗞嗞嗞嗞…或者卟卟卟卟卟卟卟卟…重音的原因），等到到p3就接着播p3了，不需要也不能补帧，一补就越来越大的延时。对于这样的场景就比较合适用UDP了，如果采用TCP，那么在出现丢包的时候，就可能会出现比较大的延时。</p>
+<h2 id="UDP实现数据必达"><a href="#UDP实现数据必达" class="headerlink" title="UDP实现数据必达"></a>UDP实现数据必达</h2><h3 id="解决方案1：回复-重发-编号机制"><a href="#解决方案1：回复-重发-编号机制" class="headerlink" title="解决方案1：回复+重发+编号机制"></a>解决方案1：回复+重发+编号机制</h3><p>***1）***接收方收到数据后，回复一个确认包：<br>如果你不回复，那么发送端是不会知道接收方是否成功收到数据的。比如：A 要发数据 “{data}” 到 B，那 B 收后，可以回复一个特定的确认包 “{OK}”，表示成功收到。<br>但是如果只做上面的回复处理，还是有问题：比如 B 收到数据后回复给 A 的数据 “{OK}” 的包，A 没收到，怎么办呢？<br>***2）***当 A 没有收到B的 “{OK}” 包后，要做定时重发数据：<br>定时重发，直到成功接收到确认包为止，再发下面的数据，当然，重发了一定数量后还是没能收到确认包，可以执行一下 ARP 的流程，防止对方网卡更换或别的原因。<br>但是这样的话，B 会收到很多重复的数据，假如每次都是 B 回复确认包 A 收不到的话。<br>***3）**<em>发送数据的包中加个标识符 - 编号：<br>比如 A 要发送的数据 “标识符data” 到 B，B 收到后，先回复 “{OK}” 确认包，再根据原有的标识符进行比较，如果标识符相同，则数据丢失，如果不相同，则原有的标识符 &#x3D; 接收标识符，且处理数据。<br>当 A 发送数据包后，没有收到确认包，则每隔 x 秒，把数据重发一次，直到收到确认包后，更新一下标识符，再进行后一包的数据发送。<br>经过上面</em>1）、2）、3）*点的做法，则可以保证数据百分百到达对方，当然，标识符用 ID 号来代替更好。</p>
+<h3 id="解决方案2：冗余传输"><a href="#解决方案2：冗余传输" class="headerlink" title="解决方案2：冗余传输"></a>解决方案2：冗余传输</h3><p>**如下图：**一般采用较多的是延时双发，双发指的是将原本单发的前后连续的两个包合并成一个大包发送，这样发送的数据量是原来的两倍。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_b2ba2aabb929.jpeg"></p>
+<h3 id="为什么-TCP-需要三次握手？"><a href="#为什么-TCP-需要三次握手？" class="headerlink" title="为什么 TCP 需要三次握手？"></a>为什么 TCP 需要三次握手？</h3><p>**原因一：防止重复连接 ：**三次握手的主要原因是为了防止旧的重复连接引起连接混乱问题</p>
+<p><strong>原因二：同步初始化序列化</strong> TCP 连接时就需要同步初始化一个序列号来保证 TCP 的稳定性</p>
+<h2 id="为什么QQ用的是UDP协议而不是TCP协议？"><a href="#为什么QQ用的是UDP协议而不是TCP协议？" class="headerlink" title="为什么QQ用的是UDP协议而不是TCP协议？"></a>为什么QQ用的是UDP协议而不是TCP协议？</h2><p>**1.QQ既有UDP也有TCP！****不管UDP还是TCP，最终登陆成功之后，QQ都会有一个TCP连接来保持在线状态。这个TCP连接的远程端口一般是80，采用UDP方式登陆的时候，端口是8000。****UDP协议是无连接方式的协议，它的效率高，速度快，占资源少，但是其传输机制为不可靠传送，必须依靠辅助的算法来完成传输控制。QQ采用的通信协议以UDP为主，辅以TCP协议。由于QQ的服务器设计容量是海量级的应用，一台服务器要同时容纳十几万的并发连接，因此服务器端只有采用UDP协议与客户端进行通讯才能保证这种超大规模的服务。****QQ客户端之间的消息传送也采用了UDP模式，因为国内的网络环境非常复杂，而且很多用户采用的方式是通过代理服务器共享一条线路上网的方式，在这些复杂的情况下，客户端之间能彼此建立起来TCP连接的概率较小，严重影响传送信息的效率。而UDP包能够穿透大部分的代理服务器，因此QQ选择了UDP作为客户之间的主要通信协议。**<strong>采用UDP协议，通过服务器中转方式。因此，现在的IP侦探在你仅仅跟对方发送聊天消息的时候是无法获取到IP的。大家都知道，UDP 协议是不可靠协议，它只管发送，不管对方是否收到的，但它的传输很高效。但是，作为聊天软件，怎么可以采用这样的不可靠方式来传输消息呢？于是，腾讯采用了上层协议来保证可靠传输：如果客户端使用UDP协议发出消息后，服务器收到该包，需要使用UDP协议发回一个应答包。如此来保证消息可以无遗漏传输。之所以会发生在客户端明明看到“消息发送失败”但对方又收到了这个消息的情况，就是因为客户端发出的消息服务器已经收到并转发成功，但客户端由于网络原因没有收到服务器的应答包引起的。</strong></p>
+<p><strong>2.原因是因为当时没有epoll这种可以支持成千上万tcp并发连接的技术,所以他们使用了udp,然后在udp上面封装了一下,模拟了一下tcp,解决了大并发的问题,之后因为做的很nb了,虽然epoll这种技术出现了,还是没有改回使用tcp了.现在再做类似的东西就不需要使用udp了.</strong></p>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：TCP（传输控制协议）是面向连接、可靠、基于字节流的传输层协议；UDP（用户数据报协议）是无连接、不可靠、基于报文的传输层协议。两者是 TCP&#x2F;IP 协议栈传输层的两大核心协议</li>
+<li><strong>关键词</strong>：MTU（最大传输单元）、MSS（最大段大小）、IP 分片、粘包&#x2F;拆包、Nagle 算法、消息边界、三次握手、序列号、校验和</li>
+<li><strong>适用场景&#x2F;边界</strong>：TCP → 可靠性优先（HTTP&#x2F;文件传输&#x2F;邮件）；UDP → 实时性优先（音视频&#x2F;DNS&#x2F;在线游戏）。UDP 可通过应用层实现可靠性（QUIC），TCP 无法去掉可靠性带来的延迟</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><ul>
+<li><strong>原理拆解（三层递进）</strong>：<ul>
+<li><strong>第一层——TCP 面向字节流 vs UDP 面向报文</strong>：TCP 没有消息边界，发方 3 次 write 可能被收方 1 次 read 全部读出（粘包）。UDP 有消息保护边界——每个 <code>sendto</code> 对应一个完整数据报，接收方 <code>recvfrom</code> 一次接收一个完整报文。这是 TCP”流协议”本质决定的：TCP 将数据视为无结构的字节流，由 IP 层分帧，TCP 头中无”包长度”字段</li>
+<li><strong>第二层——MTU&#x2F;MSS&#x2F;IP分片链路</strong>：链路层 MTU（以太网&#x3D;1500B）限制帧大小。TCP 通过 MSS（&#x3D;MTU-IP头-TCP头&#x3D;1460B）主动分段避免 IP 分片。UDP 不做分段，超过 MTU 的数据报由 IP 层被动分片。IP 分片风险：任一片丢失 → 整个数据报丢弃（UDP 无重传）→ 应用层需重传全部数据</li>
+<li><strong>第三层——粘包解决方案</strong>：(1) 固定长度消息；(2) 分隔符边界（HTTP 的 <code>\r\n</code>）；(3) 长度前缀（包头含 body 长度，最通用）。UDP 天然无粘包问题，因为 16 位”UDP 长度”字段标记了报文边界</li>
+</ul>
+</li>
+<li><strong>关键数据结构&#x2F;接口</strong>：TCP 头(20B)：序列号+确认号+控制位(SYN&#x2F;ACK&#x2F;FIN&#x2F;RST)+窗口大小+校验和；UDP 头(8B)：源&#x2F;目的端口+长度+校验和</li>
+<li><strong>关键公式</strong>：MSS &#x3D; MTU - 20(IP头) - 20(TCP头) &#x3D; 1460B(以太网)；安全 UDP 载荷 ≤ 576 - 28 &#x3D; 548B（互联网最小 MTU）</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="comment">// TCP 客户端（演示粘包处理：长度前缀方案）</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">tcp_client</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">int</span> fd = <span class="built_in">socket</span>(AF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line">    sockaddr_in addr&#123;&#125;;</span><br><span class="line">    addr.sin_family = AF_INET;</span><br><span class="line">    addr.sin_port = <span class="built_in">htons</span>(<span class="number">8080</span>);</span><br><span class="line">    <span class="built_in">inet_pton</span>(AF_INET, <span class="string">&quot;127.0.0.1&quot;</span>, &amp;addr.sin_addr);</span><br><span class="line">    <span class="built_in">connect</span>(fd, (sockaddr*)&amp;addr, <span class="built_in">sizeof</span>(addr));</span><br><span class="line">    </span><br><span class="line">    string msg = <span class="string">&quot;Hello TCP&quot;</span>;</span><br><span class="line">    <span class="type">uint32_t</span> len = <span class="built_in">htonl</span>(msg.<span class="built_in">size</span>());</span><br><span class="line">    <span class="built_in">send</span>(fd, &amp;len, <span class="number">4</span>, <span class="number">0</span>);        <span class="comment">// 先发 4 字节长度</span></span><br><span class="line">    <span class="built_in">send</span>(fd, msg.<span class="built_in">data</span>(), msg.<span class="built_in">size</span>(), <span class="number">0</span>);  <span class="comment">// 再发消息体</span></span><br><span class="line">    <span class="built_in">close</span>(fd);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// UDP 客户端（天然无粘包）</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">udp_client</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">int</span> fd = <span class="built_in">socket</span>(AF_INET, SOCK_DGRAM, <span class="number">0</span>);</span><br><span class="line">    sockaddr_in addr&#123;&#125;;</span><br><span class="line">    addr.sin_family = AF_INET;</span><br><span class="line">    addr.sin_port = <span class="built_in">htons</span>(<span class="number">9090</span>);</span><br><span class="line">    <span class="built_in">inet_pton</span>(AF_INET, <span class="string">&quot;127.0.0.1&quot;</span>, &amp;addr.sin_addr);</span><br><span class="line">    </span><br><span class="line">    string msg = <span class="string">&quot;Hello UDP&quot;</span>;</span><br><span class="line">    <span class="built_in">sendto</span>(fd, msg.<span class="built_in">data</span>(), msg.<span class="built_in">size</span>(), <span class="number">0</span>, (sockaddr*)&amp;addr, <span class="built_in">sizeof</span>(addr));</span><br><span class="line">    <span class="comment">// 每个 sendto 是一个独立数据报，不需处理粘包</span></span><br><span class="line">    <span class="built_in">close</span>(fd);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="UDP-实现可靠传输（类似-QUIC）"><a href="#UDP-实现可靠传输（类似-QUIC）" class="headerlink" title="UDP 实现可靠传输（类似 QUIC）"></a>UDP 实现可靠传输（类似 QUIC）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">ReliableUDP</span> &#123;</span><br><span class="line">    <span class="type">uint32_t</span> seq;       <span class="comment">// 序列号</span></span><br><span class="line">    <span class="type">uint32_t</span> ack;       <span class="comment">// 确认号</span></span><br><span class="line">    <span class="type">uint16_t</span> flags;     <span class="comment">// SYN/ACK/FIN/DATA</span></span><br><span class="line">    <span class="type">uint16_t</span> window;    <span class="comment">// 接收窗口</span></span><br><span class="line">    <span class="type">char</span> payload[];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 用 UDP 模拟 TCP：序列号保证有序，ACK 保证可靠，窗口做流控</span></span><br><span class="line"><span class="comment">// QUIC（HTTP/3）正是基于 UDP 实现的多路复用可靠传输</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="TCP-CORK-批量发送"><a href="#TCP-CORK-批量发送" class="headerlink" title="TCP_CORK 批量发送"></a>TCP_CORK 批量发送</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> cork = <span class="number">1</span>;</span><br><span class="line"><span class="built_in">setsockopt</span>(fd, IPPROTO_TCP, TCP_CORK, &amp;cork, <span class="built_in">sizeof</span>(cork));</span><br><span class="line"><span class="built_in">write</span>(fd, header, hdr_len);</span><br><span class="line"><span class="built_in">write</span>(fd, body, body_len);</span><br><span class="line">cork = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">setsockopt</span>(fd, IPPROTO_TCP, TCP_CORK, &amp;cork, <span class="number">0</span>);  <span class="comment">// 一次性发送</span></span><br><span class="line"><span class="comment">// 用于 HTTP 响应：将 header + body 合并为一个 TCP 段</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="TCP-vs-UDP-选择决策树"><a href="#TCP-vs-UDP-选择决策树" class="headerlink" title="TCP vs UDP 选择决策树"></a>TCP vs UDP 选择决策树</h3><table>
+<thead>
+<tr>
+<th>需求</th>
+<th>推荐</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>文件传输&#x2F;网页</td>
+<td>TCP</td>
+<td>零容忍丢包</td>
+</tr>
+<tr>
+<td>实时音视频</td>
+<td>UDP</td>
+<td>延迟敏感，可容忍丢帧</td>
+</tr>
+<tr>
+<td>DNS 查询</td>
+<td>UDP</td>
+<td>短连接，一个包搞定</td>
+</tr>
+<tr>
+<td>在线游戏</td>
+<td>UDP</td>
+<td>状态实时同步，延迟比可靠性重要</td>
+</tr>
+<tr>
+<td>数据库连接</td>
+<td>TCP</td>
+<td>数据完整性不可妥协</td>
+</tr>
+</tbody></table>
+<p><strong>工程经验</strong>：(1) 粘包是 TCP 开发的必修课——无论什么框架，自定义消息边界是必须的；(2) UDP 虽不可靠但效率高，可通过应用层协议（序列号+ACK+重传）实现可靠性；(3) Nagle 算法对延迟敏感应用是反模式，务必设置 TCP_NODELAY；(4) IP 分片是 UDP 的隐形杀手，生产环境 UDP 包最好控制在 548B 以内。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-源码解析"><a href="#5-1-源码解析" class="headerlink" title="5.1 源码解析"></a>5.1 源码解析</h3><h4 id="TCP-确认与重传的核心状态机"><a href="#TCP-确认与重传的核心状态机" class="headerlink" title="TCP 确认与重传的核心状态机"></a>TCP 确认与重传的核心状态机</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// TCP 发送简化逻辑</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">tcp_sendmsg</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="keyword">struct</span> msghdr *msg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">while</span> (msg-&gt;len &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="type">int</span> mss = <span class="built_in">tcp_current_mss</span>(sk);                    <span class="comment">// 获取当前 MSS</span></span><br><span class="line">        <span class="type">int</span> seg_size = <span class="built_in">min</span>(msg-&gt;len, mss) - tcp_header;</span><br><span class="line">        <span class="keyword">struct</span> <span class="title class_">sk_buff</span> *skb = <span class="built_in">alloc_skb</span>(seg_size);        <span class="comment">// 分配 skb</span></span><br><span class="line">        <span class="built_in">copy_from_user</span>(skb-&gt;data, msg-&gt;buf, seg_size);</span><br><span class="line">        <span class="built_in">tcp_send_skb</span>(sk, skb);                            <span class="comment">// 发送段</span></span><br><span class="line">        msg-&gt;len -= seg_size;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 重传定时器</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">tcp_retransmit_timer</span><span class="params">(<span class="keyword">struct</span> sock *sk)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">sk_buff</span> *skb = <span class="built_in">tcp_send_head</span>(sk);</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">tcp_packets_in_flight</span>(sk) &gt;= tp-&gt;snd_cwnd) <span class="keyword">return</span>;</span><br><span class="line">    <span class="built_in">tcp_retransmit_skb</span>(sk, skb);</span><br><span class="line">    <span class="built_in">tcp_reset_xmit_timer</span>(sk, TCP_TIME_RETRANS, <span class="built_in">max</span>(tp-&gt;rto, TCP_TIMEOUT_MIN));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="UDP-的无状态收发"><a href="#UDP-的无状态收发" class="headerlink" title="UDP 的无状态收发"></a>UDP 的无状态收发</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">int</span> <span class="title">udp_sendmsg</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="keyword">struct</span> msghdr *msg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">udphdr</span> *uh = <span class="built_in">skb_push</span>(skb, <span class="built_in">sizeof</span>(*uh));</span><br><span class="line">    uh-&gt;source = inet-&gt;sport;</span><br><span class="line">    uh-&gt;dest   = inet-&gt;dport;</span><br><span class="line">    uh-&gt;len    = <span class="built_in">htons</span>(len);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">ip_send_skb</span>(skb);  <span class="comment">// 直接丢给 IP 层，无连接无状态无确认</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-实践经验"><a href="#5-2-实践经验" class="headerlink" title="5.2 实践经验"></a>5.2 实践经验</h3><ol>
+<li>TCP 适用 99% 的常规应用，UDP 仅在实时性压倒可靠性时使用</li>
+<li>UDP 数据包控制在 548 字节以内避免 IP 分片</li>
+<li>QUIC（HTTP&#x2F;3）在 UDP 上层重写了 TCP 的确认重传逻辑</li>
+<li>TCP Nagle 算法在延迟敏感场景（SSH、游戏）应通过 <code>TCP_NODELAY</code> 关闭</li>
+<li>MTU 和 MSS 关系：<code>MSS = MTU - IP头(20) - TCP头(20) = 1460</code></li>
+<li>UDP 没有发送缓冲区，<code>sendto</code> 直接送到 IP 层——队列满则丢弃</li>
+</ol>
+<h2 id="相关笔记"><a href="#相关笔记" class="headerlink" title="相关笔记"></a>相关笔记</h2><ul>
+<li><a href="/posts/TCP/">TCP</a> — TCP 协议深度</li>
+<li><a href="/posts/%E5%A4%84%E7%90%86%E7%B2%98%E5%8C%85%E9%97%AE%E9%A2%98/">处理粘包问题</a> — TCP 粘包的 TLV 解决方案</li>
+<li><a href="/posts/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a> — 网络编程全景</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：TCP 为什么可靠？</strong></p>
+<p>A：序列号+确认应答、超时重传、滑动窗口流量控制、拥塞控制、校验和。</p>
+<p><strong>Q2：UDP 可靠吗？如何让 UDP 变可靠？</strong></p>
+<p>A：UDP 本身不可靠。应用层通过编号+确认+重传+去重实现可靠传输（如 QUIC、KCP）。</p>
+<p><strong>Q3：TCP 粘包的根本原因？UDP 为何不粘包？</strong></p>
+<p>A：TCP 面向字节流无消息边界。UDP 面向数据报，每个 <code>sendto</code> 对应独立数据报有消息边界保护。</p>
+<p><strong>Q4：MTU、MSS 的关系？</strong></p>
+<p>A：MTU 是链路层最大传输单元（以太网 1500）。MSS &#x3D; MTU - IP头(20) - TCP头(20) &#x3D; 1460。TCP 自动按 MSS 分段。</p>
+<p><strong>Q5：Nagle 算法的作用和副作用？</strong></p>
+<p>A：合并小包减少网络开销，但增加延迟。交互式应用需关闭（<code>TCP_NODELAY</code>）。</p>
+<p><strong>Q6：TCP 三次握手为什么是三次？</strong></p>
+<p>A：防旧连接请求产生错误连接 + 同步双方初始序列号。两次不够（服务端不知客户端是否收到 SYN-ACK），四次冗余。</p>
+<p><strong>Q7：UDP 数据包最大多少？</strong></p>
+<p>A：理论上 65507 字节，但超过 MTU 会分片。实际安全大小约 548 字节。</p>
+<p><strong>Q8：QUIC 相比 TCP 的优势？</strong></p>
+<p>A：基于 UDP 避免 TCP 队头阻塞；0-RTT 握手；连接迁移（切换网络不断连）；每个流独立拥塞控制。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：TCP 无消息边界 → 应用层不处理粘包导致数据错乱<br><strong>陷阱2</strong>：UDP 包大于路径 MTU → IP 分片 → 丢一片全丢<br><strong>陷阱3</strong>：TCP keep-alive 默认 2 小时探测 → 远高于应用层心跳<br><strong>陷阱4</strong>：关闭 Nagle 后连续小包 → tinygram 泛滥<br><strong>陷阱5</strong>：UDP connect() 后仍可收到其他来源数据</p>
+<p><strong>反问</strong>：TCP 和 UDP 在什么场景可以混合使用？<br><em>答案：HTTP&#x2F;3 (QUIC) 底层用 UDP 传输但实现 TCP 可靠性。DNS 通常 UDP，超 512 字节切 TCP。WebRTC UDP 传音视频 + TCP&#x2F;SCTP 传信令。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>TCP 可靠性</strong>：序列号 + 确认 + 重传 + 流控 + 拥塞控制</li>
+<li><strong>UDP 无粘包</strong>：数据报有消息边界，一个 sendto &#x3D; 一个独立包</li>
+<li><strong>MSS &#x3D; 1460</strong>：MTU(1500) - IP头(20) - TCP头(20)</li>
+<li><strong>Nagle</strong>：合并小包减少开销，延迟敏感场景关闭</li>
+<li><strong>三次握手</strong>：防旧连接+同步 ISN</li>
+<li><strong>UDP 安全大小</strong>：548 字节避免分片</li>
+<li><strong>QUIC</strong>：基于 UDP 的下一代传输协议，HTTP&#x2F;3 传输层</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/TCP-UDP/">https://weimo1.github.io/posts/TCP-UDP/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/TCP/" title="TCP"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">TCP</div></div><div class="info-2"><div class="info-item-1">TCPTCP 和 UDP 的区别 连接性：TCP 是面向连接的协议；UDP 是无连接的协议 可靠性：TCP 提供可靠的数据传输（确认和重传机制）；UDP 不提供可靠性 流量与拥塞控制：TCP 提供；UDP 可能存在丢包情况 头部开销：TCP 头部包含大量控制信息（管理连接、序列号）；UDP 头部较小（只包含基本信息） 应用场景：TCP 适用于网页浏览、文件传输；UDP 适用于实时视频、语音通话  运行于TCP、UDP上的协议TCP: НТТР, HTTPS, FTP, SMTP, POP3&#x2F;IMAP, Telnet, SSH UDP： DHCP：动态主机配置协议，动态配置IP地...</div></div></div></a><a class="pagination-related" href="/posts/TAA/" title="TAA"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">TAA</div></div><div class="info-2"><div class="info-item-1">TAA 适用范围：时间抗锯齿（Temporal Anti-Aliasing）——利用多帧信息的后处理抗锯齿技术，是现代延迟渲染管线的主流 AA 方案。  写作约束（铁律） 原内容一字不删 只做归纳重组+增加 放不进的进附录 动笔前先搜索 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与实践感悟(五)≥1000字、面试准备(六)高频问法≥8个且带回答，反问点和一句话答案各≥5个。 先结论后细节，每节至少3条要点。 代码块必须标注语言。 图示统一放在 资源/图片/。  一、核心概念 定义：TAA（Temporal Anti-Aliasing）在时间维度上累积多帧信息...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#TCP-UDP"><span class="toc-number">1.</span> <span class="toc-text">TCP  UDP</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#UDP-User-Datagram-Protocol-%E4%BC%A0%E8%BE%93%E4%B8%8EIP%E4%BC%A0%E8%BE%93%E9%9D%9E%E5%B8%B8%E7%B1%BB%E4%BC%BC%EF%BC%8C%E5%AE%83%E7%9A%84%E4%BC%A0%E8%BE%93%E6%96%B9%E5%BC%8F%E4%B9%9F%E6%98%AF%E2%80%9DBest-Effort%E2%80%9C%E7%9A%84%EF%BC%8C%E6%89%80%E4%BB%A5UDP%E5%8D%8F%E8%AE%AE%E4%B9%9F%E6%98%AF%E4%B8%8D%E5%8F%AF%E9%9D%A0%E7%9A%84"><span class="toc-number">1.1.</span> <span class="toc-text">UDP(User Datagram Protocol)传输与IP传输非常类似，它的传输方式也是”Best Effort“的，所以UDP协议也是不可靠的</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UDP-%E5%8D%8F%E8%AE%AE%E5%A4%B4"><span class="toc-number">1.2.</span> <span class="toc-text">UDP 协议头</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#UDP%E6%95%B0%E6%8D%AE%E5%8C%85"><span class="toc-number">1.2.1.</span> <span class="toc-text">UDP数据包</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B2%98%E5%8C%85-%E6%8B%86%E5%8C%85-%E9%97%AE%E9%A2%98%E4%BA%A7%E7%94%9F%E5%8E%9F%E5%9B%A0%EF%BC%9A"><span class="toc-number">1.2.2.</span> <span class="toc-text">粘包&#x2F;拆包 问题产生原因：</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3-%E7%B2%98%E5%8C%85-%E6%8B%86%E5%8C%85-%E9%97%AE%E9%A2%98%EF%BC%9A"><span class="toc-number">1.2.3.</span> <span class="toc-text">解决 粘包&#x2F;拆包 问题：</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88TCP%E6%9C%89%E7%B2%98%E5%8C%85%EF%BC%9F"><span class="toc-number">1.2.4.</span> <span class="toc-text">为什么TCP有粘包？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88UDP%E6%B2%A1%E6%9C%89%E7%B2%98%E5%8C%85%EF%BC%9F"><span class="toc-number">1.2.5.</span> <span class="toc-text">为什么UDP没有粘包？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-UDP-%E4%B8%8E-IP-%E5%88%86%E7%89%87%EF%BC%9A%E4%B8%80%E4%B8%AA%E2%80%9C%E6%87%92%E6%83%B0%E2%80%9D%E7%9A%84%E7%BB%84%E5%90%88"><span class="toc-number">1.2.6.</span> <span class="toc-text">1. UDP 与 IP 分片：一个“懒惰”的组合</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E4%B8%BA%E4%BB%80%E4%B9%88%E9%81%BF%E5%85%8D%E5%88%86%E7%89%87%E5%A6%82%E6%AD%A4%E9%87%8D%E8%A6%81%EF%BC%9F%EF%BC%88%E2%80%9C%E7%A8%B3%E5%AE%9A%E6%80%A7%E2%80%9D%E7%9A%84%E7%9C%9F%E6%AD%A3%E5%90%AB%E4%B9%89%EF%BC%89"><span class="toc-number">1.2.7.</span> <span class="toc-text">2. 为什么避免分片如此重要？（“稳定性”的真正含义）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5%EF%BC%9A%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%E4%B8%BB%E5%8A%A8%E7%AE%A1%E7%90%86%E5%8C%85%E5%A4%A7%E5%B0%8F"><span class="toc-number">1.2.8.</span> <span class="toc-text">3. 最佳实践：应用程序主动管理包大小</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UDP%E5%8D%8F%E8%AE%AE%E7%9A%84%E6%AD%A3%E7%A1%AE%E4%BD%BF%E7%94%A8%E5%9C%BA%E5%90%88"><span class="toc-number">1.3.</span> <span class="toc-text">UDP协议的正确使用场合</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E9%AB%98%E9%80%9A%E4%BF%A1%E5%AE%9E%E6%97%B6%E6%80%A7%E8%A6%81%E6%B1%82%E5%92%8C%E4%BD%8E%E6%8C%81%E7%BB%AD%E6%80%A7%E8%A6%81%E6%B1%82%E7%9A%84%E5%9C%BA%E6%99%AF%E4%B8%8B%EF%BC%9A"><span class="toc-number">1.3.1.</span> <span class="toc-text">1.高通信实时性要求和低持续性要求的场景下：</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%A4%9A%E7%82%B9%E9%80%9A%E4%BF%A1"><span class="toc-number">1.3.2.</span> <span class="toc-text">2.多点通信</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#UDP%E5%AE%9E%E7%8E%B0%E6%95%B0%E6%8D%AE%E5%BF%85%E8%BE%BE"><span class="toc-number">1.4.</span> <span class="toc-text">UDP实现数据必达</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%881%EF%BC%9A%E5%9B%9E%E5%A4%8D-%E9%87%8D%E5%8F%91-%E7%BC%96%E5%8F%B7%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.1.</span> <span class="toc-text">解决方案1：回复+重发+编号机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%882%EF%BC%9A%E5%86%97%E4%BD%99%E4%BC%A0%E8%BE%93"><span class="toc-number">1.4.2.</span> <span class="toc-text">解决方案2：冗余传输</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-TCP-%E9%9C%80%E8%A6%81%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%EF%BC%9F"><span class="toc-number">1.4.3.</span> <span class="toc-text">为什么 TCP 需要三次握手？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88QQ%E7%94%A8%E7%9A%84%E6%98%AFUDP%E5%8D%8F%E8%AE%AE%E8%80%8C%E4%B8%8D%E6%98%AFTCP%E5%8D%8F%E8%AE%AE%EF%BC%9F"><span class="toc-number">1.5.</span> <span class="toc-text">为什么QQ用的是UDP协议而不是TCP协议？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.6.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">二、详细解析（≥200字）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.9.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#UDP-%E5%AE%9E%E7%8E%B0%E5%8F%AF%E9%9D%A0%E4%BC%A0%E8%BE%93%EF%BC%88%E7%B1%BB%E4%BC%BC-QUIC%EF%BC%89"><span class="toc-number">1.9.1.</span> <span class="toc-text">UDP 实现可靠传输（类似 QUIC）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TCP-CORK-%E6%89%B9%E9%87%8F%E5%8F%91%E9%80%81"><span class="toc-number">1.9.2.</span> <span class="toc-text">TCP_CORK 批量发送</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TCP-vs-UDP-%E9%80%89%E6%8B%A9%E5%86%B3%E7%AD%96%E6%A0%91"><span class="toc-number">1.9.3.</span> <span class="toc-text">TCP vs UDP 选择决策树</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.10.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90"><span class="toc-number">1.10.1.</span> <span class="toc-text">5.1 源码解析</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#TCP-%E7%A1%AE%E8%AE%A4%E4%B8%8E%E9%87%8D%E4%BC%A0%E7%9A%84%E6%A0%B8%E5%BF%83%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="toc-number">1.10.1.1.</span> <span class="toc-text">TCP 确认与重传的核心状态机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#UDP-%E7%9A%84%E6%97%A0%E7%8A%B6%E6%80%81%E6%94%B6%E5%8F%91"><span class="toc-number">1.10.1.2.</span> <span class="toc-text">UDP 的无状态收发</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E5%AE%9E%E8%B7%B5%E7%BB%8F%E9%AA%8C"><span class="toc-number">1.10.2.</span> <span class="toc-text">5.2 实践经验</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0"><span class="toc-number">1.11.</span> <span class="toc-text">相关笔记</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.12.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">1.12.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">1.12.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.12.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

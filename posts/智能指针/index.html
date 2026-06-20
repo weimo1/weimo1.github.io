@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>智能指针 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="智能指针 C++ 智能指针是 RAII 思想在堆内存管理上的直接体现，通过 unique_ptr（独占所有权）、shared_ptr（共享所有权）和 weak_ptr（弱引用）实现自动内存释放，从根本上消除了”忘记 delete”和”double free”两类最常见的内存错误。  一、核心概念 定义：智能指针是封装裸指针的 RAII 类模板，在析构函数中自动调用 delete 或自定义删除器，将">
+<meta property="og:type" content="article">
+<meta property="og:title" content="智能指针">
+<meta property="og:url" content="https://weimo1.github.io/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="智能指针 C++ 智能指针是 RAII 思想在堆内存管理上的直接体现，通过 unique_ptr（独占所有权）、shared_ptr（共享所有权）和 weak_ptr（弱引用）实现自动内存释放，从根本上消除了”忘记 delete”和”double free”两类最常见的内存错误。  一、核心概念 定义：智能指针是封装裸指针的 RAII 类模板，在析构函数中自动调用 delete 或自定义删除器，将">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.572Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "智能指针",
+  "url": "https://weimo1.github.io/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.572Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '智能指针',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">智能指针</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">智能指针</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.572Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B/">内存模型</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">4.5k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>16分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="智能指针"><a href="#智能指针" class="headerlink" title="智能指针"></a>智能指针</h1><blockquote>
+<p>C++ 智能指针是 RAII 思想在堆内存管理上的直接体现，通过 <code>unique_ptr</code>（独占所有权）、<code>shared_ptr</code>（共享所有权）和 <code>weak_ptr</code>（弱引用）实现自动内存释放，从根本上消除了”忘记 delete”和”double free”两类最常见的内存错误。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：智能指针是封装裸指针的 RAII 类模板，在析构函数中自动调用 <code>delete</code> 或自定义删除器，将堆对象的生命周期与栈对象绑定。C++11 引入 <code>std::unique_ptr</code>、<code>std::shared_ptr</code>、<code>std::weak_ptr</code>，C++14 补充 <code>std::make_unique</code>，C++20 补充 <code>std::atomic&lt;std::shared_ptr&gt;</code>。</li>
+<li><strong>关键词</strong>：RAII、unique_ptr、shared_ptr、weak_ptr、控制块（Control Block）、引用计数、make_shared、enable_shared_from_this、循环引用、atomic<shared_ptr></li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>unique_ptr：独占所有权、所有权转移、工厂函数返回值、PIMPL 惯用法</li>
+<li>shared_ptr：多个对象共享同一资源、观察者模式、异步回调生命周期管理</li>
+<li>weak_ptr：打破循环引用、观察者（不拥有）、缓存（生命到期自动失效）</li>
+<li>边界：不要用 shared_ptr 替代一切——引入不必要的引用计数和 control block 开销</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：unique_ptr——零开销的独占所有权</strong></p>
+<p><code>unique_ptr</code> 内部只存储一个裸指针（默认情况下），大小与裸指针完全一致。它禁止拷贝（拷贝构造和赋值被删除），只允许移动语义：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span> Deleter = std::default_delete&lt;T&gt;&gt;</span><br><span class="line"><span class="keyword">class</span> unique_ptr &#123;</span><br><span class="line">    T* ptr_;           <span class="comment">// 裸指针（默认删除器时不存 Deleter）</span></span><br><span class="line">    <span class="comment">// Deleter 采用 Empty Base Optimization：</span></span><br><span class="line">    <span class="comment">// 如果 Deleter 是空类（如 default_delete），sizeof(unique_ptr) == sizeof(T*)</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>所有权转移三剑客</strong>：</p>
+<ul>
+<li><code>release()</code>：交还裸指针，<code>unique_ptr</code> 自身变为空——调用者负责释放</li>
+<li><code>reset(p)</code>：释放当前对象，接管新指针 p</li>
+<li><code>std::move</code>：移动构造&#x2F;赋值，源变为空</li>
+</ul>
+<p><strong>添加删除器后的 sizeof 变化</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>删除器类型</th>
+<th>sizeof(unique_ptr)</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认 <code>std::default_delete</code></td>
+<td>8 字节（64位）</td>
+<td>EBO 优化，无额外存储</td>
+</tr>
+<tr>
+<td>无捕获 lambda</td>
+<td>同默认（可能 8 字节）</td>
+<td>编译器优化为静态函数</td>
+</tr>
+<tr>
+<td>函数指针 <code>void(*)(T*)</code></td>
+<td>16 字节</td>
+<td>额外存储 8 字节指针</td>
+</tr>
+<tr>
+<td>有捕获 lambda</td>
+<td>8 + 捕获大小</td>
+<td>存储有状态的函数对象</td>
+</tr>
+</tbody></table>
+<p><strong>第二层：shared_ptr——双指针 + 控制块</strong></p>
+<p><code>shared_ptr</code> 内部包含两个指针：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">shared_ptr&lt;T&gt;</span><br><span class="line">├── ptr → T (被管理对象)</span><br><span class="line">└── ctrl → Control Block</span><br><span class="line">           ├── strong_ref_count (use_count)</span><br><span class="line">           ├── weak_ref_count</span><br><span class="line">           ├── Deleter (可自定义)</span><br><span class="line">           └── Allocator (可自定义)</span><br></pre></td></tr></table></figure>
+
+<p><strong>引用计数的原子操作</strong>：<code>use_count</code> 的增减使用 <code>std::atomic::fetch_add</code> + <code>std::memory_order_relaxed</code>（增加）和 <code>std::memory_order_acq_rel</code>（减少，需要确保控制块安全销毁）。</p>
+<p><strong><code>make_shared</code> 为什么只分配一次</strong>：普通 <code>shared_ptr&lt;T&gt;(new T)</code> 分配两次（T 对象 + Control Block），<code>make_shared</code> 分配单块内存同时容纳 T 和 Control Block。代价：<code>weak_ptr</code> 存在时对象内存无法释放（Control Block 和 T 在同一块内存中）。</p>
+<p><strong><code>enable_shared_from_this</code> 原理</strong>：类内部持有一个 <code>weak_ptr&lt;T&gt;</code>（从第一个 <code>shared_ptr</code> 初始化），<code>shared_from_this()</code> 调用 <code>weak_ptr.lock()</code> 返回共享指针。<strong>不能在构造函数中调用 <code>shared_from_this()</code></strong>——此时 <code>weak_ptr</code> 尚未初始化。</p>
+<p><strong>第三层：weak_ptr——不增加强计数的观察者</strong></p>
+<p><code>weak_ptr</code> 必须从 <code>shared_ptr</code> 构造，不增加 <code>use_count</code>，但增加 <code>weak_count</code>。通过 <code>lock()</code> 尝试提升为 <code>shared_ptr</code>——如果对象已析构则返回空。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">控制块生命周期规则：</span><br><span class="line">- use_count + weak_count &gt; 0 → Control Block 存活</span><br><span class="line">- use_count == 0 → T 对象析构</span><br><span class="line">- weak_count == 0 → Control Block 析构</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// unique_ptr 工厂函数</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">Widget</span> &#123;</span><br><span class="line">    <span class="type">int</span> id;</span><br><span class="line">    <span class="built_in">Widget</span>(<span class="type">int</span> i) : <span class="built_in">id</span>(i) &#123; std::cout &lt;&lt; <span class="string">&quot;Widget(&quot;</span> &lt;&lt; id &lt;&lt; <span class="string">&quot;) constructed\n&quot;</span>; &#125;</span><br><span class="line">    ~<span class="built_in">Widget</span>() &#123; std::cout &lt;&lt; <span class="string">&quot;Widget(&quot;</span> &lt;&lt; id &lt;&lt; <span class="string">&quot;) destroyed\n&quot;</span>; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function">std::unique_ptr&lt;Widget&gt; <span class="title">create_widget</span><span class="params">(<span class="type">int</span> id)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">make_unique</span>&lt;Widget&gt;(id);  <span class="comment">// 工厂函数自然返回 unique_ptr</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">unique_ptr_demo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> w1 = <span class="built_in">create_widget</span>(<span class="number">1</span>);           <span class="comment">// 所有权获取</span></span><br><span class="line">    <span class="comment">// auto w2 = w1;                      // 编译错误！不能拷贝</span></span><br><span class="line">    <span class="keyword">auto</span> w2 = std::<span class="built_in">move</span>(w1);              <span class="comment">// 所有权转移</span></span><br><span class="line">    <span class="built_in">assert</span>(w1 == <span class="literal">nullptr</span>);                <span class="comment">// w1 变为空</span></span><br><span class="line">    w<span class="number">2.</span><span class="built_in">reset</span>(<span class="keyword">new</span> <span class="built_in">Widget</span>(<span class="number">2</span>));              <span class="comment">// 释放 Widget(1)，接管 Widget(2)</span></span><br><span class="line">&#125;  <span class="comment">// w2 析构 → ~Widget() → delete</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// shared_ptr 循环引用演示</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">B</span>;  <span class="comment">// 前向声明</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">A</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    std::shared_ptr&lt;B&gt; ptrB;</span><br><span class="line">    ~<span class="built_in">A</span>() &#123; std::cout &lt;&lt; <span class="string">&quot;A destroyed&quot;</span> &lt;&lt; std::endl; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">B</span> &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    std::weak_ptr&lt;A&gt; ptrA;  <span class="comment">// 使用 weak_ptr 打破循环！</span></span><br><span class="line">    <span class="comment">// std::shared_ptr&lt;A&gt; ptrA;  // 如果用 shared_ptr → 循环引用 → 内存泄漏</span></span><br><span class="line">    ~<span class="built_in">B</span>() &#123; std::cout &lt;&lt; <span class="string">&quot;B destroyed&quot;</span> &lt;&lt; std::endl; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">cycle_break_demo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> a = std::<span class="built_in">make_shared</span>&lt;A&gt;();</span><br><span class="line">    <span class="keyword">auto</span> b = std::<span class="built_in">make_shared</span>&lt;B&gt;();</span><br><span class="line">    a-&gt;ptrB = b;</span><br><span class="line">    b-&gt;ptrA = a;  <span class="comment">// weak_ptr 不增加 use_count</span></span><br><span class="line">&#125;  <span class="comment">// a 和 b 都正确析构！</span></span><br><span class="line"><span class="comment">// 输出: A destroyed → B destroyed</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// enable_shared_from_this 正确用法</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Session</span> : <span class="keyword">public</span> std::enable_shared_from_this&lt;Session&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">std::shared_ptr&lt;Session&gt; <span class="title">get_shared</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">shared_from_this</span>();   <span class="comment">// 安全：返回已有的 shared_ptr</span></span><br><span class="line">        <span class="comment">// return std::shared_ptr&lt;Session&gt;(this);  // 危险！会创建新 control block</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 注意：不能在构造函数中调用 shared_from_this()</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">session_demo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> s = std::<span class="built_in">make_shared</span>&lt;Session&gt;();</span><br><span class="line">    <span class="keyword">auto</span> s2 = s-&gt;<span class="built_in">get_shared</span>();  <span class="comment">// s2 共享同一 control block，use_count=2</span></span><br><span class="line">    std::cout &lt;&lt; s.<span class="built_in">use_count</span>() &lt;&lt; std::endl;  <span class="comment">// 输出: 2</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="选择指南：三指针决策树"><a href="#选择指南：三指针决策树" class="headerlink" title="选择指南：三指针决策树"></a>选择指南：三指针决策树</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">需要管理资源所有权？</span><br><span class="line">├── 独占所有权 → unique_ptr</span><br><span class="line">│   ├── 需自定义释放（FILE*, 句柄）→ unique_ptr&lt;T, Deleter&gt;</span><br><span class="line">│   └── 需转移所有权 → std::move</span><br><span class="line">├── 共享所有权 → shared_ptr</span><br><span class="line">│   ├── 创建新对象 → make_shared (优先)</span><br><span class="line">│   ├── 需自定义 Deleter → shared_ptr&lt;T&gt;(new T, deleter)</span><br><span class="line">│   └── 类成员返回 this → enable_shared_from_this</span><br><span class="line">└── 不拥有，仅观察 → weak_ptr</span><br><span class="line">    ├── 打破循环引用</span><br><span class="line">    ├── 缓存（自动感知对象存活）</span><br><span class="line">    └── 观察者模式</span><br></pre></td></tr></table></figure>
+
+<h3 id="make-unique-make-shared-优劣"><a href="#make-unique-make-shared-优劣" class="headerlink" title="make_unique &#x2F; make_shared 优劣"></a>make_unique &#x2F; make_shared 优劣</h3><p><strong>优势</strong>：</p>
+<ul>
+<li>性能：<code>make_shared</code> 一次内存分配 vs 两次</li>
+<li>异常安全：<code>process(shared_ptr&lt;Widget&gt;(new Widget), may_throw())</code> 中如果 <code>may_throw</code> 在 <code>shared_ptr</code> 构造前抛出，<code>new Widget</code> 泄漏。<code>make_shared</code> 无此问题</li>
+<li>简洁：<code>auto sp = make_shared&lt;Widget&gt;(args)</code> 无需重复类型名</li>
+</ul>
+<p><strong>劣势</strong>：</p>
+<ul>
+<li><code>make_shared</code> 不支持自定义删除器</li>
+<li>括号初始化 vs 花括号初始化：<code>make_shared&lt;vector&lt;int&gt;&gt;(10, 20)</code> 调用 <code>vector(size, value)</code> 而非 <code>initializer_list</code></li>
+<li><code>make_shared</code> 对象 + 控制块在同一内存，<code>weak_ptr</code> 存在时对象内存无法及时释放</li>
+</ul>
+<h3 id="atomic（C-20）"><a href="#atomic（C-20）" class="headerlink" title="atomic（C++20）"></a>atomic<shared_ptr>（C++20）</h3><p><code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code> 提供原子读-改-写操作，比手动 <code>std::atomic_load(&amp;sp)</code> 更简洁：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">std::atomic&lt;std::shared_ptr&lt;Config&gt;&gt; current_config;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 读线程</span></span><br><span class="line"><span class="keyword">auto</span> cfg = current_config.<span class="built_in">load</span>();  <span class="comment">// 原子读</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 写线程</span></span><br><span class="line"><span class="keyword">auto</span> new_cfg = std::<span class="built_in">make_shared</span>&lt;Config&gt;(...);</span><br><span class="line">current_config.<span class="built_in">store</span>(new_cfg);  <span class="comment">// 原子写，旧 config 自动释放</span></span><br></pre></td></tr></table></figure>
+
+<p>本质是用标准库的原子操作替代手动实现的风险指针（hazard pointer）或引用计数锁。</p>
+<h3 id="性能陷阱与优化"><a href="#性能陷阱与优化" class="headerlink" title="性能陷阱与优化"></a>性能陷阱与优化</h3><table>
+<thead>
+<tr>
+<th>陷阱</th>
+<th>后果</th>
+<th>优化</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>按值传 shared_ptr</td>
+<td>不必要的引用计数原子操作</td>
+<td>传 <code>const shared_ptr&lt;T&gt;&amp;</code> 或裸指针&#x2F;引用</td>
+</tr>
+<tr>
+<td>make_shared + weak_ptr 长存</td>
+<td>对象内存延迟释放</td>
+<td>用 <code>shared_ptr&lt;T&gt;(new T)</code> 替代</td>
+</tr>
+<tr>
+<td>shared_ptr&lt;T[]&gt; (C++17+)</td>
+<td>用错删除器（<code>delete</code> vs <code>delete[]</code>）</td>
+<td>使用 <code>vector</code> 替代</td>
+</tr>
+<tr>
+<td>过多 shared_ptr</td>
+<td>引用计数缓存行颠簸</td>
+<td>审视是否真的需要共享所有权</td>
+</tr>
+</tbody></table>
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>RAII</strong>：智能指针是 RAII 在堆内存上的应用</li>
+<li><strong>移动语义</strong>：unique_ptr 的转移依赖移动构造，是移动语义的经典场景</li>
+<li><strong>内存管理</strong>：智能指针替代裸 new&#x2F;delete，是 C++ 内存管理现代化的标志</li>
+<li><strong>PIMPL</strong>：unique_ptr 完美支持 PIMPL 惯用法（配合分离编译）</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="关键实现路径"><a href="#关键实现路径" class="headerlink" title="关键实现路径"></a>关键实现路径</h3><p><strong>shared_ptr 控制块的创建时机</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. make_shared：分配时同时创建 Control Block</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span>... Args&gt;</span></span><br><span class="line"><span class="function">shared_ptr&lt;T&gt; <span class="title">make_shared</span><span class="params">(Args&amp;&amp;... args)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 分配：sizeof(T) + sizeof(ControlBlock) 在一整块内存</span></span><br><span class="line">    <span class="type">void</span>* raw = ::<span class="keyword">operator</span> <span class="built_in">new</span>(<span class="built_in">sizeof</span>(_Sp_counted_impl&lt;T&gt;) + <span class="built_in">sizeof</span>(T));</span><br><span class="line">    <span class="comment">// placement new ControlBlock</span></span><br><span class="line">    <span class="keyword">auto</span>* cb = ::<span class="built_in">new</span>(raw) _Sp_counted_impl&lt;T&gt;(std::forward&lt;Args&gt;(args)...);</span><br><span class="line">    <span class="comment">// 构造 shared_ptr，指向 T 和 Control Block</span></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">shared_ptr</span>&lt;T&gt;(cb);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. shared_ptr&lt;T&gt;(new T)：先有 T，再分配 Control Block</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">explicit</span> <span class="title">shared_ptr</span><span class="params">(T* ptr)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 新建 Control Block（第二次分配）</span></span><br><span class="line">    <span class="keyword">auto</span>* cb = <span class="keyword">new</span> _Sp_counted_ptr&lt;T&gt;(ptr, std::default_delete&lt;T&gt;&#123;&#125;);</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. shared_ptr&lt;T&gt;(unique_ptr&lt;T&gt;)：从 unique_ptr 移动构造</span></span><br><span class="line"><span class="comment">// 不复用 unique_ptr 的 Deleter？控制块需要类型擦除</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>enable_shared_from_this 的实现</strong>：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">enable_shared_from_this</span> &#123;</span><br><span class="line">    <span class="keyword">mutable</span> weak_ptr&lt;T&gt; weak_this_;  <span class="comment">// 内部 weak_ptr</span></span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    <span class="function">shared_ptr&lt;T&gt; <span class="title">shared_from_this</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">shared_ptr</span>&lt;T&gt;(weak_this_); <span class="comment">// lock()</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// shared_ptr 构造函数中自动初始化 weak_this_</span></span><br><span class="line"><span class="comment">// 前提：T 继承自 enable_shared_from_this&lt;T&gt;</span></span><br><span class="line"><span class="comment">// 检测：编译期 enable_if + is_base_of</span></span><br><span class="line"><span class="comment">// 时机：第一个管理 T 的 shared_ptr 构造时</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>引用计数的线程安全保证</strong>：</p>
+<ul>
+<li><code>use_count</code> 增减：原子操作，多线程同时拷贝&#x2F;析构 shared_ptr 指向同一对象是安全的</li>
+<li><strong>被管理对象的访问</strong>：不加锁！如果多线程同时读写同一对象，需要额外同步</li>
+<li><code>shared_ptr</code> 对象本身（不是它指向的对象）的读写：非原子！多线程操作同一 <code>shared_ptr</code> 对象需要 <code>atomic&lt;shared_ptr&gt;</code></li>
+</ul>
+<h3 id="难点与易错点"><a href="#难点与易错点" class="headerlink" title="难点与易错点"></a>难点与易错点</h3><ol>
+<li><p><strong>构造函数中不要调用 <code>shared_from_this()</code></strong>：此时 <code>shared_ptr</code> 尚未建立，<code>weak_this_</code> 为空，会抛 <code>std::bad_weak_ptr</code>。</p>
+</li>
+<li><p><strong><code>shared_ptr&lt;T&gt;(this)</code> 的陷阱</strong>：直接用 <code>this</code> 创建新的 <code>shared_ptr</code> 会创建<strong>另一个</strong>控制块，导致同一对象被 delete 两次。必须用 <code>enable_shared_from_this::shared_from_this()</code>。</p>
+</li>
+<li><p><strong>weak_ptr 的 <code>lock()</code> 需要检查</strong>：<code>lock()</code> 可能返回空指针（对象已析构）。每次使用前必须检查返回值。</p>
+</li>
+<li><p><strong>循环引用不是编译期错误</strong>：无法在编译期检测。一旦形成（A→B→A），两个对象都无法释放。解决方案：将其中一个 <code>shared_ptr</code> 改为 <code>weak_ptr</code>。</p>
+</li>
+<li><p><strong>线程安全性需要分层次理解</strong>：引用计数线程安全 ≠ 对象线程安全 ≠ shared_ptr 对象本身线程安全。</p>
+</li>
+</ol>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li><strong>默认用 unique_ptr，需要共享再用 shared_ptr</strong>：unique_ptr 零开销，不会引入隐式的 ownership 混淆。</li>
+<li><strong>优先用 <code>make_unique</code>&#x2F;<code>make_shared</code></strong>：异常安全 + 性能 + 代码简洁，三位一体。</li>
+<li><strong>传参时避免按值传 shared_ptr</strong>：除非真的需要参与共享（延长生命周期），否则传 <code>const T&amp;</code> 或 <code>T*</code>。</li>
+<li><strong>设计类时若需要 <code>shared_from_this()</code>，必须保证对象由 <code>shared_ptr</code> 管理</strong>：栈对象上调用会抛异常。</li>
+<li><strong>Profiling 后才优化 shared_ptr 开销</strong>：引用计数的原子操作开销在大多数业务代码中可以忽略不计。</li>
+</ol>
+<h2 id="相关笔记"><a href="#相关笔记" class="headerlink" title="相关笔记"></a>相关笔记</h2><ul>
+<li><a href="/posts/%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/">内存管理</a> — 内存管理全景</li>
+<li><a href="/posts/%E5%86%85%E5%AD%98%E6%A3%80%E6%B5%8B/">内存检测</a> — 内存泄漏检测工具</li>
+<li><a href="/posts/%E5%86%85%E5%AD%98%E4%BC%98%E5%8C%96/">内存优化</a> — 内存优化策略</li>
+</ul>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：unique_ptr 和 shared_ptr 的区别？</p>
+<p>A：unique_ptr 独占所有权（不可拷贝只可移动），shared_ptr 共享所有权（引用计数）。unique_ptr 大小等于裸指针（默认），shared_ptr 需要额外控制块指针。unique_ptr 零运行时开销，shared_ptr 有原子引用计数开销。选择：明确独占用 unique_ptr，需要共享用 shared_ptr。</p>
+<p>Q2：shared_ptr 的引用计数是线程安全的吗？</p>
+<p>A：引用计数的增减是线程安全的（使用 <code>std::atomic</code> 操作）。但被管理对象本身的并发访问需要额外的同步。shared_ptr 对象本身的赋值&#x2F;重置在多线程下不是线程安全的——C++20 提供了 <code>atomic&lt;shared_ptr&gt;</code>。</p>
+<p>Q3：为什么要用 make_shared 而不是 new？</p>
+<p>A：1）一次内存分配（vs 两次），性能更好；2）异常安全——<code>f(shared_ptr&lt;T&gt;(new T), g())</code> 中如果 g() 抛异常，new T 会泄漏，make_shared 不会；3）代码更简洁。缺点：不支持自定义删除器。</p>
+<p>Q4：weak_ptr 有什么用？</p>
+<p>A：1）打破 shared_ptr 的循环引用（A↔B，将一方改为 weak_ptr）；2）实现安全的观察者模式——观察者不阻止被观察对象析构；3）实现缓存——<code>lock()</code> 返回空时自动重建。weak_ptr 从 shared_ptr 构造，不增加 use_count。</p>
+<p>Q5：enable_shared_from_this 是什么？为什么需要？</p>
+<p>A：当类成员函数需要返回指向自身的 shared_ptr 时，不能直接用 <code>shared_ptr&lt;T&gt;(this)</code>（会创建新的控制块导致 double delete）。继承 <code>enable_shared_from_this&lt;T&gt;</code> 后调用 <code>shared_from_this()</code> 返回与现有 shared_ptr 共享控制块的智能指针。原理是内部持有 <code>weak_ptr&lt;T&gt;</code>，由第一个管理该对象的 shared_ptr 自动初始化。</p>
+<p>Q6：循环引用如何产生？如何解决？</p>
+<p>A：当两个对象互相持有对方的 shared_ptr 时（A 有 shared_ptr<B>，B 有 shared_ptr<A>），两者的引用计数都至少为 1，谁也无法析构对方，形成内存泄漏。解决：将其中一个 shared_ptr 改为 weak_ptr（不增加引用计数）。典型例子：父节点持有子节点的 shared_ptr，子节点持有父节点的 weak_ptr。</p>
+<p>Q7：shared_ptr 的构造函数中，为什么需要控制块？</p>
+<p>A：控制块存储引用计数（强引用和弱引用）、删除器和分配器。多个 shared_ptr 共享同一控制块实现对同一对象的联合管理。控制块在最后一个 shared_ptr（或最后一个 weak_ptr）销毁时释放。</p>
+<p>Q8：unique_ptr 支持自定义删除器，sizeof 会变大吗？</p>
+<p>A：取决于删除器类型。默认删除器（<code>std::default_delete</code>）通过 EBO（Empty Base Optimization）不增加大小。无捕获 lambda 类似。但函数指针（<code>void(*)(T*)</code>）会增加 8 字节，有捕获 lambda 增加捕获变量大小。</p>
+<p>Q9：weak_ptr 的 lock() 是原子操作吗？</p>
+<p>A：是。<code>lock()</code> 等价于原子地检查 use_count &gt; 0 并递增它。如果 use_count 为 0，返回空 shared_ptr。这是 C++ 中少数不需要外部锁即可线程安全地将”检查 + 操作”合二为一的机制。</p>
+<p>Q10：C++20 的 atomic<shared_ptr> 解决了什么问题？</p>
+<p>A：解决了多线程同时读写同一个 shared_ptr 对象的安全问题。之前需要用 <code>std::atomic_load</code>&#x2F;<code>std::atomic_store</code> 等自由函数（实现通常用全局锁），atomic<shared_ptr> 提供了标准化的原子接口，可能使用无锁实现（取决于实现）。典型场景：配置的热更新、无锁数据结构的节点管理。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵团队的 C++ 代码中裸指针的占比如何？有没有形成”unique_ptr 优先，shared_ptr 谨慎使用”的团队规范？</p>
+</li>
+<li><p>线上有没有遇到过 shared_ptr 循环引用导致的内存泄漏？是如何发现和解决的？</p>
+</li>
+<li><p>陷阱 1：”shared_ptr 可以安全地在线程间传递” — 引用计数安全 ≠ shared_ptr 对象安全。两个线程同时对同一个 shared_ptr 赋值仍是 data race。需要 <code>atomic&lt;shared_ptr&gt;</code>。</p>
+</li>
+<li><p>陷阱 2：”使用了智能指针就不会有内存泄漏” — 循环引用（shared_ptr 互相持有）仍会导致泄漏。weak_ptr 是解决方案但不是自动的——需要开发者识别并替换。</p>
+</li>
+<li><p>陷阱 3：”make_shared 总是比 new shared_ptr 好” — 如果存在长期存活的 weak_ptr，make_shared 的对象内存无法及时释放（因为 Control Block 和 T 在同一内存块）。高频创建销毁+长 lived weak_ptr 的场景，new shared_ptr 可能更好。</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>unique_ptr 的核心理念：独占所有权 + 零开销 + 移动转移，用法简单到”忘记 delete 的存在”。</li>
+<li>shared_ptr 的性能代价：两次内存分配（make_shared 解决）、两次原子操作（每次拷贝&#x2F;析构）、控制块持久到最后一个 weak_ptr 消亡。</li>
+<li>智能指针的选择法则：默认 unique_ptr，需要共享用 shared_ptr，打破循环用 weak_ptr。</li>
+<li>enable_shared_from_this 的记忆口诀：”想安全返回 this 的 shared_ptr，就继承我，但别在构造函数里调我”。</li>
+<li>当被问到”C++ 为什么不用 GC”时回答：”智能指针提供了确定性的资源释放，比 GC 的不可预测暂停更适合系统编程。RAII 是比 GC 更’可控’的哲学。”</li>
+</ul>
+<h2 id="附录（原内容收纳）"><a href="#附录（原内容收纳）" class="headerlink" title="附录（原内容收纳）"></a>附录（原内容收纳）</h2><blockquote>
+<p>以下为原笔记中 unique_ptr、shared_ptr、weak_ptr 的详细内容，以及图片和参考链接，原样保留。</p>
+</blockquote>
+<h3 id="原笔记：unique-ptr"><a href="#原笔记：unique-ptr" class="headerlink" title="原笔记：unique_ptr"></a>原笔记：unique_ptr</h3><p><code>std::unique_ptr</code> 是一种独占所有权的智能指针，任何时刻只能有一个 <code>unique_ptr</code> 实例拥有对某个对象的所有权。不能被拷贝，只能被移动。</p>
+<p>主要特性：独占所有权、轻量级（没有引用计数）、自动释放。</p>
+<p>所有权转移：<code>release()</code> 返回裸指针并置空、<code>reset()</code> 释放并接管新指针、<code>std::move</code> 移动转移。</p>
+<p>删除器对 sizeof 的影响：默认删除器 ~&#x3D; 裸指针大小；无状态 lambda ~&#x3D; 默认；函数指针 +8 字节；有状态 lambda +捕获大小。</p>
+<h3 id="原笔记：shared-ptr"><a href="#原笔记：shared-ptr" class="headerlink" title="原笔记：shared_ptr"></a>原笔记：shared_ptr</h3><p>shared_ptr 内部包含两个指针：一个指向目标对象 T，一个指向控制块 Control Block。控制块包含引用计数（reference count）、弱计数（weak count）和其他数据（删除器、分配器等）。</p>
+<p>引用计数使用 <code>std::atomic::fetch_add</code> + <code>memory_order_relaxed</code> 递增，递减需要更强的内存排序确保控制块安全销毁。</p>
+<p>主要特性：共享所有权、引用计数、自动释放。</p>
+<p>构造函数：默认构造（空）、指针构造（接管裸指针）、拷贝构造（增加计数）、移动构造（转移所有权）。</p>
+<p><strong>std::make_shared 减少内存分配</strong>：一次分配同时容纳对象和控制块（vs new 的两次）。</p>
+<p><strong>线程安全性</strong>：引用计数修改是线程安全的，但多线程访问同一被管理对象需要额外同步。</p>
+<p><strong>enable_shared_from_this</strong>：类内部有 <code>weak_ptr</code>，<code>shared_from_this()</code> 调用其 <code>lock()</code> 返回共享指针。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MyClass</span> : <span class="keyword">public</span> std::enable_shared_from_this&lt;MyClass&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">shared_ptr&lt;MyClass&gt; <span class="title">GetSelf</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">shared_from_this</span>();  <span class="comment">// 不要直接用 shared_ptr&lt;MyClass&gt;(this)！</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="原笔记：weak-ptr"><a href="#原笔记：weak-ptr" class="headerlink" title="原笔记：weak_ptr"></a>原笔记：weak_ptr</h3><p>不增加引用计数，主要解决 shared_ptr 之间的循环引用问题。从 shared_ptr 或另一个 weak_ptr 构造。</p>
+<p>访问需要 <code>lock()</code> 转换为 shared_ptr 并检查是否为空。</p>
+<h3 id="原笔记：选择指南"><a href="#原笔记：选择指南" class="headerlink" title="原笔记：选择指南"></a>原笔记：选择指南</h3><ul>
+<li>unique_ptr：独占所有权、单一管理者、轻量</li>
+<li>shared_ptr：共享所有权、多指针共同管理</li>
+<li>weak_ptr：观察不拥有、避免循环引用、临时访问</li>
+</ul>
+<h3 id="原笔记：make-unique-make-shared-优劣"><a href="#原笔记：make-unique-make-shared-优劣" class="headerlink" title="原笔记：make_unique &#x2F; make_shared 优劣"></a>原笔记：make_unique &#x2F; make_shared 优劣</h3><p>优势：性能更好（单次内存分配）、异常安全（避免 new 和 shared_ptr 构造之间的泄漏）、代码简洁</p>
+<p>劣势：不支持自定义析构器、小括号初始化限制、make_shared 对象内存与 weak_ptr 绑定</p>
+<h3 id="原笔记：atomic"><a href="#原笔记：atomic" class="headerlink" title="原笔记：atomic"></a>原笔记：atomic<shared_ptr></h3><p><code>std::atomic&lt;std::shared_ptr&gt;</code> 本质上是用标准库的智能指针机制替代手动实现的引用计数和风险指针，让并发编程更简单、更安全。</p>
+<h3 id="原笔记：参考链接"><a href="#原笔记：参考链接" class="headerlink" title="原笔记：参考链接"></a>原笔记：参考链接</h3><ul>
+<li>enable_shared_from_this 揭秘：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://cloud.tencent.com/developer/article/2362395">https://cloud.tencent.com/developer/article/2362395</a></li>
+<li>实现原理：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/638029004">https://zhuanlan.zhihu.com/p/638029004</a></li>
+</ul>
+<h3 id="原笔记：图片"><a href="#原笔记：图片" class="headerlink" title="原笔记：图片"></a>原笔记：图片</h3><p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_4414494fcc4d.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_e4696045a1db.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_ab4c3cd44d02.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_997f209e3c75.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_83538efb66cb.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_9d1781584b4e.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_80b525a5238e.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/">https://weimo1.github.io/posts/%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1/" title="服务器架构设计"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">服务器架构设计</div></div><div class="info-2"><div class="info-item-1">服务器架构设计服务器架构设计1）asio底层通信前面的asio底层通信过程如下图所示  1）首先，在应用层调用async_read时，相当于在io_context中注册了一个读事件，表示程序希望在指定socket上进行异步读取操作，并提供一个读回调函数以在读取完成后做相应的处理； 2）io_context用于管理所有异步操作和相应的回调函数，且当async_read被调用时，asio会将该socket、相应的读事件和回调函数注册到系统内部的模型中（数据结构）；当io_context启动时，即io_context.run时，asio根据系统使用对应的模型管理这些事件（windows是ioc...</div></div></div></a><a class="pagination-related" href="/posts/%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0/" title="断点续传"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">断点续传</div></div><div class="info-2"><div class="info-item-1">断点续传 断点续传是文件传输中的关键功能，允许在网络中断后从已完成的部分继续传输，而不必从头开始。在 IM 系统中用于图片、视频、文件等多媒体消息的上传和下载。  参考：腾讯云断点续传实现 一、核心概念 定义：断点续传指在下载或上传时，如果碰到网络故障，可以从已上传&#x2F;下载的部分继续传输，无需重头开始。适用于大文件在网络不稳定环境下的传输。 关键词：文件分块、断点记录、Range 请求、分片上传、续传日志、进度恢复 适用场景&#x2F;边界： IM 中的大文件（图片&#x2F;视频&#x2F;文件）上传 弱网环境下的可靠文件传输 适合 &gt;1MB 的文件；小文件断点续传收益不...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%99%BA%E8%83%BD%E6%8C%87%E9%92%88"><span class="toc-number">1.</span> <span class="toc-text">智能指针</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97%EF%BC%9A%E4%B8%89%E6%8C%87%E9%92%88%E5%86%B3%E7%AD%96%E6%A0%91"><span class="toc-number">1.4.1.</span> <span class="toc-text">选择指南：三指针决策树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#make-unique-make-shared-%E4%BC%98%E5%8A%A3"><span class="toc-number">1.4.2.</span> <span class="toc-text">make_unique &#x2F; make_shared 优劣</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#atomic%EF%BC%88C-20%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">atomic（C++20）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%A7%E8%83%BD%E9%99%B7%E9%98%B1%E4%B8%8E%E4%BC%98%E5%8C%96"><span class="toc-number">1.4.4.</span> <span class="toc-text">性能陷阱与优化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.5.</span> <span class="toc-text">与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0%E8%B7%AF%E5%BE%84"><span class="toc-number">1.5.1.</span> <span class="toc-text">关键实现路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9A%BE%E7%82%B9%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.5.2.</span> <span class="toc-text">难点与易错点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.3.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E7%AC%94%E8%AE%B0"><span class="toc-number">1.6.</span> <span class="toc-text">相关笔记</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.7.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.7.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.8.</span> <span class="toc-text">附录（原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9Aunique-ptr"><span class="toc-number">1.8.1.</span> <span class="toc-text">原笔记：unique_ptr</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9Ashared-ptr"><span class="toc-number">1.8.2.</span> <span class="toc-text">原笔记：shared_ptr</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9Aweak-ptr"><span class="toc-number">1.8.3.</span> <span class="toc-text">原笔记：weak_ptr</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E9%80%89%E6%8B%A9%E6%8C%87%E5%8D%97"><span class="toc-number">1.8.4.</span> <span class="toc-text">原笔记：选择指南</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9Amake-unique-make-shared-%E4%BC%98%E5%8A%A3"><span class="toc-number">1.8.5.</span> <span class="toc-text">原笔记：make_unique &#x2F; make_shared 优劣</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9Aatomic"><span class="toc-number">1.8.6.</span> <span class="toc-text">原笔记：atomic</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.8.7.</span> <span class="toc-text">原笔记：参考链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E5%9B%BE%E7%89%87"><span class="toc-number">1.8.8.</span> <span class="toc-text">原笔记：图片</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

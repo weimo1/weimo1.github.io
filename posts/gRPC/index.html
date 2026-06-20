@@ -1,0 +1,363 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>gRPC | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="gRPC 框架深度解析 gRPC 是 Google 开源的高性能跨语言 RPC 框架，基于 HTTP&#x2F;2 + Protobuf。本文从 RPC 的基本概念出发，深入分析 gRPC 的分层架构、Channel 连接抽象、服务调用流程和内置高级特性。  一、核心概念 定义：gRPC 是 CNCF 旗下的高性能、开源通用 RPC 框架。使用 Protobuf 作为接口定义语言（IDL）和序列化">
+<meta property="og:type" content="article">
+<meta property="og:title" content="gRPC">
+<meta property="og:url" content="https://weimo1.github.io/posts/gRPC/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="gRPC 框架深度解析 gRPC 是 Google 开源的高性能跨语言 RPC 框架，基于 HTTP&#x2F;2 + Protobuf。本文从 RPC 的基本概念出发，深入分析 gRPC 的分层架构、Channel 连接抽象、服务调用流程和内置高级特性。  一、核心概念 定义：gRPC 是 CNCF 旗下的高性能、开源通用 RPC 框架。使用 Protobuf 作为接口定义语言（IDL）和序列化">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.557Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "gRPC",
+  "url": "https://weimo1.github.io/posts/gRPC/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.557Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/gRPC/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'gRPC',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">gRPC</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">gRPC</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.557Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E7%BD%91%E7%BB%9C%E4%B8%8ERPC/">网络与RPC</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>9分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="gRPC-框架深度解析"><a href="#gRPC-框架深度解析" class="headerlink" title="gRPC 框架深度解析"></a>gRPC 框架深度解析</h1><blockquote>
+<p>gRPC 是 Google 开源的高性能跨语言 RPC 框架，基于 HTTP&#x2F;2 + Protobuf。本文从 RPC 的基本概念出发，深入分析 gRPC 的分层架构、Channel 连接抽象、服务调用流程和内置高级特性。</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：gRPC 是 CNCF 旗下的高性能、开源通用 RPC 框架。使用 Protobuf 作为接口定义语言（IDL）和序列化协议，HTTP&#x2F;2 作为传输协议，支持多种编程语言和双向流式传输。</li>
+<li><strong>关键词</strong>：RPC、Protobuf、HTTP&#x2F;2、Channel、Stub、服务定义、流式传输、拦截器、多路复用、CNCF</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>适用：微服务间通信、跨语言服务调用、云原生应用、流式数据传输</li>
+<li>边界：浏览器端需 gRPC-Web 代理；调试不如 REST&#x2F;JSON 直观；需 .proto 编译步骤</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="原理拆解（三层递进）"><a href="#原理拆解（三层递进）" class="headerlink" title="原理拆解（三层递进）"></a>原理拆解（三层递进）</h3><p><strong>第一层：RPC 的基本原理</strong></p>
+<p>RPC（Remote Procedure Call）让远程服务调用像本地函数调用一样简单。RPC 框架负责屏蔽底层传输（TCP&#x2F;UDP）、序列化方式（XML&#x2F;JSON&#x2F;二进制）和通信细节。</p>
+<p>RPC 框架的核心工作流程：</p>
+<ol>
+<li>服务端通过 Protobuf 将业务类注册到网络库的回调中</li>
+<li>将自身 IP 注册到 ZooKeeper&#x2F;Etcd 等服务发现上</li>
+<li>客户端通过 Protobuf 生成 Stub 桩类，封装远程调用方法</li>
+<li>Channel 封装 RPC 协议头 + 参数 + 函数名</li>
+<li>通过负载均衡找到服务发现中的一个节点并发起调用</li>
+</ol>
+<p><strong>第二层：gRPC 的分层架构</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[应用层 - Stub/Service 实现]</span><br><span class="line">        ↓</span><br><span class="line">[gRPC 核心层 - Channel/Server]</span><br><span class="line">        ↓</span><br><span class="line">[名称解析] ← [负载均衡] ← [连接管理]</span><br><span class="line">        ↓</span><br><span class="line">[传输层 - HTTP/2]</span><br><span class="line">        ↓</span><br><span class="line">[网络层 - TCP]</span><br></pre></td></tr></table></figure>
+
+<p><strong>第三层：Channel 是长连接抽象</strong></p>
+<p>gRPC Channel 表示客户端与服务端之间的 HTTP&#x2F;2 连接。创建 Channel 时在后台建立 HTTP&#x2F;2 连接。Channel 可复用来发送多个远程调用，这些调用映射到 HTTP&#x2F;2 的流（Stream）中。消息以 HTTP&#x2F;2 帧传输，大消息可能跨越多个数据帧。</p>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 定义 RPC 接口（.proto）</span></span><br><span class="line">syntax = <span class="string">&quot;proto3&quot;</span>;</span><br><span class="line">package example;</span><br><span class="line"></span><br><span class="line">service Greeter &#123;</span><br><span class="line">    <span class="function">rpc <span class="title">SayHello</span> <span class="params">(HelloRequest)</span> <span class="title">returns</span> <span class="params">(HelloReply)</span> </span>&#123;&#125;</span><br><span class="line">    <span class="function">rpc <span class="title">SayHelloStream</span> <span class="params">(stream HelloRequest)</span> </span></span><br><span class="line"><span class="function">        <span class="title">returns</span> <span class="params">(stream HelloReply)</span> </span>&#123;&#125;  <span class="comment">// 双向流</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">message HelloRequest &#123; string name = <span class="number">1</span>; &#125;</span><br><span class="line">message HelloReply &#123; string message = <span class="number">1</span>; &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 服务端实现</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">GreeterServiceImpl</span> <span class="keyword">final</span> : <span class="keyword">public</span> Greeter::Service &#123;</span><br><span class="line">    <span class="function">Status <span class="title">SayHello</span><span class="params">(ServerContext* ctx, </span></span></span><br><span class="line"><span class="params"><span class="function">                    <span class="type">const</span> HelloRequest* req,</span></span></span><br><span class="line"><span class="params"><span class="function">                    HelloReply* reply)</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">        reply-&gt;<span class="built_in">set_message</span>(<span class="string">&quot;Hello &quot;</span> + req-&gt;<span class="built_in">name</span>());</span><br><span class="line">        <span class="keyword">return</span> Status::OK;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 客户端调用</span></span><br><span class="line"><span class="keyword">auto</span> channel = grpc::<span class="built_in">CreateChannel</span>(</span><br><span class="line">    <span class="string">&quot;localhost:50051&quot;</span>, grpc::<span class="built_in">InsecureChannelCredentials</span>());</span><br><span class="line"><span class="keyword">auto</span> stub = Greeter::<span class="built_in">NewStub</span>(channel);</span><br><span class="line"></span><br><span class="line">HelloRequest request;</span><br><span class="line">request.<span class="built_in">set_name</span>(<span class="string">&quot;World&quot;</span>);</span><br><span class="line">HelloReply reply;</span><br><span class="line">ClientContext context;</span><br><span class="line"></span><br><span class="line">Status status = stub-&gt;<span class="built_in">SayHello</span>(&amp;context, request, &amp;reply);</span><br><span class="line"><span class="keyword">if</span> (status.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">    std::cout &lt;&lt; reply.<span class="built_in">message</span>() &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="gRPC-的七大优势"><a href="#gRPC-的七大优势" class="headerlink" title="gRPC 的七大优势"></a>gRPC 的七大优势</h3><ol>
+<li><strong>高效的进程间通信</strong>：基于 Protobuf 二进制协议，非 JSON&#x2F;XML 文本格式。HTTP&#x2F;2 多路复用进一步加速</li>
+<li><strong>简洁的服务接口定义</strong>：先定义服务接口再实现细节，比 OpenAPI&#x2F;Swagger 更简单一致</li>
+<li><strong>强类型</strong>：Protobuf 编译期类型检查减少运行时错误</li>
+<li><strong>多语言支持</strong>：C++、Java、Python、Go、Node.js 等 10+ 语言</li>
+<li><strong>双向流式传输</strong>：原生支持客户端&#x2F;服务端&#x2F;双向流式，流媒体服务开发简单</li>
+<li><strong>内置高级特性</strong>：认证、加密、元数据交换、压缩、负载均衡、服务发现</li>
+<li><strong>云原生生态集成</strong>：CNCF 项目，Envoy&#x2F;Istio&#x2F;K8s 原生支持</li>
+</ol>
+<h3 id="Channel-的底层连接机制"><a href="#Channel-的底层连接机制" class="headerlink" title="Channel 的底层连接机制"></a>Channel 的底层连接机制</h3><p>对于每次 RPC 调用：</p>
+<ul>
+<li>首先检查 Channel 状态</li>
+<li>若为空闲，尝试连接服务器</li>
+<li>域名解析为异步操作（名称 → IP + Port）</li>
+<li>创建负载均衡相关数据结构，为每组 IP&#x2F;Port 生成 sub-channel</li>
+<li>选取适当的 sub-channel 传输数据</li>
+<li>TCP 连接包含握手阶段，处理 endpoint&#x2F;HTTP&#x2F;TCP 三种握手</li>
+</ul>
+<h3 id="与其他主题的关联"><a href="#与其他主题的关联" class="headerlink" title="与其他主题的关联"></a>与其他主题的关联</h3><ul>
+<li><strong>Protobuf</strong>：gRPC 的 IDL 和序列化协议</li>
+<li><strong>HTTP&#x2F;2</strong>：多路复用、头部压缩、流优先级</li>
+<li><strong>服务发现</strong>：可插拔 Resolver（DNS、Consul、Etcd、K8s）</li>
+<li><strong>负载均衡</strong>：pick_first、round_robin、grpclb</li>
+</ul>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="gRPC-的-Stub-调用链路"><a href="#gRPC-的-Stub-调用链路" class="headerlink" title="gRPC 的 Stub 调用链路"></a>gRPC 的 Stub 调用链路</h3><p>关注 RPC 的 <code>CallMethod</code> 方法——这是理解 RPC 调用体系的关键：</p>
+<ol>
+<li>Stub 的 Login 方法调用传入的 Channel 的 CallMethod</li>
+<li>CallMethod 中：序列化参数 → 封装 RPC 协议头 → 通过 HTTP&#x2F;2 发送</li>
+<li>服务端收到后：解析协议头 → 反序列化参数 → 查找注册的 Service → 调用实现方法</li>
+<li>返回：序列化返回值 → HTTP&#x2F;2 帧回传 → 客户端反序列化</li>
+</ol>
+<h3 id="Login-方法的源码分析"><a href="#Login-方法的源码分析" class="headerlink" title="Login 方法的源码分析"></a>Login 方法的源码分析</h3><p>以施磊 RPC 框架为例，Login 的 RPC 重载函数有四个参数：</p>
+<ul>
+<li><strong>controller</strong>：表示函数是否出错（错误码和错误信息）</li>
+<li><strong>request</strong>：调用参数（Protobuf Message）</li>
+<li><strong>response</strong>：返回值（Protobuf Message）</li>
+<li><strong>done</strong>：回调函数（异步调用时使用）</li>
+</ul>
+<h3 id="RPC-框架的本质"><a href="#RPC-框架的本质" class="headerlink" title="RPC 框架的本质"></a>RPC 框架的本质</h3><p>RPC 框架 &#x3D; 网络库 + Protobuf 序列化 + Service 注册&#x2F;发现 + Channel 封装 + 负载均衡。框架屏蔽了底层细节，让开发者专注于业务逻辑。</p>
+<h3 id="经验总结"><a href="#经验总结" class="headerlink" title="经验总结"></a>经验总结</h3><ol>
+<li>RPC 框架的核心是代理模式——客户端通过 Stub 代理调用远程服务，对调用者透明</li>
+<li>gRPC 的 HTTP&#x2F;2 多路复用是一把双刃剑——单连接高效但 TCP 队头阻塞是隐患</li>
+<li>.proto 文件是 gRPC 的”合同”——服务端和客户端必须使用相同的 proto 定义</li>
+<li>别忽略 ClientContext 的 deadline——不设超时的 RPC 可能永久阻塞</li>
+</ol>
+<h2 id="六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）"><a href="#六、面试准备（高频问法≥10个，反问点-一句话答案≥5个，均带回答）" class="headerlink" title="六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）"></a>六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</h2><h3 id="6-1-高频问法（≥10个）"><a href="#6-1-高频问法（≥10个）" class="headerlink" title="6.1 高频问法（≥10个）"></a>6.1 高频问法（≥10个）</h3><p>Q1：什么是 RPC？gRPC 相比 REST 有什么优势？</p>
+<p>A：RPC 让远程调用像本地函数调用一样简单，框架屏蔽传输和序列化细节。gRPC 相比 REST：二进制序列化（Protobuf）更快更小、HTTP&#x2F;2 多路复用、强类型契约、原生流式支持。</p>
+<p>Q2：gRPC 的分层架构是怎样的？</p>
+<p>A：应用层（Stub&#x2F;Service）→ gRPC 核心层（Channel&#x2F;Server）→ 名称解析&#x2F;负载均衡&#x2F;连接管理 → 传输层（HTTP&#x2F;2）→ 网络层（TCP）。</p>
+<p>Q3：Channel 在 gRPC 中扮演什么角色？</p>
+<p>A：Channel 是客户端与服务端的长连接抽象。封装 HTTP&#x2F;2 连接管理、负载均衡、连接状态监控。一次创建多次复用。</p>
+<p>Q4：gRPC 如何实现跨语言调用？</p>
+<p>A：.proto 文件定义服务接口 → protoc 为各语言生成 Stub&#x2F;Service 代码 → 传输层统一使用 Protobuf + HTTP&#x2F;2 → 不同语言的 Stub 可互操作。</p>
+<p>Q5：gRPC 支持哪些通信模式？</p>
+<p>A：一元 RPC（请求-响应）、服务端流式、客户端流式、双向流式。HTTP&#x2F;2 的多路复用和流控制支持这些模式。</p>
+<p>Q6：gRPC 的拦截器（Interceptor）有什么作用？</p>
+<p>A：类似中间件的钩子函数，可在 RPC 调用前后执行。用途：认证鉴权、日志记录、监控埋点、请求重试、限流熔断。</p>
+<p>Q7：gRPC 和 Thrift 有什么区别？</p>
+<p>A：gRPC 基于 HTTP&#x2F;2 + Protobuf，Google 维护；Thrift 基于自定义协议 + 自定义序列化，Facebook 维护。gRPC 云原生生态更好，Thrift 协议选择更多。</p>
+<p>Q8：gRPC 的 deadline 和 timeout 如何工作？</p>
+<p>A：deadline 是绝对截止时间（时间点），timeout 是相对时长。通过 ClientContext::set_deadline() 设置。超时后返回 DEADLINE_EXCEEDED。deadline 会通过 HTTP&#x2F;2 头部传播到下游。</p>
+<p>Q9：如何处理 gRPC 的大消息？</p>
+<p>A：1）使用流式传输分块 2）提高 gRPC 消息大小限制（默认 4MB）3）使用压缩算法 4）设计 proto 时避免单消息过大。</p>
+<p>Q10：gRPC 在 IM 系统中扮演什么角色？</p>
+<p>A：微服务间通信（GateServer ↔ ChatServer ↔ StatusServer）、认证服务调用（VerifyServer）、消息存储转发（MessageServer）。HTTP&#x2F;2 的多路复用承载高并发服务间调用。</p>
+<h3 id="6-2-反问点-陷阱点（≥5个）"><a href="#6-2-反问点-陷阱点（≥5个）" class="headerlink" title="6.2 反问点&#x2F;陷阱点（≥5个）"></a>6.2 反问点&#x2F;陷阱点（≥5个）</h3><ul>
+<li><p>贵公司在微服务通信中主要使用 gRPC 还是其他方案？是否有 gRPC 调用链路追踪的方案？</p>
+</li>
+<li><p>对于 gRPC 的流式传输，贵团队主要用在哪些场景？如何监控流式调用的健康状况？</p>
+</li>
+<li><p>陷阱 1：”gRPC 一定需要 Protobuf”——gRPC 原生支持 Protobuf，但也支持 JSON&#x2F;FlatBuffers 等替代序列化</p>
+</li>
+<li><p>陷阱 2：”HTTP&#x2F;2 的多路复用没有并发限制”——HTTP&#x2F;2 的流控窗口和 TCP 队头阻塞仍会限制并发</p>
+</li>
+<li><p>陷阱 3：”gRPC 跨语言零成本”——不同语言的 gRPC 实现性能差异大（C++ vs Python），且特性支持程度不同</p>
+</li>
+</ul>
+<h3 id="6-3-一句话答案（≥5个）"><a href="#6-3-一句话答案（≥5个）" class="headerlink" title="6.3 一句话答案（≥5个）"></a>6.3 一句话答案（≥5个）</h3><ul>
+<li>gRPC 的本质：Protobuf 定义契约 + HTTP&#x2F;2 传输 + Channel&#x2F;Stub 代理 &#x3D; 跨语言 RPC。</li>
+<li>Channel 的价值：封装 HTTP&#x2F;2 连接池 + 负载均衡 + 健康检查 + 断线重连。</li>
+<li>gRPC 四模式：一元调用 + 服务端流 + 客户端流 + 双向流——HTTP&#x2F;2 的全双工能力。</li>
+<li>RPC 框架的三要素：序列化协议 + 传输协议 + 服务注册发现。</li>
+<li>当被问到”为什么选 gRPC”时回答：”跨语言 + Protobuf 高效序列化 + HTTP&#x2F;2 多路复用 + 云原生生态 + CNCF 背书。”</li>
+</ul>
+<h2 id="附录（模板外原内容收纳）"><a href="#附录（模板外原内容收纳）" class="headerlink" title="附录（模板外原内容收纳）"></a>附录（模板外原内容收纳）</h2><blockquote>
+<p>以下为原笔记中的完整内容和图片，原样保留于此。</p>
+</blockquote>
+<h3 id="原笔记：什么是-RPC"><a href="#原笔记：什么是-RPC" class="headerlink" title="原笔记：什么是 RPC"></a>原笔记：什么是 RPC</h3><p>RPC 是分布式通信的基础，它底层调用了一个网络库。对于服务端会通过 Protobuf 把自己的业务类注册到这个网络库的回调中，并且将自己的 IP 注册到 ZK 等服务发现上。对于调用方会通过 Protobuf 将调用方法注册进去，然后 RPC 框架里面自己设计的 Channel 在调用的时候封装 RPC 协议，然后加上参数和调用函数名，通过轮询或者其他均衡方法去找到 ZK 服务路径下的一个节点，然后发起调用。</p>
+<h3 id="原笔记：RPC-框架底层分析参考"><a href="#原笔记：RPC-框架底层分析参考" class="headerlink" title="原笔记：RPC 框架底层分析参考"></a>原笔记：RPC 框架底层分析参考</h3><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://blog.csdn.net/shenmingxueIT/article/details/115773482">一个基于 protobuf 和 zookeeper 的 RPC 框架 —— C++ 实现</a></p>
+<h3 id="原笔记：gRPC-实现架构"><a href="#原笔记：gRPC-实现架构" class="headerlink" title="原笔记：gRPC 实现架构"></a>原笔记：gRPC 实现架构</h3><p>gRPC 采用分层架构实现。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1747244131881-44346f93-a44b-4842-bede-cf0fcccf211c.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1747244171279-beea4d3f-51f1-43c6-b7bc-a7502789157c.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1747244188159-c79ae1fd-d4b4-4ea3-aad6-77d9eab3d377.png"></p>
+<h3 id="原笔记：Channel-is-an-abstraction-over-a-long-lived-connection"><a href="#原笔记：Channel-is-an-abstraction-over-a-long-lived-connection" class="headerlink" title="原笔记：Channel is an abstraction over a long-lived connection"></a>原笔记：Channel is an abstraction over a long-lived connection</h3><p>gRPC Channel 封装 gRPC Core 里面的 API。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1747244215727-7825c269-1247-4923-8de2-b8eb85f02ac2.png"></p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://cdn.nlark.com/yuque/0/2025/png/50402827/1747244220856-cc6cb3fd-f2a8-4c99-baee-162527a1ca76.png"></p>
+<h3 id="原笔记：gRPC-的七大优势"><a href="#原笔记：gRPC-的七大优势" class="headerlink" title="原笔记：gRPC 的七大优势"></a>原笔记：gRPC 的七大优势</h3><ol>
+<li>高效的进程间通信方式——基于二进制 protocol buffer，HTTP&#x2F;2 之上实现</li>
+<li>具有简单、定义良好的服务接口和协议</li>
+<li>强类型——静态类型减少运行时和交互错误</li>
+<li>支持多语言</li>
+<li>支持双向流式传输</li>
+<li>内置多种高级特性——认证、加密、元数据交换、压缩、负载均衡、服务发现</li>
+<li>与云原生生态系统高度集成——CNCF 一部分</li>
+</ol>
+<p>gRPC 使用 HTTP&#x2F;2 作为其传输协议通过网络发送消息，这也是 gRPC 是高性能 RPC 框架的原因之一。</p>
+<p>参考链接：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://stackoverflow.com/questions/63749113/grpc-call-channel-connection-and-http-2-lifecycle">https://stackoverflow.com/questions/63749113/grpc-call-channel-connection-and-http-2-lifecycle</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/gRPC/">https://weimo1.github.io/posts/gRPC/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/gRPC%E9%80%9A%E4%BF%A1%E4%B8%8E%E8%BF%9E%E6%8E%A5%E6%B1%A0/" title="gRPC通信与连接池"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">gRPC通信与连接池</div></div><div class="info-2"><div class="info-item-1">gRPC通信与连接池设计 适用范围：gRPC服务间通信原理、多Channel&#x2F;Stub连接池设计、brpc vs gRPC对比分析、gRPC服务端构建。  写作约束（铁律） 原内容一字不删：所有原有文字、代码、注释、图片必须全部保留，禁止删除任何原内容。 只做归纳重组+增加：在原有内容基础上调整结构、归类，新增内容以”补充”标记。新增量须让最终篇幅 ≥ 原版。 放不进的进附录：六大段模板容纳不下的原内容，移入最后的「附录」章节，不得丢弃。 动笔前先搜索：做相关知识准备；源码要贴原始代码，有需要可贴汇编。 字数硬指标：详细解析(二)≥200字、进阶应用(四)≥500字、源码解析与...</div></div></div></a><a class="pagination-related" href="/posts/gRPC-%E6%96%AD%E7%BA%BF%E9%87%8D%E8%BF%9E%E4%B8%8E%E6%9C%8D%E5%8A%A1%E5%8F%91%E7%8E%B0%E8%AF%A6%E8%A7%A3/" title="gRPC 断线重连与服务发现详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">gRPC 断线重连与服务发现详解</div></div><div class="info-2"><div class="info-item-1">gRPC 断线重连与服务发现详解 深入分析 gRPC 的断线重连机制（连接状态机、指数退避、Channel&#x2F;RPC 双层重试）和服务发现架构（可插拔 Resolver、Consul&#x2F;K8s 集成、负载均衡器），以及背后的设计理念：可插拔架构、透明重试、健康感知和可观测性。  一、核心概念 定义：gRPC 的断线重连通过状态机驱动的连接管理 + 指数退避策略 + Channel&#x2F;RPC 双层重试保证高可用。服务发现通过可插拔的 Resolver 接口支持 DNS、Consul、K8s 等多种后端，配合负载均衡器实现请求分发。 关键词：连接状态机、指数退避、Ex...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#gRPC-%E6%A1%86%E6%9E%B6%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90"><span class="toc-number">1.</span> <span class="toc-text">gRPC 框架深度解析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%90%86%E6%8B%86%E8%A7%A3%EF%BC%88%E4%B8%89%E5%B1%82%E9%80%92%E8%BF%9B%EF%BC%89"><span class="toc-number">1.2.1.</span> <span class="toc-text">原理拆解（三层递进）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.4.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#gRPC-%E7%9A%84%E4%B8%83%E5%A4%A7%E4%BC%98%E5%8A%BF"><span class="toc-number">1.4.1.</span> <span class="toc-text">gRPC 的七大优势</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Channel-%E7%9A%84%E5%BA%95%E5%B1%82%E8%BF%9E%E6%8E%A5%E6%9C%BA%E5%88%B6"><span class="toc-number">1.4.2.</span> <span class="toc-text">Channel 的底层连接机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.4.3.</span> <span class="toc-text">与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#gRPC-%E7%9A%84-Stub-%E8%B0%83%E7%94%A8%E9%93%BE%E8%B7%AF"><span class="toc-number">1.5.1.</span> <span class="toc-text">gRPC 的 Stub 调用链路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Login-%E6%96%B9%E6%B3%95%E7%9A%84%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">1.5.2.</span> <span class="toc-text">Login 方法的源码分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RPC-%E6%A1%86%E6%9E%B6%E7%9A%84%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.5.3.</span> <span class="toc-text">RPC 框架的本质</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.4.</span> <span class="toc-text">经验总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87%EF%BC%88%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%E2%89%A510%E4%B8%AA%EF%BC%8C%E5%8F%8D%E9%97%AE%E7%82%B9-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%E2%89%A55%E4%B8%AA%EF%BC%8C%E5%9D%87%E5%B8%A6%E5%9B%9E%E7%AD%94%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备（高频问法≥10个，反问点&#x2F;一句话答案≥5个，均带回答）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95%EF%BC%88%E2%89%A510%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法（≥10个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9-%E9%99%B7%E9%98%B1%E7%82%B9%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点&#x2F;陷阱点（≥5个）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88%EF%BC%88%E2%89%A55%E4%B8%AA%EF%BC%89"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案（≥5个）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95%EF%BC%88%E6%A8%A1%E6%9D%BF%E5%A4%96%E5%8E%9F%E5%86%85%E5%AE%B9%E6%94%B6%E7%BA%B3%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">附录（模板外原内容收纳）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9A%E4%BB%80%E4%B9%88%E6%98%AF-RPC"><span class="toc-number">1.7.1.</span> <span class="toc-text">原笔记：什么是 RPC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9ARPC-%E6%A1%86%E6%9E%B6%E5%BA%95%E5%B1%82%E5%88%86%E6%9E%90%E5%8F%82%E8%80%83"><span class="toc-number">1.7.2.</span> <span class="toc-text">原笔记：RPC 框架底层分析参考</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9AgRPC-%E5%AE%9E%E7%8E%B0%E6%9E%B6%E6%9E%84"><span class="toc-number">1.7.3.</span> <span class="toc-text">原笔记：gRPC 实现架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9AChannel-is-an-abstraction-over-a-long-lived-connection"><span class="toc-number">1.7.4.</span> <span class="toc-text">原笔记：Channel is an abstraction over a long-lived connection</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E7%AC%94%E8%AE%B0%EF%BC%9AgRPC-%E7%9A%84%E4%B8%83%E5%A4%A7%E4%BC%98%E5%8A%BF"><span class="toc-number">1.7.5.</span> <span class="toc-text">原笔记：gRPC 的七大优势</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

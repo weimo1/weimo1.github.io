@@ -1,0 +1,485 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Unix Domain Socket | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Unix Domain Socket 适用范围：Linux本地进程间通信(IPC)、Unix Domain Socket、UDS TCP&#x2F;STREAM、与TCP&#x2F;IP Socket对比  一、核心概念 定义：Unix Domain Socket(UDS)是Linux系统用于本地进程间通信的Socket机制，通过文件系统路径（如&#x2F;tmp&#x2F;server.sock）通信，无需经过网络">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Unix Domain Socket">
+<meta property="og:url" content="https://weimo1.github.io/posts/Unix-Domain-Socket/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Unix Domain Socket 适用范围：Linux本地进程间通信(IPC)、Unix Domain Socket、UDS TCP&#x2F;STREAM、与TCP&#x2F;IP Socket对比  一、核心概念 定义：Unix Domain Socket(UDS)是Linux系统用于本地进程间通信的Socket机制，通过文件系统路径（如&#x2F;tmp&#x2F;server.sock）通信，无需经过网络">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.553Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Unix Domain Socket",
+  "url": "https://weimo1.github.io/posts/Unix-Domain-Socket/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.553Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Unix-Domain-Socket/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Unix Domain Socket',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Unix Domain Socket</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Unix Domain Socket</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.553Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/">网络编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">5.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>22分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Unix-Domain-Socket"><a href="#Unix-Domain-Socket" class="headerlink" title="Unix Domain Socket"></a>Unix Domain Socket</h1><blockquote>
+<p>适用范围：Linux本地进程间通信(IPC)、Unix Domain Socket、UDS TCP&#x2F;STREAM、与TCP&#x2F;IP Socket对比</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：Unix Domain Socket(UDS)是Linux系统用于本地进程间通信的Socket机制，通过文件系统路径（如<code>/tmp/server.sock</code>）通信，无需经过网络协议栈</li>
+<li><strong>关键词</strong>：IPC、SOCK_STREAM、SOCK_DGRAM、抽象命名空间、sendmsg&#x2F;recvmsg、SCM_RIGHTS</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>同一主机上高性能进程间通信（数据库连接、守护进程通信、容器内通信）</li>
+<li>需要类似TCP的流式可靠通信但不经过网络栈的场景</li>
+<li>边界：不能跨主机通信（与TCP&#x2F;IP Socket互补而非替代）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-什么是-UDS-TCP？"><a href="#2-1-什么是-UDS-TCP？" class="headerlink" title="2.1 什么是 UDS TCP？"></a>2.1 什么是 UDS TCP？</h3><p>UDS（Unix Domain Socket）是 Linux 系统中用于<strong>本地进程间通信（IPC）的高效机制</strong>，TCP 模式（<code>SOCK_STREAM</code>）提供<strong>面向连接的可靠数据传输</strong>，类似网络 TCP 但无需经过网络协议栈，直接通过文件系统路径（如 <code>/tmp/server.sock</code>）通信。</p>
+<p><strong>核心优势</strong>：</p>
+<ul>
+<li><strong>可靠性</strong>：基于流式传输，保证数据顺序和完整性，支持流量控制和错误重传。</li>
+<li><strong>高效性</strong>：无需网络层开销（如 IP 协议、校验和），性能优于传统网络 Socket。</li>
+<li><strong>适用场景</strong>：需稳定传输的场景，如文件传输、长连接服务、复杂协议交互。</li>
+</ul>
+<p><strong>Linux 使用 ss -lx 可以看到 Unix Domain Socket 有没有数据在读取 &#x2F; 发送队列</strong></p>
+<h3 id="2-2-UNIX-Domain-Socket-与-TCP-IP-Socket-对比"><a href="#2-2-UNIX-Domain-Socket-与-TCP-IP-Socket-对比" class="headerlink" title="2.2 UNIX Domain Socket 与 TCP&#x2F;IP Socket 对比"></a>2.2 UNIX Domain Socket 与 TCP&#x2F;IP Socket 对比</h3><p>socket API原本是为网络通讯设计的，但后来在socket的框架上发展出一种IPC机制，就是UNIX Domain Socket。</p>
+<p>TCP是使用TCP端口连接127.0.0.1:9000，Socket是使用unix domain socket连接<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=220129651&content_type=Article&match_order=1&q=%E5%A5%97%E6%8E%A5%E5%AD%97&zhida_source=entity">套接字</a>&#x2F;dev&#x2F;shm&#x2F;php-cgi.sock（很多教程使用路径&#x2F;tmp，而路径&#x2F;dev&#x2F;shm是个<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=220129651&content_type=Article&match_order=1&q=tmpfs&zhida_source=entity">tmpfs</a>，速度比磁盘快得多）</p>
+<p>虽然网络socket也可用于同一台主机的进程间通讯（通过loopback地址127.0.0.1），但是UNIX Domain Socket用于IPC更有效率：不需要经过网络协议栈，不需要打包拆包、计算校验和、维护序号和应答等，只是将应用层数据从一个进程拷贝到另一个进程。</p>
+<p>UNIX域套接字与TCP套接字相比较，在同一台主机的传输速度前者是后者的两倍。这是因为，IPC机制本质上是可靠的通讯，而网络协议是为不可靠的通讯设计的。</p>
+<p>UNIX Domain Socket也提供面向流和面向数据包两种API接口，类似于TCP和UDP，但是面向消息的UNIX Domain Socket也是可靠的，消息既不会丢失也不会顺序错乱。</p>
+<h3 id="一、使用方法"><a href="#一、使用方法" class="headerlink" title="一、使用方法"></a>一、使用方法</h3><p>Unix Domain Socket（后面统一简称 UDS） 使用起来和传统的 socket 非常的相似。区别点主要有两个地方需要关注。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fastcgi_pass unix:/dev/shm/fpm-cgi.sock;</span><br></pre></td></tr></table></figure>
+
+<p>如果 对于一个 UDS 的 server 来说，它的代码示例大概结构如下，大家简单了解一下。只是个示例不一定可运行。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    // 创建 unix domain socket</span><br><span class="line">    int fd = socket(AF_UNIX, SOCK_STREAM, 0);</span><br><span class="line"></span><br><span class="line">    // 绑定监听</span><br><span class="line">    char *socket_path = &quot;./server.sock&quot;;</span><br><span class="line">    strcpy(serun.sun_path, socket_path); </span><br><span class="line">    bind(fd, serun, ...);</span><br><span class="line">    listen(fd, 128);</span><br><span class="line"></span><br><span class="line">    while(1)&#123;</span><br><span class="line">        //接收新连接</span><br><span class="line">        conn = accept(fd, ...);</span><br><span class="line"></span><br><span class="line">        //收发数据</span><br><span class="line">        read(conn, ...);</span><br><span class="line">        write(conn, ...);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>基于 UDS 的 client 也是和普通 socket 使用方式差不太多，创建一个 socket，然后 connect 即可。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">int main()&#123;</span><br><span class="line">    sock = socket(AF_UNIX, SOCK_STREAM, 0);</span><br><span class="line">    connect(sockfd, ...)</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="二、连接过程"><a href="#二、连接过程" class="headerlink" title="二、连接过程"></a>二、连接过程</h3><p>总的来说，基于 UDS 的连接过程比 inet 的 socket 连接过程要简单多了。客户端先创建一个自己用的 socket，然后调用 connect 来和服务器建立连接。</p>
+<p>在 connect 的时候，会申请一个新 socket 给 server 端将来使用，和自己的 socket 建立好连接关系以后，就放到服务器正在监听的 socket 的接收队列中。这个时候，服务器端通过 accept 就能获取到和客户端配好对的新 socket 了。</p>
+<p>总的 UDS 的连接建立流程如下图。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_d0aa5af6fbe3.png"></p>
+<p>内核源码中最重要的逻辑在 connect 函数中，我们来简单展开看一下。unix 协议族中定义了这类 socket 的所有方法，它位于 net&#x2F;unix&#x2F;af_unix.c 中。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">//file: net/unix/af_unix.c</span><br><span class="line">static const struct proto_ops unix_stream_ops = &#123;</span><br><span class="line">    .family = PF_UNIX,</span><br><span class="line">    .owner = THIS_MODULE,</span><br><span class="line">    .bind =  unix_bind,</span><br><span class="line">    .connect = unix_stream_connect,</span><br><span class="line">    .socketpair = unix_socketpair,</span><br><span class="line">    .listen = unix_listen,</span><br><span class="line">    ...</span><br><span class="line">    &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>我们找到 connect 函数的具体实现，unix_stream_connect。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">//file: net/unix/af_unix.c</span><br><span class="line">static int unix_stream_connect(struct socket *sock, struct sockaddr *uaddr,</span><br><span class="line">                               int addr_len, int flags)</span><br><span class="line">&#123;</span><br><span class="line">    struct sockaddr_un *sunaddr = (struct sockaddr_un *)uaddr;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">        // 1. 为服务器侧申请一个新的 socket 对象</span><br><span class="line">        newsk = unix_create1(sock_net(sk), NULL);</span><br><span class="line"></span><br><span class="line">    // 2. 申请一个 skb，并关联上 newsk</span><br><span class="line">    skb = sock_wmalloc(newsk, 1, 0, GFP_KERNEL);</span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">        // 3. 建立两个 sock 对象之间的连接</span><br><span class="line">        unix_peer(newsk) = sk;</span><br><span class="line">    newsk-&gt;sk_state  = TCP_ESTABLISHED;</span><br><span class="line">    newsk-&gt;sk_type  = sk-&gt;sk_type;</span><br><span class="line">    ...</span><br><span class="line">        sk-&gt;sk_state = TCP_ESTABLISHED;</span><br><span class="line">    unix_peer(sk) = newsk;</span><br><span class="line"></span><br><span class="line">    // 4. 把连接中的一头（新 socket）放到服务器接收队列中</span><br><span class="line">    __skb_queue_tail(&amp;other-&gt;sk_receive_queue, skb);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>主要的连接操作都是在这个函数中完成的。和我们平常所见的 TCP 连接建立过程，这个连接过程简直是太简单了。没有三次握手，也没有全连接队列、半连接队列，更没有啥超时重传。</p>
+<p>直接就是将两个 socket 结构体中的指针互相指向对方就行了。就是 unix_peer(newsk) &#x3D; sk 和 unix_peer(sk) &#x3D; newsk 这两句。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">//file: net/unix/af_unix.c</span><br><span class="line">#define unix_peer(sk) (unix_sk(sk)-&gt;peer)</span><br></pre></td></tr></table></figure>
+
+<p>当关联关系建立好之后，通过 __skb_queue_tail 将 skb 放到服务器的接收队列中。注意这里的 skb 里保存着新 socket 的指针，因为服务进程通过 accept 取出这个 skb 的时候，就能获取到和客户进程中 socket 建立好连接关系的另一个 socket。</p>
+<p>怎么样，UDS 的连接建立过程是不是很简单！？</p>
+<h3 id="三、发送过程"><a href="#三、发送过程" class="headerlink" title="三、发送过程"></a>三、发送过程</h3><p>看完了连接建立过程，我们再来看看基于 UDS 的数据的收发。这个收发过程一样也是非常的简单。发送方是直接将数据写到接收方的接收队列里的。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_d376f62e331a.png"></p>
+<p>我们从 send 函数来看起。send 系统调用的源码位于文件 net&#x2F;socket.c 中。在这个系统调用里，内部其实真正使用的是 sendto 系统调用。它只干了两件简单的事情：</p>
+<p>第一是在内核中把真正的 socket 找出来，在这个对象里记录着各种协议栈的函数地址。</p>
+<p>第二是构造一个 struct msghdr 对象，把用户传入的数据，比如 buffer地址、数据长度啥的，统统都装进去. 剩下的事情就交给下一层，协议栈里的函数 inet_sendmsg 了，其中 inet_sendmsg 函数的地址是通过 socket 内核对象里的 ops 成员找到的。大致流程如图。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_a567ec7c2a5f.png"></p>
+<p>在进入到协议栈 inet_sendmsg 以后，内核接着会找到 socket 上的具体协议发送函数。对于 Unix Domain Socket 来说，那就是 unix_stream_sendmsg。我们来看一下这个函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">/file:</span><br><span class="line">static int unix_stream_sendmsg(struct kiocb *kiocb, struct socket *sock,</span><br><span class="line">                               struct msghdr *msg, size_t len)</span><br><span class="line">&#123;</span><br><span class="line">    // 1.申请一块缓存区</span><br><span class="line">    skb = sock_alloc_send_skb(sk, size, msg-&gt;msg_flags&amp;MSG_DONTWAIT,</span><br><span class="line">                           &amp;err);</span><br><span class="line"></span><br><span class="line">    // 2.拷贝用户数据到内核缓存区</span><br><span class="line">    err = memcpy_fromiovec(skb_put(skb, size), msg-&gt;msg_iov, size);</span><br><span class="line"></span><br><span class="line">    // 3. 查找socket peer</span><br><span class="line">    struct sock *other = NULL;</span><br><span class="line">    other = unix_peer(sk);</span><br><span class="line"></span><br><span class="line">    // 4.直接把 skb放到对端的接收队列中</span><br><span class="line">    skb_queue_tail(&amp;other-&gt;sk_receive_queue, skb);</span><br><span class="line"></span><br><span class="line">    // 5.发送完毕回调</span><br><span class="line">    other-&gt;sk_data_ready(other, size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>和复杂的 TCP 发送接收过程相比，这里的发送逻辑简单简单到令人发指。申请一块内存（skb），把数据拷贝进去。根据 socket 对象找到另一端，直接把 skb 给放到对端的接收队列里了，接收函数主题是 unix_stream_recvmsg，这个函数中只需要访问它自己的接收队列就行了，源码就不展示了。所以在本机网络 IO 场景里，基于 Unix Domain Socket 的服务性能上肯定要好一些的。</p>
+<h3 id="四、性能对比"><a href="#四、性能对比" class="headerlink" title="四、性能对比"></a>四、性能对比</h3><p>为了验证 Unix Domain Socket 到底比基于 127.0.0.1 的性能好多少，我做了一个性能测试。在网络性能对比测试，最重要的两个指标是延迟和吞吐。我从 Github 上找了个好用的测试源码：<a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/rigtorp/ipc-bench%E3%80%82%E6%88%91%E7%9A%84%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E6%98%AF%E4%B8%80%E5%8F%B0">https://github.com/rigtorp/ipc-bench。我的测试环境是一台</a> 4 核 CPU，8G 内存的 KVM 虚机。</p>
+<p>在延迟指标上，对比结果如下图。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_b43da513cb3e.png"></p>
+<p>可见在小包（100 字节）的情况下，UDS 方法的“网络” IO 平均延迟只有 2707 纳秒，而基于 TCP（访问 127.0.0.1）的方式下延迟高达 5690 纳秒。耗时整整是前者的两倍。</p>
+<p>在包体达到 100 KB 以后，UDS 方法延迟 24 微秒左右（1 微秒等于 1000 纳秒），TCP 是 32 微秒，仍然高一截。这里低于 2 倍的关系了，是因为当包足够大的时候，网络协议栈上的开销就显得没那么明显了。</p>
+<p>再来看看吞吐效果对比。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_14e28eecf325.png"></p>
+<p>在小包的情况下，带宽指标可以达到 854 M，而基于 TCP 的 IO 方式下只有 386 M。数据就解读到这里。</p>
+<h3 id="五、总结"><a href="#五、总结" class="headerlink" title="五、总结"></a>五、总结</h3><p>本文分析了基于 Unix Domain Socket 的连接创建、以及数据收发过程。其中数据收发的工作过程如下图。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_831cffa03e04.png"></p>
+<p>相对比本机网络 IO 通信过程上，它的工作过程要清爽许多。其中 127.0.0.1 工作过程如下图。</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_4c5d81188c8a.png"></p>
+<p>我们也对比了 UDP 和 TCP 两种方式下的延迟和性能指标。在包体不大于 1KB 的时候，UDS 的性能大约是 TCP 的两倍多。所以，在本机网络 IO 的场景下，如果对性能敏感，飞哥建议你使用 Unix Domain Socket。</p>
+<p>我们最多看到Unix domain socket的地方可能就是docker了，作为一种<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=197877330&content_type=Article&match_order=1&q=%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF&zhida_source=entity">容器技术</a>，docker需要和实体机进行快速的数据传输和信息交换，一般情况下UDS的文件是以.socket结尾的，我们可以在&#x2F;var&#x2F;run目录下面使用下面的命令来查找：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find . -name &quot;*.sock&quot;</span><br></pre></td></tr></table></figure>
+
+<p>如果你有docker在运行的话，可以得到下面的结果：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">./docker.sock</span><br><span class="line">./docker/libnetwork/6d66a24bfbbfa231a668da4f1ed543844a0514e4db3a1f7d8001a04a817b91fb.sock</span><br><span class="line">./docker/libcontainerd/docker-containerd.sock</span><br></pre></td></tr></table></figure>
+
+<p>可以看到docker是通过上面的3个sock文件来进行通讯的。</p>
+<h2 id="使用socat来创建Unix-Domain-Sockets"><a href="#使用socat来创建Unix-Domain-Sockets" class="headerlink" title="使用socat来创建Unix Domain Sockets"></a>使用socat来创建Unix Domain Sockets</h2><p>之前提到了socat这个万能的工具，不仅可以创建tcp的监听服务器，还能创建udp的监听服务器，当然对于UDS来说也不在话下。我们来看下使用socat来创建UDS服务器所需要用到的参数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">unix-listen:&lt;filename&gt;    groups=FD,SOCKET,NAMED,LISTEN,CHILD,RETRY,UNIX</span><br><span class="line">unix-recvfrom:&lt;filename&gt;  groups=FD,SOCKET,NAMED,CHILD,RETRY,UNIX</span><br></pre></td></tr></table></figure>
+
+<p>这里我们要使用到unix-listen和unix-recvfrom这两个参数，unix-listen表示的是创建stream-based UDS服务，而unix-recvfrom表示的是创建datagram-based UDS。</p>
+<p>可以看到两个参数后面都需要传入一个文件名，表示UDS socket的地址。</p>
+<p>我们可以这样使用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">socat unix-listen:/tmp/stream.sock,fork /dev/null&amp;</span><br><span class="line">socat unix-recvfrom:/tmp/datagram.sock,fork /dev/null&amp;</span><br></pre></td></tr></table></figure>
+
+<p>这里我们使用&#x2F;tmp&#x2F;datagram.sock来表示这个socket信息。</p>
+<p>其中fork参数表示程序在接收到<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=197877330&content_type=Article&match_order=1&q=%E7%A8%8B%E5%BA%8F%E5%8C%85&zhida_source=entity">程序包</a>之后继续运行，如果不用fork，那么程序会自动退出。</p>
+<p>socat后面本来要接一个bi-address，这里我们使用&#x2F;dev&#x2F;null，表示丢弃掉所有的income信息。</p>
+<p>运行后我们可能得到下面的结果：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[1] 27442</span><br><span class="line">[2] 27450</span><br></pre></td></tr></table></figure>
+
+<p>表示程序已经成功执行了，返回的是程序的pid。</p>
+<h2 id="使用ss命令来查看Unix-domain-Socket"><a href="#使用ss命令来查看Unix-domain-Socket" class="headerlink" title="使用ss命令来查看Unix domain Socket"></a>使用ss命令来查看Unix domain Socket</h2><p>在使用ss命令之前，我们先来看下使用socat生成的两个文件：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">srwxrwxr-x   1 flydean flydean    0 Mar  2 21:58 stream.sock</span><br><span class="line">srwxrwxr-x   1 flydean flydean    0 Mar  2 21:59 datagram.sock</span><br></pre></td></tr></table></figure>
+
+<p>可以看到这两个文件的权限，rwx大家都懂，分别是read，write和执行权限。那么最前面的s是什么呢？</p>
+<p>最前面的一位表示的是文件类型，s表示的就是socket文件。</p>
+<p>扩展一下，这个位置还可以有其他几种选项：p、d、l、s、c、b和-:</p>
+<p>其中p表示<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=197877330&content_type=Article&match_order=1&q=%E5%91%BD%E5%90%8D%E7%AE%A1%E9%81%93%E6%96%87%E4%BB%B6&zhida_source=entity">命名管道文件</a>，d表示目录文件，l表示符号连接文件，-表示普通文件，s表示socket文件，c表示字符设备文件，b表示<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=197877330&content_type=Article&match_order=1&q=%E5%9D%97%E8%AE%BE%E5%A4%87&zhida_source=entity">块设备</a>文件。</p>
+<p>接下来我们使用ss命令来查看一下之前建立的UDS服务。</p>
+<p>这里需要使用到下面几个参数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-n, --numeric       don&#x27;t resolve service names</span><br><span class="line">   -l, --listening     display listening sockets</span><br><span class="line">   -x, --unix          display only Unix domain sockets</span><br></pre></td></tr></table></figure>
+
+<p>这里我们需要使用到上面3个选项，x表示的是显示UDS，因为是监听，所以使用-l参数，最后我们希望看到具体的数字，而不是被解析成了服务名，所以这里使用-n参数。</p>
+<p>我们可以尝试执行一下下面的命令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ss -xln</span><br></pre></td></tr></table></figure>
+
+<p>输出会很多，我们可以grep我们需要的socket如下所示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ss -xln | grep tmp</span><br><span class="line">u_str  LISTEN     0      5      /tmp/stream.sock 11881005              * 0                  </span><br><span class="line">u_dgr  UNCONN     0      0      /tmp/datagram.sock 11882190              * 0</span><br></pre></td></tr></table></figure>
+
+<p>u_str表示的是UDS stream socket，而u_dg表示的是UDS datagram socket。</p>
+<p>我们可以使用stat命令来查看socket文件的具体信息：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">stat /tmp/stream.sock /tmp/datagram.sock</span><br><span class="line">  File: ‘/tmp/stream.sock’</span><br><span class="line">  Size: 0               Blocks: 0          IO Block: 4096   socket</span><br><span class="line">Device: fd02h/64770d    Inode: 134386049   Links: 1</span><br><span class="line">Access: (0775/srwxrwxr-x)  Uid: ( 1002/    flydean)   Gid: ( 1002/    flydean)</span><br><span class="line">Access: 2022-03-01 22:33:21.533000000 +0800</span><br><span class="line">Modify: 2022-03-01 22:33:21.533000000 +0800</span><br><span class="line">Change: 2022-03-01 22:33:21.533000000 +0800</span><br><span class="line"> Birth: -</span><br><span class="line">  File: ‘/tmp/datagram.sock’</span><br><span class="line">  Size: 0               Blocks: 0          IO Block: 4096   socket</span><br><span class="line">Device: fd02h/64770d    Inode: 134386050   Links: 1</span><br><span class="line">Access: (0775/srwxrwxr-x)  Uid: ( 1002/    flydean)   Gid: ( 1002/    flydean)</span><br><span class="line">Access: 2022-03-01 22:33:22.306000000 +0800</span><br><span class="line">Modify: 2022-03-01 22:33:22.306000000 +0800</span><br><span class="line">Change: 2022-03-01 22:33:22.306000000 +0800</span><br><span class="line"> Birth: -</span><br></pre></td></tr></table></figure>
+
+<h2 id="使用nc连接到Unix-domain-Socket服务"><a href="#使用nc连接到Unix-domain-Socket服务" class="headerlink" title="使用nc连接到Unix domain Socket服务"></a>使用nc连接到Unix domain Socket服务</h2><p>nc是一个非常强大的工具，除了可以进行TCP，UDP连接之外，还可以进行UDS的连接，我们需要使用到下面的参数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-U, --unixsock             Use Unix domain sockets only</span><br><span class="line">  -u, --udp                  Use UDP instead of default TCP</span><br><span class="line">  -z                         Zero-I/O mode, report connection status only</span><br></pre></td></tr></table></figure>
+
+<p>-U表示连接的是一个unixsocket。-u表示是一个UDP连接。</p>
+<p>默认情况下nc使用的是TCP连接，所以不需要额外的参数。</p>
+<p>另外我们直接建立连接，并不发送任何数据，所以这里使用-z参数。</p>
+<p>先连接Stream UDS看看：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nc -U -z /tmp/stream.sock</span><br></pre></td></tr></table></figure>
+
+<p>如果没有输出任何异常数据，说明连接成功了。</p>
+<p>然后再连接Datagram UDS看看：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nc -uU -z /tmp/datagram.sock</span><br></pre></td></tr></table></figure>
+
+<p>同样的，如果没有任何异常数据，说明Socket连接成功了</p>
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-Docker-与-UDS"><a href="#4-1-Docker-与-UDS" class="headerlink" title="4.1 Docker 与 UDS"></a>4.1 Docker 与 UDS</h3><p>Docker daemon 通过 <code>/var/run/docker.sock</code> 提供 UDS 接口供 CLI 客户端通信：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看 Docker 使用的 UDS 文件</span></span><br><span class="line">find /var/run -name <span class="string">&quot;*.sock&quot;</span> 2&gt;/dev/null</span><br><span class="line"><span class="comment"># 输出示例：</span></span><br><span class="line"><span class="comment"># /var/run/docker.sock</span></span><br><span class="line"><span class="comment"># /var/run/docker/libnetwork/xxx.sock</span></span><br><span class="line"><span class="comment"># /var/run/docker/libcontainerd/docker-containerd.sock</span></span><br></pre></td></tr></table></figure>
+
+<p>Docker 选择 UDS 而非 TCP localhost 的原因：性能优势（2倍延迟优势）+ 基于文件权限的访问控制（<code>chmod 660 /var/run/docker.sock</code>）无需额外认证。</p>
+<h3 id="4-2-Nginx-PHP-FPM-通过-UDS-通信"><a href="#4-2-Nginx-PHP-FPM-通过-UDS-通信" class="headerlink" title="4.2 Nginx + PHP-FPM 通过 UDS 通信"></a>4.2 Nginx + PHP-FPM 通过 UDS 通信</h3><p>生产环境推荐配置：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Nginx 配置</span></span><br><span class="line"><span class="section">location</span> <span class="regexp">~ \.php$</span> &#123;</span><br><span class="line">    <span class="attribute">fastcgi_pass</span> unix:/dev/shm/php-fpm.sock;  <span class="comment"># 使用 tmpfs 路径，速度更快</span></span><br><span class="line">    <span class="attribute">fastcgi_param</span> SCRIPT_FILENAME <span class="variable">$document_root</span><span class="variable">$fastcgi_script_name</span>;</span><br><span class="line">    <span class="attribute">include</span> fastcgi_params;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>/dev/shm</code> 是 tmpfs（内存文件系统），比 <code>/tmp</code> 磁盘路径快数倍，避免磁盘 I&#x2F;O 瓶颈。</p>
+<h3 id="4-3-systemd-Socket-Activation"><a href="#4-3-systemd-Socket-Activation" class="headerlink" title="4.3 systemd Socket Activation"></a>4.3 systemd Socket Activation</h3><p>systemd 支持在服务启动前创建 UDS 监听 socket，按需激活服务：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/systemd/system/myapp.socket</span></span><br><span class="line"><span class="section">[Socket]</span></span><br><span class="line"><span class="attr">ListenStream</span>=/run/myapp.sock</span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=sockets.target</span><br></pre></td></tr></table></figure>
+
+<p>服务空闲时不占资源，首连接到达时 systemd 唤醒服务进程并传递已就绪的 socket fd。</p>
+<h3 id="4-4-D-Bus-与抽象命名空间"><a href="#4-4-D-Bus-与抽象命名空间" class="headerlink" title="4.4 D-Bus 与抽象命名空间"></a>4.4 D-Bus 与抽象命名空间</h3><p>D-Bus（桌面&#x2F;系统 IPC 总线）大量使用 UDS。<strong>抽象命名空间 socket</strong> 通过在 <code>sun_path[0] = &#39;\0&#39;</code> 创建：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">sockaddr_un</span> addr;</span><br><span class="line">addr.sun_family = AF_UNIX;</span><br><span class="line">addr.sun_path[<span class="number">0</span>] = <span class="string">&#x27;\0&#x27;</span>;           <span class="comment">// 抽象命名空间</span></span><br><span class="line"><span class="built_in">strcpy</span>(addr.sun_path + <span class="number">1</span>, <span class="string">&quot;myapp&quot;</span>); <span class="comment">// 名称不创建文件</span></span><br><span class="line"><span class="built_in">bind</span>(fd, (<span class="keyword">struct</span> sockaddr*)&amp;addr, <span class="built_in">sizeof</span>(addr));</span><br></pre></td></tr></table></figure>
+
+<p>优势：不依赖文件系统路径、不担心残留文件、无需文件系统权限。</p>
+<h3 id="4-5-辅助数据：SCM-RIGHTS-传递文件描述符"><a href="#4-5-辅助数据：SCM-RIGHTS-传递文件描述符" class="headerlink" title="4.5 辅助数据：SCM_RIGHTS 传递文件描述符"></a>4.5 辅助数据：SCM_RIGHTS 传递文件描述符</h3><p>UDS 的独特能力——通过 <code>sendmsg</code>&#x2F;<code>recvmsg</code> 在进程间传递 fd：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 发送方：传递 fd</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">msghdr</span> msg = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">cmsghdr</span> *cmsg;</span><br><span class="line"><span class="type">char</span> buf[<span class="built_in">CMSG_SPACE</span>(<span class="built_in">sizeof</span>(<span class="type">int</span>))];</span><br><span class="line">msg.msg_control = buf;</span><br><span class="line">msg.msg_controllen = <span class="built_in">sizeof</span>(buf);</span><br><span class="line">cmsg = <span class="built_in">CMSG_FIRSTHDR</span>(&amp;msg);</span><br><span class="line">cmsg-&gt;cmsg_level = SOL_SOCKET;</span><br><span class="line">cmsg-&gt;cmsg_type = SCM_RIGHTS;</span><br><span class="line">cmsg-&gt;cmsg_len = <span class="built_in">CMSG_LEN</span>(<span class="built_in">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">*(<span class="type">int</span>*)<span class="built_in">CMSG_DATA</span>(cmsg) = fd_to_send;  <span class="comment">// 要传递的 fd</span></span><br><span class="line"><span class="built_in">sendmsg</span>(sockfd, &amp;msg, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 接收方：接收 fd</span></span><br><span class="line"><span class="built_in">recvmsg</span>(sockfd, &amp;msg, <span class="number">0</span>);</span><br><span class="line">cmsg = <span class="built_in">CMSG_FIRSTHDR</span>(&amp;msg);</span><br><span class="line"><span class="type">int</span> received_fd = *(<span class="type">int</span>*)<span class="built_in">CMSG_DATA</span>(cmsg);</span><br></pre></td></tr></table></figure>
+
+<p>应用场景：systemd 通过 SCM_RIGHTS 将 socket fd 传递给服务进程，进程间共享已打开的连接。</p>
+<h3 id="4-6-UDS-与其他主题的关联"><a href="#4-6-UDS-与其他主题的关联" class="headerlink" title="4.6 UDS 与其他主题的关联"></a>4.6 UDS 与其他主题的关联</h3><table>
+<thead>
+<tr>
+<th>关联主题</th>
+<th>关联点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>select&#x2F;poll&#x2F;epoll</td>
+<td>UDS 的 fd 同样可被 I&#x2F;O 多路复用监控</td>
+</tr>
+<tr>
+<td>TCP</td>
+<td>UDS SOCK_STREAM 提供类 TCP 的可靠流式通信</td>
+</tr>
+<tr>
+<td>Docker&#x2F;容器</td>
+<td>Docker daemon 通信、容器内服务间 IPC</td>
+</tr>
+<tr>
+<td>systemd</td>
+<td>Socket Activation 基于 UDS 实现按需服务激活</td>
+</tr>
+</tbody></table>
+<h2 id="五、源码解析和实践感悟（≥1000字）"><a href="#五、源码解析和实践感悟（≥1000字）" class="headerlink" title="五、源码解析和实践感悟（≥1000字）"></a>五、源码解析和实践感悟（≥1000字）</h2><h3 id="5-1-Unix-Domain-Socket-连接建立源码深入"><a href="#5-1-Unix-Domain-Socket-连接建立源码深入" class="headerlink" title="5.1 Unix Domain Socket 连接建立源码深入"></a>5.1 Unix Domain Socket 连接建立源码深入</h3><p><code>unix_stream_connect</code> 是整个连接建立的核心，位于 <code>net/unix/af_unix.c</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/unix/af_unix.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">unix_stream_connect</span><span class="params">(<span class="keyword">struct</span> socket *sock, <span class="keyword">struct</span> sockaddr *uaddr,</span></span><br><span class="line"><span class="params">                               <span class="type">int</span> addr_len, <span class="type">int</span> flags)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_un</span> *<span class="title">sunaddr</span> =</span> (<span class="keyword">struct</span> sockaddr_un *)uaddr;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span> =</span> sock-&gt;sk;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">newsk</span>, *<span class="title">other</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sk_buff</span> *<span class="title">skb</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 查找目标 socket（通过文件路径或抽象名）</span></span><br><span class="line">    other = unix_find_other(net, sunaddr, addr_len, sock-&gt;type, &amp;err);</span><br><span class="line">    <span class="keyword">if</span> (!other) <span class="keyword">return</span> -ECONNREFUSED;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 为服务器侧创建新的 socket 对象</span></span><br><span class="line">    newsk = unix_create1(sock_net(sk), <span class="literal">NULL</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 分配 skb，关联 newsk</span></span><br><span class="line">    skb = sock_wmalloc(newsk, <span class="number">1</span>, <span class="number">0</span>, GFP_KERNEL);</span><br><span class="line">    UNIXCB(skb).fp = <span class="literal">NULL</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 建立双向 peer 指针（关键！）</span></span><br><span class="line">    unix_peer(newsk) = sk;        <span class="comment">// 新 socket 指向客户端</span></span><br><span class="line">    newsk-&gt;sk_state = TCP_ESTABLISHED;</span><br><span class="line">    sk-&gt;sk_state = TCP_ESTABLISHED;</span><br><span class="line">    unix_peer(sk) = newsk;        <span class="comment">// 客户端指向新 socket</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 4. 将关联 newsk 的 skb 放入监听 socket 接收队列</span></span><br><span class="line">    <span class="comment">//    服务端 accept() 时从此队列取出</span></span><br><span class="line">    __skb_queue_tail(&amp;other-&gt;sk_receive_queue, skb);</span><br><span class="line">    other-&gt;sk_data_ready(other);  <span class="comment">// 唤醒阻塞在 accept 的服务端</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键设计：<strong>没有三次握手</strong>——直接将两个 <code>struct sock</code> 通过 <code>unix_peer()</code> 互相指向即完成”连接”。<code>unix_peer</code> 是一个简单的指针访问宏：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> unix_peer(sk) (unix_sk(sk)-&gt;peer)</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-数据发送与接收源码路径"><a href="#5-2-数据发送与接收源码路径" class="headerlink" title="5.2 数据发送与接收源码路径"></a>5.2 数据发送与接收源码路径</h3><p><strong>发送路径</strong> <code>unix_stream_sendmsg</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">unix_stream_sendmsg</span><span class="params">(<span class="keyword">struct</span> kiocb *kiocb, <span class="keyword">struct</span> socket *sock,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> msghdr *msg, <span class="type">size_t</span> len)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span> =</span> sock-&gt;sk, *other;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sk_buff</span> *<span class="title">skb</span>;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 1. 查找对端 socket</span></span><br><span class="line">    other = unix_peer(sk);</span><br><span class="line">    <span class="keyword">if</span> (!other) <span class="keyword">return</span> -ECONNRESET;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 分配 skb 并拷贝用户数据</span></span><br><span class="line">    skb = sock_alloc_send_skb(sk, len, msg-&gt;msg_flags &amp; MSG_DONTWAIT, &amp;err);</span><br><span class="line">    err = memcpy_fromiovec(skb_put(skb, len), msg-&gt;msg_iov, len);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 直接将 skb 放到对端接收队列（零拷贝！）</span></span><br><span class="line">    skb_queue_tail(&amp;other-&gt;sk_receive_queue, skb);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 4. 通知对端数据就绪</span></span><br><span class="line">    other-&gt;sk_data_ready(other, len);</span><br><span class="line">    <span class="keyword">return</span> len;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>接收路径</strong> 只需从自己的 <code>sk_receive_queue</code> 取数据：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">unix_stream_recvmsg</span><span class="params">(<span class="keyword">struct</span> kiocb *kiocb, <span class="keyword">struct</span> socket *sock,</span></span><br><span class="line"><span class="params">                               <span class="keyword">struct</span> msghdr *msg, <span class="type">size_t</span> size, <span class="type">int</span> flags)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span> =</span> sock-&gt;sk;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sk_buff</span> *<span class="title">skb</span>;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 从接收队列获取 skb</span></span><br><span class="line">    skb = skb_dequeue(&amp;sk-&gt;sk_receive_queue);</span><br><span class="line">    <span class="keyword">if</span> (!skb) &#123;</span><br><span class="line">        <span class="keyword">if</span> (flags &amp; MSG_DONTWAIT) <span class="keyword">return</span> -EAGAIN;</span><br><span class="line">        <span class="comment">// 阻塞等待</span></span><br><span class="line">        sk_wait_data(sk, &amp;timeo, <span class="literal">NULL</span>);</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 拷贝数据到用户空间</span></span><br><span class="line">    err = memcpy_toiovec(msg-&gt;msg_iov, skb-&gt;data, chunk);</span><br><span class="line">    skb_free_datagram(sk, skb);</span><br><span class="line">    <span class="keyword">return</span> chunk;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-SCM-RIGHTS-传递-fd-的内核机制"><a href="#5-3-SCM-RIGHTS-传递-fd-的内核机制" class="headerlink" title="5.3 SCM_RIGHTS 传递 fd 的内核机制"></a>5.3 SCM_RIGHTS 传递 fd 的内核机制</h3><p><code>SCM_RIGHTS</code> 的工作原理是利用 <code>skb</code> 的共享信息结构 <code>scm_cookie</code>（而非直接拷贝文件描述符的整数编号）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/core/scm.c 简化</span></span><br><span class="line"><span class="type">int</span> __scm_send(<span class="keyword">struct</span> socket *sock, <span class="keyword">struct</span> msghdr *msg, <span class="keyword">struct</span> scm_cookie *p)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">cmsghdr</span> *<span class="title">cmsg</span>;</span></span><br><span class="line">    <span class="keyword">for</span> (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (cmsg-&gt;cmsg_type == SCM_RIGHTS) &#123;</span><br><span class="line">            <span class="type">int</span> *fds = (<span class="type">int</span> *)CMSG_DATA(cmsg);</span><br><span class="line">            <span class="type">int</span> num = (cmsg-&gt;cmsg_len - CMSG_LEN(<span class="number">0</span>)) / <span class="keyword">sizeof</span>(<span class="type">int</span>);</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; num; i++) &#123;</span><br><span class="line">                <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">fp</span> =</span> fget(fds[i]);  <span class="comment">// 增加引用计数</span></span><br><span class="line">                scm_fp_dup(p-&gt;fp + i);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// scm_cookie 附着在 skb-&gt;scm 上传递</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键：fd 传递的是 <code>struct file*</code> 指针（引用计数递增），而非整数 fd 编号。接收方随后通过 <code>scm_recv</code> 获取并分配新的 fd 编号。</p>
+<h3 id="5-4-UDS-vs-TCP-localhost-内存拷贝对比"><a href="#5-4-UDS-vs-TCP-localhost-内存拷贝对比" class="headerlink" title="5.4 UDS vs TCP localhost 内存拷贝对比"></a>5.4 UDS vs TCP localhost 内存拷贝对比</h3><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>UDS</th>
+<th>TCP localhost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>用户数据→内核</td>
+<td>1 次拷贝</td>
+<td>1 次拷贝</td>
+</tr>
+<tr>
+<td>内核协议栈</td>
+<td>直接入对端队列</td>
+<td>TCP分段→IP路由→链路层→回环设备</td>
+</tr>
+<tr>
+<td>内核→对端用户</td>
+<td>1 次拷贝</td>
+<td>1 次拷贝</td>
+</tr>
+<tr>
+<td>总拷贝次数</td>
+<td>2 次</td>
+<td>2 次</td>
+</tr>
+<tr>
+<td>CPU 开销</td>
+<td>极小（只做数据搬运）</td>
+<td>大（校验和、分段、路由、ACK）</td>
+</tr>
+</tbody></table>
+<p>UDS 的延迟优势来源于跳过的 CPU 计算开销（校验和、分段、路由查找、拥塞控制），而非减少数据拷贝次数。</p>
+<h3 id="5-5-实践感悟与易错点"><a href="#5-5-实践感悟与易错点" class="headerlink" title="5.5 实践感悟与易错点"></a>5.5 实践感悟与易错点</h3><ol>
+<li><p><strong>路径残留问题</strong>：UDS server 退出后路径文件不会自动删除，再次 <code>bind</code> 返回 <code>EADDRINUSE</code>。正确做法：启动时 <code>unlink()</code> 旧路径文件，或在 <code>main()</code> 注册 <code>atexit</code> 清理。</p>
+</li>
+<li><p><strong><code>/dev/shm</code> vs <code>/tmp</code></strong>：<code>/dev/shm</code> 是 tmpfs（纯内存），比 <code>/tmp</code> 磁盘快但重启后丢失。对性能敏感的 UDS（如 PHP-FPM），建议使用 <code>/dev/shm</code>。</p>
+</li>
+<li><p><strong>SOCK_DGRAM 的发送缓冲区满</strong>：UDS DGRAM 模式下，对端接收缓冲区满时 <code>sendto</code> 静默丢弃——不同于 UDP 的网络丢包也不给错误提示。需应用层自行保证接收速率。</p>
+</li>
+<li><p><strong>Docker 的 docker.sock 安全风险</strong>：挂载 <code>/var/run/docker.sock</code> 到容器内等于赋予 root 权限。生产环境建议使用 Docker API proxy 或 TLS 认证。</p>
+</li>
+<li><p><strong><code>ss -xln</code> 快速诊断</strong>：<code>ss -xln</code> 列出所有 UDS 监听状态，<code>Recv-Q</code> 非零说明对端发送了数据但服务端未 accept。结合 <code>ss -xp</code> 查看进程关联。</p>
+</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-面试高频问答"><a href="#6-1-面试高频问答" class="headerlink" title="6.1 面试高频问答"></a>6.1 面试高频问答</h3><p><strong>Q1：Unix Domain Socket 和 TCP Socket 的核心区别？</strong></p>
+<p>A：UDS 用于同一主机进程间通信（IPC），走内核内存不经过网卡，延迟极低。TCP Socket 用于网络通信，经过完整协议栈。UDS 用文件路径代替 IP+Port 寻址。</p>
+<p><strong>Q2：UDS 的 SOCK_STREAM 和 SOCK_DGRAM 各适用什么场景？</strong></p>
+<p>A：SOCK_STREAM 面向连接，可靠有序，适合 RPC&#x2F;数据库通信。SOCK_DGRAM 无连接，保留消息边界但不保证可靠性，适合低延迟日志转发。</p>
+<p><strong>Q3：UDS 为什么不经过网卡？</strong></p>
+<p>A：数据在 <code>sock_sendmsg</code> → 对端 <code>sock_recvmsg</code> 之间通过内核缓冲区直接传递，不调用 <code>dev_queue_xmit</code>，跳过网络层和链路层。</p>
+<p><strong>Q4：UDS 的路径文件是什么？</strong></p>
+<p>A：bind 时创建的 socket 文件（如 <code>/tmp/app.sock</code>），仅作为命名入口，不存储数据。连接关闭后需手动删除路径文件。</p>
+<p><strong>Q5：UDS 和管道 (pipe) 的区别？</strong></p>
+<p>A：UDS 支持双向通信 + 多客户端连接，管道只能单向；UDS 支持 SOCK_DGRAM 消息边界，管道是纯字节流。</p>
+<h3 id="6-2-陷阱与反问"><a href="#6-2-陷阱与反问" class="headerlink" title="6.2 陷阱与反问"></a>6.2 陷阱与反问</h3><p><strong>陷阱1</strong>：忘记 unlink 残留路径文件 → bind 失败（Address already in use）<br><strong>陷阱2</strong>：UDS 的 SO_SNDBUF 设置仍有效，小缓冲区限制吞吐<br><strong>陷阱3</strong>：SOCK_DGRAM UDS 的 sendto 在接收缓冲区满时静默丢弃</p>
+<p><strong>反问</strong>：UDS 比 TCP localhost 快多少？<br><em>答案：UDS 延迟约为 TCP localhost 的 1&#x2F;3 ~ 1&#x2F;2，因为跳过 TCP&#x2F;IP 协议栈的大部分处理（校验和、分段、路由等），吞吐量通常高出 2-3 倍。</em></p>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ol>
+<li><strong>UDS</strong>：同一主机进程间通信，走内核内存不经过网卡</li>
+<li><strong>路径文件</strong>：bind 创建的命名入口，需手动清理</li>
+<li><strong>SOCK_STREAM</strong>：面向连接可靠有序，类似 TCP</li>
+<li><strong>SOCK_DGRAM</strong>：无连接保留边界，类似 UDP 但可靠</li>
+<li><strong>优势</strong>：低延迟，高吞吐，零网络协议栈开销</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Unix-Domain-Socket/">https://weimo1.github.io/posts/Unix-Domain-Socket/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/TCP%E5%BA%8F%E5%88%97%E5%8F%B7%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8E%E5%9B%9E%E7%BB%95%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6/" title="TCP序列号初始化与回绕处理机制"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">TCP序列号初始化与回绕处理机制</div></div><div class="info-2"><div class="info-item-1">TCP序列号初始化与回绕处理机制 适用范围：TCP 初始序列号(ISN)生成、32位序列号空间与回绕、after&#x2F;before 比较宏、PAWS 回绕保护、窗口限制与序列号安全性  一、核心概念 定义：TCP 使用 32 位无符号整数作为序列号，空间约 4GB。ISN 基于四元组+时间+密钥的 MD5 哈希随机生成（RFC 6528），防止序列号预测攻击。序列号回绕是 32 位无符号整数自然溢出的行为，不是重新初始化 关键词：ISN、RFC 6528、sequence wrap-around、after&#x2F;before 宏、有符号差值比较、PAWS、TCP Timest...</div></div></div></a><a class="pagination-related" href="/posts/TCP/" title="TCP"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">TCP</div></div><div class="info-2"><div class="info-item-1">TCPTCP 和 UDP 的区别 连接性：TCP 是面向连接的协议；UDP 是无连接的协议 可靠性：TCP 提供可靠的数据传输（确认和重传机制）；UDP 不提供可靠性 流量与拥塞控制：TCP 提供；UDP 可能存在丢包情况 头部开销：TCP 头部包含大量控制信息（管理连接、序列号）；UDP 头部较小（只包含基本信息） 应用场景：TCP 适用于网页浏览、文件传输；UDP 适用于实时视频、语音通话  运行于TCP、UDP上的协议TCP: НТТР, HTTPS, FTP, SMTP, POP3&#x2F;IMAP, Telnet, SSH UDP： DHCP：动态主机配置协议，动态配置IP地...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Unix-Domain-Socket"><span class="toc-number">1.</span> <span class="toc-text">Unix Domain Socket</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%BB%80%E4%B9%88%E6%98%AF-UDS-TCP%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 什么是 UDS TCP？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-UNIX-Domain-Socket-%E4%B8%8E-TCP-IP-Socket-%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 UNIX Domain Socket 与 TCP&#x2F;IP Socket 对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95"><span class="toc-number">1.2.3.</span> <span class="toc-text">一、使用方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%BF%9E%E6%8E%A5%E8%BF%87%E7%A8%8B"><span class="toc-number">1.2.4.</span> <span class="toc-text">二、连接过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8F%91%E9%80%81%E8%BF%87%E7%A8%8B"><span class="toc-number">1.2.5.</span> <span class="toc-text">三、发送过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%80%A7%E8%83%BD%E5%AF%B9%E6%AF%94"><span class="toc-number">1.2.6.</span> <span class="toc-text">四、性能对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">1.2.7.</span> <span class="toc-text">五、总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8socat%E6%9D%A5%E5%88%9B%E5%BB%BAUnix-Domain-Sockets"><span class="toc-number">1.3.</span> <span class="toc-text">使用socat来创建Unix Domain Sockets</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8ss%E5%91%BD%E4%BB%A4%E6%9D%A5%E6%9F%A5%E7%9C%8BUnix-domain-Socket"><span class="toc-number">1.4.</span> <span class="toc-text">使用ss命令来查看Unix domain Socket</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8nc%E8%BF%9E%E6%8E%A5%E5%88%B0Unix-domain-Socket%E6%9C%8D%E5%8A%A1"><span class="toc-number">1.5.</span> <span class="toc-text">使用nc连接到Unix domain Socket服务</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">1.6.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-Docker-%E4%B8%8E-UDS"><span class="toc-number">1.6.1.</span> <span class="toc-text">4.1 Docker 与 UDS</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Nginx-PHP-FPM-%E9%80%9A%E8%BF%87-UDS-%E9%80%9A%E4%BF%A1"><span class="toc-number">1.6.2.</span> <span class="toc-text">4.2 Nginx + PHP-FPM 通过 UDS 通信</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-systemd-Socket-Activation"><span class="toc-number">1.6.3.</span> <span class="toc-text">4.3 systemd Socket Activation</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-D-Bus-%E4%B8%8E%E6%8A%BD%E8%B1%A1%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-number">1.6.4.</span> <span class="toc-text">4.4 D-Bus 与抽象命名空间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E8%BE%85%E5%8A%A9%E6%95%B0%E6%8D%AE%EF%BC%9ASCM-RIGHTS-%E4%BC%A0%E9%80%92%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">1.6.5.</span> <span class="toc-text">4.5 辅助数据：SCM_RIGHTS 传递文件描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-UDS-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">1.6.6.</span> <span class="toc-text">4.6 UDS 与其他主题的关联</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%EF%BC%88%E2%89%A51000%E5%AD%97%EF%BC%89"><span class="toc-number">1.7.</span> <span class="toc-text">五、源码解析和实践感悟（≥1000字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-Unix-Domain-Socket-%E8%BF%9E%E6%8E%A5%E5%BB%BA%E7%AB%8B%E6%BA%90%E7%A0%81%E6%B7%B1%E5%85%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">5.1 Unix Domain Socket 连接建立源码深入</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E6%95%B0%E6%8D%AE%E5%8F%91%E9%80%81%E4%B8%8E%E6%8E%A5%E6%94%B6%E6%BA%90%E7%A0%81%E8%B7%AF%E5%BE%84"><span class="toc-number">1.7.2.</span> <span class="toc-text">5.2 数据发送与接收源码路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-SCM-RIGHTS-%E4%BC%A0%E9%80%92-fd-%E7%9A%84%E5%86%85%E6%A0%B8%E6%9C%BA%E5%88%B6"><span class="toc-number">1.7.3.</span> <span class="toc-text">5.3 SCM_RIGHTS 传递 fd 的内核机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-UDS-vs-TCP-localhost-%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D%E5%AF%B9%E6%AF%94"><span class="toc-number">1.7.4.</span> <span class="toc-text">5.4 UDS vs TCP localhost 内存拷贝对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-5-%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F%E4%B8%8E%E6%98%93%E9%94%99%E7%82%B9"><span class="toc-number">1.7.5.</span> <span class="toc-text">5.5 实践感悟与易错点</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.8.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%9D%A2%E8%AF%95%E9%AB%98%E9%A2%91%E9%97%AE%E7%AD%94"><span class="toc-number">1.8.1.</span> <span class="toc-text">6.1 面试高频问答</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E4%B8%8E%E5%8F%8D%E9%97%AE"><span class="toc-number">1.8.2.</span> <span class="toc-text">6.2 陷阱与反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.8.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

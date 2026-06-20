@@ -1,0 +1,378 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Redis内存淘汰 | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Redis 内存淘汰 适用范围：Redis 内存管理、缓存淘汰策略、LRU&#x2F;LFU 算法原理与 C++ 实现  一、项目&#x2F;模块概述 模块定位：Redis 内存淘汰机制是 Redis 缓存系统的关键组件，当内存达到 maxmemory 上限时，自动淘汰旧 key 为新 key 腾出空间。 技术栈与依赖：Redis 内核（纯 C）、zmalloc 内存分配器、24 位 LRU 时钟">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redis内存淘汰">
+<meta property="og:url" content="https://weimo1.github.io/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Redis 内存淘汰 适用范围：Redis 内存管理、缓存淘汰策略、LRU&#x2F;LFU 算法原理与 C++ 实现  一、项目&#x2F;模块概述 模块定位：Redis 内存淘汰机制是 Redis 缓存系统的关键组件，当内存达到 maxmemory 上限时，自动淘汰旧 key 为新 key 腾出空间。 技术栈与依赖：Redis 内核（纯 C）、zmalloc 内存分配器、24 位 LRU 时钟">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.550Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Redis内存淘汰",
+  "url": "https://weimo1.github.io/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.550Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Redis内存淘汰',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Redis内存淘汰</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Redis内存淘汰</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.550Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/">项目学习</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%AD%A6%E4%B9%A0/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Redis-内存淘汰"><a href="#Redis-内存淘汰" class="headerlink" title="Redis 内存淘汰"></a>Redis 内存淘汰</h1><blockquote>
+<p>适用范围：Redis 内存管理、缓存淘汰策略、LRU&#x2F;LFU 算法原理与 C++ 实现</p>
+</blockquote>
+<h2 id="一、项目-模块概述"><a href="#一、项目-模块概述" class="headerlink" title="一、项目&#x2F;模块概述"></a>一、项目&#x2F;模块概述</h2><ul>
+<li><strong>模块定位</strong>：Redis 内存淘汰机制是 Redis 缓存系统的关键组件，当内存达到 <code>maxmemory</code> 上限时，自动淘汰旧 key 为新 key 腾出空间。</li>
+<li><strong>技术栈与依赖</strong>：Redis 内核（纯 C）、zmalloc 内存分配器、24 位 LRU 时钟。</li>
+<li><strong>模块边界</strong>：输入为内存压力信号，输出为被淘汰的 key。上游是写命令，下游是内存释放。</li>
+</ul>
+<h2 id="二、架构设计"><a href="#二、架构设计" class="headerlink" title="二、架构设计"></a>二、架构设计</h2><h3 id="设计拆解"><a href="#设计拆解" class="headerlink" title="设计拆解"></a>设计拆解</h3><p><strong>第一层：策略体系</strong><br>Redis 提供 8 种淘汰策略：</p>
+<table>
+<thead>
+<tr>
+<th>策略</th>
+<th>范围</th>
+<th>算法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>noeviction</td>
+<td>—</td>
+<td>直接报错（默认）</td>
+</tr>
+<tr>
+<td>allkeys-lru</td>
+<td>全部 key</td>
+<td>近似 LRU</td>
+</tr>
+<tr>
+<td>volatile-lru</td>
+<td>有过期时间的 key</td>
+<td>近似 LRU</td>
+</tr>
+<tr>
+<td>allkeys-lfu</td>
+<td>全部 key</td>
+<td>近似 LFU</td>
+</tr>
+<tr>
+<td>volatile-lfu</td>
+<td>有过期时间的 key</td>
+<td>近似 LFU</td>
+</tr>
+<tr>
+<td>allkeys-random</td>
+<td>全部 key</td>
+<td>随机</td>
+</tr>
+<tr>
+<td>volatile-random</td>
+<td>有过期时间的 key</td>
+<td>随机</td>
+</tr>
+<tr>
+<td>volatile-ttl</td>
+<td>有过期时间的 key</td>
+<td>按 TTL</td>
+</tr>
+</tbody></table>
+<p><strong>第二层：近似算法</strong><br>Redis 不使用真正的 LRU（需要双向链表 + 哈希表），而是随机采样 N 个 key（默认 5），淘汰其中最久未访问的。每个 key 只多存 24 位时间戳，零链表开销。</p>
+<p><strong>第三层：过期删除的混合策略</strong></p>
+<ul>
+<li>惰性删除：访问时检查，CPU 友好但内存可能膨胀</li>
+<li>定期删除：每 100ms 随机抽查 20 个，过期比例 &gt; 25% 继续扫</li>
+<li>定时删除：为每个 key 建定时器，大量 key 时 CPU 不可接受（Redis 不用）</li>
+</ul>
+<h3 id="关键数据结构"><a href="#关键数据结构" class="headerlink" title="关键数据结构"></a>关键数据结构</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Redis 近似 LRU 核心：每个对象只需一个 lru 字段</span></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">RedisObject</span> &#123;</span><br><span class="line">    <span class="type">uint64_t</span> lru;  <span class="comment">// 24位LRU时钟或LFU计数器</span></span><br><span class="line">    <span class="type">void</span>*    ptr;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="三、核心实现"><a href="#三、核心实现" class="headerlink" title="三、核心实现"></a>三、核心实现</h2><h3 id="3-1-近似-LRU-淘汰"><a href="#3-1-近似-LRU-淘汰" class="headerlink" title="3.1 近似 LRU 淘汰"></a>3.1 近似 LRU 淘汰</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="type">size_t</span> SampleSize </span>= <span class="number">5</span>&gt;</span><br><span class="line"><span class="function">RedisObject* <span class="title">evictByApproximateLRU</span><span class="params">(std::vector&lt;RedisObject*&gt;&amp; pool)</span> </span>&#123;</span><br><span class="line">    RedisObject* best = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="type">uint64_t</span> best_idle = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint64_t</span> now = <span class="built_in">current_time</span>();</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">size_t</span> i = <span class="number">0</span>; i &lt; SampleSize; ++i) &#123;</span><br><span class="line">        <span class="type">size_t</span> idx = <span class="built_in">random</span>() % pool.<span class="built_in">size</span>();</span><br><span class="line">        RedisObject* obj = pool[idx];</span><br><span class="line">        <span class="type">uint64_t</span> idle_time = now - obj-&gt;lru;</span><br><span class="line">        <span class="keyword">if</span> (idle_time &gt; best_idle) &#123;</span><br><span class="line">            best_idle = idle_time;</span><br><span class="line">            best = obj;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> best;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-LFU-对数计数器"><a href="#3-2-LFU-对数计数器" class="headerlink" title="3.2 LFU 对数计数器"></a>3.2 LFU 对数计数器</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">uint8_t</span> <span class="title">LFULogIncr</span><span class="params">(<span class="type">uint8_t</span> counter)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (counter == <span class="number">255</span>) <span class="keyword">return</span> <span class="number">255</span>;</span><br><span class="line">    <span class="type">double</span> r = (<span class="type">double</span>)<span class="built_in">rand</span>() / RAND_MAX;</span><br><span class="line">    <span class="type">double</span> baseval = counter - LFU_INIT_VAL;</span><br><span class="line">    <span class="keyword">if</span> (baseval &lt; <span class="number">0</span>) baseval = <span class="number">0</span>;</span><br><span class="line">    <span class="type">double</span> p = <span class="number">1.0</span> / (baseval * lfu_log_factor + <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span> (r &lt; p) counter++;</span><br><span class="line">    <span class="keyword">return</span> counter;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 访问 100 次 → counter ≈ 20，访问 1000 次 → 75，访问 100 万次 → 255</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-定期删除的自适应控制"><a href="#3-3-定期删除的自适应控制" class="headerlink" title="3.3 定期删除的自适应控制"></a>3.3 定期删除的自适应控制</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">activeExpireCycle</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">int</span> LOOKUPS = <span class="number">20</span>;</span><br><span class="line">    <span class="type">const</span> <span class="type">double</span> STALE = <span class="number">0.25</span>;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="type">int</span> expired = <span class="number">0</span>, sampled = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; LOOKUPS; ++i) &#123;</span><br><span class="line">            <span class="keyword">auto</span> key = <span class="built_in">randomKeyWithTTL</span>();</span><br><span class="line">            <span class="keyword">if</span> (key &amp;&amp; <span class="built_in">isExpired</span>(key)) &#123; <span class="built_in">deleteKey</span>(key); expired++; &#125;</span><br><span class="line">            sampled++;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (expired &lt;= sampled * STALE) <span class="keyword">break</span>;</span><br><span class="line">    &#125; <span class="keyword">while</span> (<span class="built_in">withinTimeLimit</span>());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、工程实践"><a href="#四、工程实践" class="headerlink" title="四、工程实践"></a>四、工程实践</h2><ul>
+<li><strong>与项目中其他模块的集成</strong>：Redis 作为 IM 系统的缓存层，登录 token 存储、在线状态记录均依赖 Redis，淘汰策略直接影响 token 有效性和状态一致性。</li>
+<li><strong>生产环境考量</strong>：volatile-lru 用于可淘汰的缓存数据（token、验证码）；noeviction 用于不可丢的持久标记数据。错误处理：maxmemory 达上限 + noeviction 时所有写命令返回 OOM 错误。监控：键空间通知 + INFO memory 指标。</li>
+<li><strong>常见优化策略</strong>：增大 <code>maxmemory-samples</code> 到 10（准确度接近真 LRU）；lfu_log_factor 调大以区分高频和超高频 key。</li>
+</ul>
+<h3 id="RDB-和-AOF-的过期键处理"><a href="#RDB-和-AOF-的过期键处理" class="headerlink" title="RDB 和 AOF 的过期键处理"></a>RDB 和 AOF 的过期键处理</h3><p>在 RDB 中，以快照形式获取内存中某一时间点的数据副本。<strong><code>save</code> 和 <code>bgsave</code> 命令都不会把过期的 key 保存到 RDB 文件中</strong>。当启动 Redis 载入 RDB 文件时：<code>Master</code> 不会把过期的 key 载入，而 <code>Slave</code> 会把过期的 key 载入（等 Master 同步删除指令后再删，保证主从一致）。</p>
+<p>在 AOF 模式下，<code>REWRITEAOF</code> 和 <code>BGREWRITEAOF</code> 命令也<strong>不会把过期的 key 写入到 AOF 文件中</strong>，能自动删除过期 key。</p>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-C-STL-风格的-O-1-LRU"><a href="#5-1-C-STL-风格的-O-1-LRU" class="headerlink" title="5.1 C++ STL 风格的 O(1) LRU"></a>5.1 C++ STL 风格的 O(1) LRU</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> K, <span class="keyword">typename</span> V&gt;</span><br><span class="line"><span class="keyword">class</span> <span class="title class_">LRUCache</span> &#123;</span><br><span class="line">    <span class="type">size_t</span> capacity_;</span><br><span class="line">    std::list&lt;std::pair&lt;K, V&gt;&gt; list_;</span><br><span class="line">    std::unordered_map&lt;K, <span class="keyword">typename</span> std::list&lt;std::pair&lt;K, V&gt;&gt;::iterator&gt; map_;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">V* <span class="title">get</span><span class="params">(<span class="type">const</span> K&amp; key)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> it = map_.<span class="built_in">find</span>(key);</span><br><span class="line">        <span class="keyword">if</span> (it == map_.<span class="built_in">end</span>()) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        list_.<span class="built_in">splice</span>(list_.<span class="built_in">begin</span>(), list_, it-&gt;second); <span class="comment">// O(1) 移到头部</span></span><br><span class="line">        <span class="keyword">return</span> &amp;list_.<span class="built_in">front</span>().second;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">put</span><span class="params">(<span class="type">const</span> K&amp; key, <span class="type">const</span> V&amp; val)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">auto</span> it = map_.<span class="built_in">find</span>(key);</span><br><span class="line">        <span class="keyword">if</span> (it != map_.<span class="built_in">end</span>()) &#123; it-&gt;second-&gt;second = val; list_.<span class="built_in">splice</span>(...); <span class="keyword">return</span>; &#125;</span><br><span class="line">        <span class="keyword">if</span> (list_.<span class="built_in">size</span>() &gt;= capacity_) &#123; map_.<span class="built_in">erase</span>(list_.<span class="built_in">back</span>().first); list_.<span class="built_in">pop_back</span>(); &#125;</span><br><span class="line">        list_.<span class="built_in">emplace_front</span>(key, val);</span><br><span class="line">        map_[key] = list_.<span class="built_in">begin</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="感悟"><a href="#感悟" class="headerlink" title="感悟"></a>感悟</h3><ol>
+<li><strong>近似算法 &gt; 精确算法</strong>：采样 5 个 key 的 O(1) 代价远低于维护双向链表。</li>
+<li><strong>8 位计数器做 LFU 是天才设计</strong>：对数增长 + 时间衰减，一字节表达访问频率的相对热度。</li>
+<li><strong>过期比例 &gt; 25% 继续扫</strong>：工程智慧——不是”时间到了就停”而是”势态严重才加班”。</li>
+<li><strong>惰性 + 定期 &#x3D; 责任分摊</strong>：惰性保证热点路径零浪费，定期保底不会无限累积。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频问法"><a href="#6-1-高频问法" class="headerlink" title="6.1 高频问法"></a>6.1 高频问法</h3><p><strong>Q1：Redis 有哪些内存淘汰策略？</strong><br>8 种：noeviction、allkeys-lru&#x2F;volatile-lru、allkeys-lfu&#x2F;volatile-lfu、allkeys-random&#x2F;volatile-random、volatile-ttl。</p>
+<p><strong>Q2：Redis 的 LRU 和真正 LRU 区别？</strong><br>Redis 是近似 LRU：随机采样 5 个 key，淘汰最久未访问的。不需要维护全局链表，每个 key 只多 24 位时间戳。</p>
+<p><strong>Q3：LFU 计数器 8 位不会溢出吗？</strong><br>对数概率递增，counter 越高递增概率越低。同时有衰减机制。8 位可达 255，够用。</p>
+<p><strong>Q4：为什么用定期删除 + 惰性删除？</strong><br>定时删除 CPU 不可接受。惰性删除零 CPU 但内存膨胀。定期删除折中：每 100ms 抽查，自适应控制。</p>
+<p><strong>Q5：C++ 如何实现 O(1) LRU？</strong><br><code>std::list</code> + <code>std::unordered_map</code>，<code>splice</code> 移到头部是 O(1) 关键。</p>
+<p><strong>Q6：allkeys-lru 和 volatile-lru 怎么选？</strong><br>全部缓存可淘汰 → allkeys-lru。有持久数据不能丢 → volatile-lru。</p>
+<p><strong>Q7：RDB 时过期键怎么处理？</strong><br>写入跳过过期键。载入时 Master 跳过，Slave 保留等同步删除。</p>
+<p><strong>Q8：maxmemory 达上限写命令一定失败？</strong><br>noeviction 下写命令全部报错。其他策略先淘汰再写入。一次性写入数据大于已淘汰空间仍会失败。</p>
+<p><strong>Q9：Redis 内存淘汰和 C++ malloc 淘汰关系？</strong><br>本质相同——空间不够选择牺牲者。jemalloc dirty page 衰减借鉴 LRU 思想。</p>
+<p><strong>Q10：如何设计支持 TTL 的 C++ 缓存？</strong><br>用 <code>std::map&lt;time_point, iterator&gt;</code> 做 TTL 索引，或用 <code>folly::EvictingCacheMap</code>。工业级用时间轮管理过期。</p>
+<p><strong>Q11：为什么 LFU 比 LRU 更能反映”热度”？</strong><br>LRU 只看”最近什么时候被访问”——一个 key 偶然被访问一次就可能被保留，老的热点也可能被新来的冷数据挤出。LFU 看”最近被访问了多少次”——需要持续被访问才能保持高 counter，偶然访问影响小。LFU 更适合有明显冷热区分的场景。</p>
+<h3 id="6-2-反问点"><a href="#6-2-反问点" class="headerlink" title="6.2 反问点"></a>6.2 反问点</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>反问</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>maxmemory 没设上限配了淘汰策略？</td>
+<td>maxmemory 默认 0（无限制），策略不生效</td>
+</tr>
+<tr>
+<td>2</td>
+<td>volatile-lru 下无过期时间 key？</td>
+<td>永远不会被淘汰，退化为 noeviction</td>
+</tr>
+<tr>
+<td>3</td>
+<td>大量 key 集中过期？</td>
+<td>定期删除持续扫描，CPU 飙升，lazyfree-lazy-expire 缓解</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>std::list::splice</code> 复杂度？</td>
+<td>O(1)，只调整指针，是 LRU O(1) 关键</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Redis 为什么不用 C++ STL？</td>
+<td>纯 C 实现 + 自定义 zmalloc 灵活控制内存</td>
+</tr>
+<tr>
+<td>6</td>
+<td>LFU 的对数计数器精度够吗？lfu_log_factor 调整的是什么？</td>
+<td>调整的是增长速度：factor&#x3D;10 时 100 次访问 counter≈25，factor&#x3D;100 时≈10。factor 越大越区分高频和超高频。</td>
+</tr>
+</tbody></table>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ul>
+<li>Redis LRU &#x3D; 随机采样 + 最久未访问，近似但省内存</li>
+<li>LFU &#x3D; 对数概率递增 + 时间衰减，8 位表达热度</li>
+<li>定期删除 &#x3D; 过期比例 &gt; 25% 继续扫，CPU 与内存动态平衡</li>
+<li>C++ LRU &#x3D; <code>list</code> + <code>unordered_map</code>，splice O(1) 是精髓</li>
+<li>volatile vs allkeys：volatile 只淘汰有 TTL 的，allkeys 全淘汰</li>
+<li>RDB 过期处理：写入跳过，载入 Master 跳过 Slave 保留</li>
+<li>noeviction &#x3D; 写失败读正常，绝不丢数据</li>
+</ul>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><h3 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h3><ul>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://developer.aliyun.com/article/1253882">Redis内存满了怎么办？8种内存淘汰策略</a></li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/142893249">Redis内存淘汰</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/">https://weimo1.github.io/posts/Redis%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Redis%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" title="Redis慢查询日志"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Redis慢查询日志</div></div><div class="info-2"><div class="info-item-1">Redis 慢查询日志 适用范围：Redis 性能诊断——slowlog 配置、慢命令识别、源码级记录机制与监控策略。  一、核心概念 定义：Redis 慢查询日志（slowlog）用于记录执行时间超过阈值的命令，存储在内存链表中，是 Redis 性能排查的第一入口。 关键词：slowlog-log-slower-than、slowlog-max-len、命令执行时长、内存链表、FIFO 适用场景&#x2F;边界： 定位执行缓慢的 Redis 命令（KEYS、HGETALL 大 key、ZRANGE 大 ZSet 等） 与 latency monitor 互补：slowlog 按命令粒度...</div></div></div></a><a class="pagination-related" href="/posts/Redis%E4%BA%8B%E5%8A%A1%E4%B8%8ELua/" title="Redis事务与Lua"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Redis事务与Lua</div></div><div class="info-2"><div class="info-item-1">Redis 事务 vs Lua 适用范围：Redis 事务机制（MULTI&#x2F;EXEC）与 Lua 脚本（EVAL&#x2F;EVALSHA）的对比——原子性保证、逻辑处理能力、网络开销、主从复制、Redis 7.0 Functions。  一、核心概念 定义：Redis 提供两种原子性操作方案——事务（MULTI&#x2F;EXEC，命令批量入队后执行）和 Lua 脚本（EVAL，服务器端执行，整个脚本作为一个原子整体）。两者各有适用场景，Lua 脚本在逻辑处理能力和性能上通常更优。 关键词：MULTI&#x2F;EXEC、EVAL&#x2F;EVALSHA、SCRIPT LO...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Redis-%E5%86%85%E5%AD%98%E6%B7%98%E6%B1%B0"><span class="toc-number">1.</span> <span class="toc-text">Redis 内存淘汰</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE-%E6%A8%A1%E5%9D%97%E6%A6%82%E8%BF%B0"><span class="toc-number">1.1.</span> <span class="toc-text">一、项目&#x2F;模块概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.</span> <span class="toc-text">二、架构设计</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E8%AE%A1%E6%8B%86%E8%A7%A3"><span class="toc-number">1.2.1.</span> <span class="toc-text">设计拆解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="toc-number">1.2.2.</span> <span class="toc-text">关键数据结构</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%B8%E5%BF%83%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.</span> <span class="toc-text">三、核心实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BF%91%E4%BC%BC-LRU-%E6%B7%98%E6%B1%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 近似 LRU 淘汰</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-LFU-%E5%AF%B9%E6%95%B0%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 LFU 对数计数器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4%E7%9A%84%E8%87%AA%E9%80%82%E5%BA%94%E6%8E%A7%E5%88%B6"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 定期删除的自适应控制</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%B7%A5%E7%A8%8B%E5%AE%9E%E8%B7%B5"><span class="toc-number">1.4.</span> <span class="toc-text">四、工程实践</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#RDB-%E5%92%8C-AOF-%E7%9A%84%E8%BF%87%E6%9C%9F%E9%94%AE%E5%A4%84%E7%90%86"><span class="toc-number">1.4.1.</span> <span class="toc-text">RDB 和 AOF 的过期键处理</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-C-STL-%E9%A3%8E%E6%A0%BC%E7%9A%84-O-1-LRU"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 C++ STL 风格的 O(1) LRU</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%84%9F%E6%82%9F"><span class="toc-number">1.5.2.</span> <span class="toc-text">感悟</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">1.6.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%97%AE%E6%B3%95"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 高频问法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E5%8F%8D%E9%97%AE%E7%82%B9"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 反问点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%99%84%E5%BD%95"><span class="toc-number">1.7.</span> <span class="toc-text">附录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.7.1.</span> <span class="toc-text">参考链接</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

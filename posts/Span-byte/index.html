@@ -1,0 +1,617 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Span   byte | weimo1's blog</title><meta name="author" content="weimo"><meta name="copyright" content="weimo"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Span   byte 适用范围：C++20 std::span 非拥有型连续内存视图、std::byte 类型安全字节操作  一、核心概念 定义：std::span&lt;T&gt; 是 C++20 引入的非拥有型连续内存视图，仅持有数据指针和长度（类似 string_view 的泛化版本）。std::byte 是 C++17 引入的类型安全字节类型，替代 char&#x2F;unsigned">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Span   byte">
+<meta property="og:url" content="https://weimo1.github.io/posts/Span-byte/index.html">
+<meta property="og:site_name" content="weimo1&#39;s blog">
+<meta property="og:description" content="Span   byte 适用范围：C++20 std::span 非拥有型连续内存视图、std::byte 类型安全字节操作  一、核心概念 定义：std::span&lt;T&gt; 是 C++20 引入的非拥有型连续内存视图，仅持有数据指针和长度（类似 string_view 的泛化版本）。std::byte 是 C++17 引入的类型安全字节类型，替代 char&#x2F;unsigned">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://weimo1.github.io/img/avatar.png">
+<meta property="article:published_time" content="2026-06-19T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-20T07:30:01.552Z">
+<meta property="article:author" content="weimo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://weimo1.github.io/img/avatar.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Span   byte",
+  "url": "https://weimo1.github.io/posts/Span-byte/",
+  "image": "https://weimo1.github.io/img/avatar.png",
+  "datePublished": "2026-06-19T16:00:00.000Z",
+  "dateModified": "2026-06-20T07:30:01.552Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "weimo",
+      "url": "https://github.com/weimo1"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://weimo1.github.io/posts/Span-byte/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5-b1"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0a0a0f')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)')
+          const mediaQueryLight = window.matchMedia('(prefers-color-scheme: light)')
+
+          if (theme === undefined) {
+            if (mediaQueryLight.matches) activateLightMode()
+            else if (mediaQueryDark.matches) activateDarkMode()
+            else {
+              const hour = new Date().getHours()
+              const isNight = hour <= 6 || hour >= 18
+              isNight ? activateDarkMode() : activateLightMode()
+            }
+            mediaQueryDark.addEventListener('change', () => {
+              if (saveToLocal.get('theme') === undefined) {
+                e.matches ? activateDarkMode() : activateLightMode()
+              }
+            })
+          } else {
+            theme === 'light' ? activateLightMode() : activateDarkMode()
+          }
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":150,"languages":{"author":"作者: weimo","link":"链接: ","source":"来源: weimo1's blog","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: true,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: true,
+  },
+  autoDarkmode: true
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Span   byte',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.2"><link rel="alternate" href="/atom.xml" title="weimo1's blog" type="application/atom+xml">
+</head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      if ($loadingBox.classList.contains('loaded')) return
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+
+  if (document.readyState === 'complete') {
+    preloader.endLoading()
+  } else {
+    window.addEventListener('load', preloader.endLoading)
+    document.addEventListener('DOMContentLoaded', preloader.endLoading)
+    // Add timeout protection: force end after 7 seconds
+    setTimeout(preloader.endLoading, 7000)
+  }
+
+  if (false) {
+    btf.addGlobalFn('pjaxSend', preloader.initLoading, 'preloader_init')
+    btf.addGlobalFn('pjaxComplete', preloader.endLoading, 'preloader_end')
+  }
+})()</script><div class="bg-animation" id="web_bg"></div><script>(() => {
+  const arr = ["background: linear-gradient(135deg,;"]
+  const webBgDiv = document.getElementById('web_bg')
+
+  const setRandomBg = () => {
+    webBgDiv.style = arr[Math.floor(Math.random() * arr.length)]
+    requestAnimationFrame(() => webBgDiv.classList.add('bg-animation'))
+  }
+
+  document.addEventListener('pjax:send', () => {
+    webBgDiv.style = ''
+    webBgDiv.classList.remove('bg-animation')
+  })
+
+  document.addEventListener('pjax:complete', setRandomBg)
+  document.addEventListener('DOMContentLoaded', setRandomBg)
+})()
+</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/default_bg.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">weimo1's blog</span></a><a class="nav-page-title" href="/"><span class="site-name">Span   byte</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Span   byte</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-06-20T07:30:01.552Z" title="更新于 2026-06-20 15:30:01">2026-06-20</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/">C++知识库</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/">C++语言核心</a><i class="fas fa-angle-right post-meta-separator"></i><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/C-%E7%9F%A5%E8%AF%86%E5%BA%93/C-%E8%AF%AD%E8%A8%80%E6%A0%B8%E5%BF%83/%E7%8E%B0%E4%BB%A3C-%E7%89%B9%E6%80%A7/">现代C++特性</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">11.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>45分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><div id="post-outdate-notice" data="{&quot;limitDay&quot;:365,&quot;messagePrev&quot;:&quot;本文最后更新于&quot;,&quot;messageNext&quot;:&quot;天前，内容可能已过期&quot;,&quot;postUpdate&quot;:&quot;2026-06-20 15:30:01&quot;}" hidden></div><h1 id="Span-byte"><a href="#Span-byte" class="headerlink" title="Span   byte"></a>Span   byte</h1><blockquote>
+<p>适用范围：C++20 std::span 非拥有型连续内存视图、std::byte 类型安全字节操作</p>
+</blockquote>
+<h2 id="一、核心概念"><a href="#一、核心概念" class="headerlink" title="一、核心概念"></a>一、核心概念</h2><ul>
+<li><strong>定义</strong>：<code>std::span&lt;T&gt;</code> 是 C++20 引入的非拥有型连续内存视图，仅持有数据指针和长度（类似 string_view 的泛化版本）。<code>std::byte</code> 是 C++17 引入的类型安全字节类型，替代 <code>char</code>&#x2F;<code>unsigned char</code> 进行原始内存操作</li>
+<li><strong>关键词</strong>：非拥有型视图、连续内存、边界安全、类型安全字节、静态&#x2F;动态长度</li>
+<li><strong>适用场景&#x2F;边界</strong>：<ul>
+<li>统一API接口：一个函数接收数组&#x2F;C数组&#x2F;vector&#x2F;array等所有连续容器</li>
+<li>子范围传递：无需指针+长度的不安全组合</li>
+<li>边界：span不拥有数据（生命周期必须长于span）；不能用于非连续容器（list&#x2F;map）</li>
+</ul>
+</li>
+</ul>
+<h2 id="二、详细解析（≥200字）"><a href="#二、详细解析（≥200字）" class="headerlink" title="二、详细解析（≥200字）"></a>二、详细解析（≥200字）</h2><h3 id="2-1-span-的核心设计"><a href="#2-1-span-的核心设计" class="headerlink" title="2.1 span 的核心设计"></a>2.1 span 的核心设计</h3><p><strong>第一层：非拥有视图</strong>。<code>std::span</code> 不负责数据生命周期，sizeof通常为 16字节（指针+长度，动态extent）或 8字节（指针，静态extent）。这是与 vector 最根本的区别。</p>
+<p><strong>第二层：统一API</strong>。C++20之前需要为数组&#x2F;C数组&#x2F;vector&#x2F;array 分别写重载；span 提供了一致的接口，自动处理类型转换。</p>
+<p><strong>第三层：边界安全</strong>。span知道数据大小，可执行边界检查。与裸指针+长度相比，span在API层面是不可分割的整体，避免指针和长度不匹配的错误。</p>
+<h3 id="2-2-std-byte-的设计"><a href="#2-2-std-byte-的设计" class="headerlink" title="2.2 std::byte 的设计"></a>2.2 std::byte 的设计</h3><p><code>std::byte</code> 的引入解决 <code>char</code>&#x2F;<code>unsigned char</code> 作为”字节容器”时的歧义问题：</p>
+<ul>
+<li>char 有符号&#x2F;无符号不确定（编译器定义）</li>
+<li>char 允许算术运算（导致意外行为）</li>
+<li>std::byte 仅支持位运算（&lt;&lt;, &gt;&gt;, |, &amp;, ^, ~），禁止算术运算</li>
+</ul>
+<h2 id="三、动手实践（代码案例）"><a href="#三、动手实践（代码案例）" class="headerlink" title="三、动手实践（代码案例）"></a>三、动手实践（代码案例）</h2><h1 id="std-Span的使用"><a href="#std-Span的使用" class="headerlink" title="std::Span的使用"></a>std::Span的使用</h1><p>C++中，我们经常需要传递数组或容器的一部分给函数进行处理。通常的做法是使用指针和长度来表示数组的一部分，但这可能导致越界和难以维护的代码。C++ 20中新引入的std::span，则提供了一种更安全、更直观的方式来处理这种情况。</p>
+<p>实际上，std::span是一个非常实用的容器适配器，用于表示连续的内存区域。它并不直接拥有数据，而是提供了一种访问现有数组或容器元素的方式，增强了代码的灵活性和泛型性。std::span可以看作是对指针和长度对的一个类型安全、范围安全的封装，特别适合用于算法和接口设计中，以提高代码的可重用性和安全性。  </p>
+<p>std::span<T>是一个模板类，其中T是元素的类型，它可以通过数组、标准库容器或其他任何提供迭代器的对象来构造。std::span有两个关键属性：一个是指向连续数据元素的指针，另一个表示元素数量的size_t值。这使得它可以安全地访问并操作数据范围内的元素，而不需要知道数据的具体存储方式。std::span提供了类似数组的接口，允许我们通过索引访问元素，并提供了size()、empty()、begin()、end()等成员函数来获取关于数据的信息。</p>
+<p>我们可以说，std::span 之于 std::vector 和 array 数组类型，就像 std::string_view 之于 std::string 一样。</p>
+<p>类模板 std::span 可在头文件 <span> 中找到。</p>
+<p>std::span的主要特点如下。</p>
+<p>1、非拥有性。std::span不拥有它所引用的数据，它只是一个视图。</p>
+<p>2、类型安全。std::span知道它所引用的数据的类型。</p>
+<p>3、边界检查。由于std::span知道数据的大小，因此可以在访问时执行边界检查。</p>
+<p>4、灵活性。std::span可以与数组、std::vector、std::array等容器一起使用。</p>
+<ol>
+<li><strong>非拥有 (Non-owning)</strong>：这是与 <code>std::vector</code> 最根本的区别。<code>std::span</code><strong>不负责</strong>其所指向内存的生命周期。它只是一个观察者或“视图”。当 <code>std::span</code> 本身被销毁时，它指向的数据<strong>不会</strong>被销毁。这使得 <code>std::span</code> 非常轻量，其大小通常就是两个指针的大小，创建和复制的开销极低</li>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=261790820&content_type=Article&match_order=1&q=%E8%BF%9E%E7%BB%AD%E5%86%85%E5%AD%98&zhida_source=entity"><strong>连续内存</strong></a> <strong>(Contiguous)</strong>：<code>std::span</code> 只能用于操作内存地址连续的数据结构，例如 C 风格数组、<code>std::array</code>、<code>std::vector</code> 以及手动分配的内存块。它不能用于 <code>std::list</code> 或 <code>std::map</code></li>
+</ol>
+<p><strong>痛点一：</strong><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=261790820&content_type=Article&match_order=1&q=API+%E6%8E%A5%E5%8F%A3&zhida_source=entity"><strong>API 接口</strong></a><strong>不统一</strong></p>
+<p>在 C++20 之前，如果想编写一个可以处理任何连续数据序列的函数，通常需要提供多个重载：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// Before C++20</span><br><span class="line">void process_data(const std::vector&lt;int&gt;&amp; data);</span><br><span class="line">void process_data(const std::array&lt;int, 10&gt;&amp; data);</span><br><span class="line">void process_data(const int* data, std::size_t size); // C-style</span><br></pre></td></tr></table></figure>
+
+<p>这种方式非常繁琐且容易出错</p>
+<p><code>std::span</code> 的解决方案：统一接口</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;span&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;array&gt;</span><br><span class="line"></span><br><span class="line">// With C++20 std::span</span><br><span class="line">void process_data(std::span&lt;const int&gt; data) &#123; // 一个函数，接受所有！</span><br><span class="line">    for (int val : data) &#123;</span><br><span class="line">        // ... process val</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void test() &#123;</span><br><span class="line">    std::vector&lt;int&gt; v = &#123;1, 2, 3&#125;;</span><br><span class="line">    std::array&lt;int, 4&gt; a = &#123;4, 5, 6, 7&#125;;</span><br><span class="line">    int c_array[] = &#123;8, 9, 10&#125;;</span><br><span class="line"></span><br><span class="line">    process_data(v);</span><br><span class="line">    process_data(a);</span><br><span class="line">    process_data(c_array); // 隐式转换为 span</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::span</code> 提供了一个通用的词汇类型来表示“一个连续的数据序列”，极大地简化了API设计</p>
+<p><strong>痛点二：C风格接口的安全性差</strong></p>
+<p><code>void process_data(const int* data, std::size_t size)</code> 这种接口非常危险。<code>data</code> 和 <code>size</code> 是两个独立的参数，很容易传错：</p>
+<ol>
+<li>传入的 <code>size</code> 大于 <code>data</code> 指向的实际内存大小，导致<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=261790820&content_type=Article&match_order=1&q=%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA&zhida_source=entity">缓冲区溢出</a></li>
+<li>忘记传递 <code>size</code> 或者传了 <code>nullptr</code></li>
+</ol>
+<p><code>std::span</code> 的解决方案：绑定指针和大小</p>
+<p><code>std::span</code> 将指针和大小封装在<strong>一个对象</strong>中，让它们始终保持同步</p>
+<p><strong>痛点三：不必要的性能开销</strong></p>
+<p>有时只是想传递数据的一部分给一个函数。使用 <code>std::vector</code> 可能需要创建一个新的、只包含子集的 <code>vector</code>，这会涉及到昂贵的内存分配和数据拷贝</p>
+<p><code>std::span</code> 的解决方案：零开销的切片</p>
+<p><code>std::span</code> 的 <code>subspan()</code> 成员函数可以创建一个指向原始数据子集的视图，这个操作<strong>没有</strong>任何内存分配和拷贝，仅仅是创建了一个新的、包含不同指针和长度的 <code>span</code> 对象</p>
+<p>创建 <code>std::span</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;span&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;array&gt;</span><br><span class="line"></span><br><span class="line">int c_array[] = &#123;1, 2, 3, 4, 5&#125;;</span><br><span class="line">std::vector&lt;int&gt; vec = &#123;1, 2, 3, 4, 5&#125;;</span><br><span class="line">std::array&lt;int, 5&gt; arr = &#123;1, 2, 3, 4, 5&#125;;</span><br><span class="line"></span><br><span class="line">// 1. 从 C 数组创建</span><br><span class="line">std::span&lt;int&gt; s1(c_array); // 自动推导大小</span><br><span class="line"></span><br><span class="line">// 2. 从 std::vector 创建</span><br><span class="line">std::span&lt;int&gt; s2(vec);</span><br><span class="line"></span><br><span class="line">// 3. 从 std::array 创建</span><br><span class="line">std::span&lt;int&gt; s3(arr);</span><br><span class="line"></span><br><span class="line">// 4. 从指针和长度创建 (与 C API 交互时常用)</span><br><span class="line">std::span&lt;int&gt; s4(c_array, 3); // 指向 c_array 的前 3 个元素</span><br><span class="line"></span><br><span class="line">// 5. 从迭代器创建</span><br><span class="line">std::span&lt;int&gt; s5(vec.begin() + 1, vec.begin() + 4); // 指向 vec 的 [1, 2, 3]</span><br></pre></td></tr></table></figure>
+
+<p><strong>核心操作</strong></p>
+<p><code>std::span</code> 的接口和常见的容器很像：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">void inspect_span(std::span&lt;const int&gt; data) &#123;</span><br><span class="line">    if (data.empty()) return;</span><br><span class="line"></span><br><span class="line">    // 访问大小</span><br><span class="line">    std::cout &lt;&lt; &quot;Size: &quot; &lt;&lt; data.size() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; &quot;Size in bytes: &quot; &lt;&lt; data.size_bytes() &lt;&lt; std::endl;</span><br><span class="line"></span><br><span class="line">    // 访问元素</span><br><span class="line">    std::cout &lt;&lt; &quot;First element: &quot; &lt;&lt; data.front() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; &quot;Last element: &quot; &lt;&lt; data.back() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; &quot;Element at index 1: &quot; &lt;&lt; data[1] &lt;&lt; std::endl; // 不进行边界检查</span><br><span class="line"></span><br><span class="line">    // 获取底层指针 (与 C API 交互)</span><br><span class="line">    const int* p_data = data.data();</span><br><span class="line"></span><br><span class="line">    // 迭代</span><br><span class="line">    for(int val : data) &#123; /* ... */ &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="切片-Slicing"><a href="#切片-Slicing" class="headerlink" title="切片 (Slicing)"></a><strong>切片 (Slicing)</strong></h2><p>这是 <code>std::span</code> 的一个强大功能，通过 <code>subspan()</code> 实现</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">// 假设 network_packet 是一个包含头部和载荷的缓冲区</span><br><span class="line">std::vector&lt;std::byte&gt; network_packet = get_packet();</span><br><span class="line">std::span&lt;const std::byte&gt; packet_view(network_packet);</span><br><span class="line"></span><br><span class="line">// 假设头部是 8 字节</span><br><span class="line">constexpr size_t header_size = 8;</span><br><span class="line">std::span&lt;const std::byte&gt; header = packet_view.subspan(0, header_size);</span><br><span class="line">std::span&lt;const std::byte&gt; payload = packet_view.subspan(header_size); // 从第8字节到末尾</span><br><span class="line"></span><br><span class="line">// process_header 和 process_payload 函数可以安全地处理各自的数据视图</span><br><span class="line">process_header(header);</span><br><span class="line">process_payload(payload);</span><br></pre></td></tr></table></figure>
+
+<p><strong>静态大小 和 动态大小 (Fixed vs. Dynamic Extent)</strong></p>
+<p><code>std::span</code> 有一个模板参数 <code>Extent</code>，用于在编译期指定大小。</p>
+<ul>
+<li><code>std::dynamic_extent</code>：默认值，表示 <code>span</code> 的大小在运行时确定。</li>
+<li><code>&lt;N&gt;</code>：一个具体的整数，表示 <code>span</code> 的大小是编译期常量</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// 动态大小 (最常用)</span><br><span class="line">void process(std::span&lt;int&gt; s);</span><br><span class="line"></span><br><span class="line">// 静态大小 (编译期固定为3)</span><br><span class="line">void process_3d_vector(std::span&lt;float, 3&gt; xyz) &#123;</span><br><span class="line">    // 编译器知道大小是3，可以进行优化，比如循环展开</span><br><span class="line">    // xyz.size() 是一个编译期常量</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">float c_pos[] = &#123;1.0, 2.0, 3.0, 4.0&#125;;</span><br><span class="line">// process_3d_vector(c_pos); // 编译错误！c_pos 大小是4，不匹配</span><br><span class="line">std::span&lt;float, 4&gt; s_pos(c_pos);</span><br><span class="line">// process_3d_vector(s_pos); // 编译错误！大小不匹配</span><br><span class="line"></span><br><span class="line">std::array&lt;float, 3&gt; arr_pos = &#123;1.0, 2.0, 3.0&#125;;</span><br><span class="line">process_3d_vector(arr_pos); // OK</span><br></pre></td></tr></table></figure>
+
+<h2 id="span-“胖指针”"><a href="#span-“胖指针”" class="headerlink" title="span “胖指针”"></a>span “胖指针”</h2><p>假如你手一滑，或者老板需求改变，把 buf 缓冲区少留了两个字节：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">char buf[30];</span><br><span class="line">read(fd, buf, 32);</span><br></pre></td></tr></table></figure>
+
+<p>但你 read 的参数依然是 32，就产生了数组越界，又未定义行为了。</p>
+<p>我们采用封装精神，把相关的 buf 和 size 封装成一个参数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">struct Span &#123;</span><br><span class="line">    char *data;</span><br><span class="line">    size_t size;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">ssize_t read(FileHandle fd, Span buf);</span><br></pre></td></tr></table></figure>
+
+<p>read(fd, Span{buf, 32});</p>
+<p>注意：Span 不需要以引用形式传入函数！</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">void read(std::string &amp;buf);  // 如果是 string 类型，参数需要为引用，才能让 read 能够修改 buf 字符串</span><br><span class="line">void read(Span buf);          // Span 不需要，因为 Span 并不是独占资源的类，Span 本身就是个轻量级的引用</span><br></pre></td></tr></table></figure>
+
+<p>vector 和 string 这种具有“拷贝构造函数”的 RAII 封装类才需要传入引用 <code>string &amp;buf</code>，如果直接传入会发生深拷贝，导致 read 内部修改的是 string 的一份拷贝，无法影响到外界原来的 string。 如果是 Span 参数就不需要 <code>Span &amp;buf</code> 引用了，Span 并不是 RAII 封装类，并不持有生命周期，并没有“拷贝构造函数”，他只是个对外部已有 vector、string、或 char[] 的引用。或者说 Span 本身就是一个对原缓冲区的引用，直接传入 read 内部一样可以修改你的缓冲区。</p>
+<p>用 Span 结构体虽然看起来更明确了，但是依然不解决用户可能手滑写错缓冲区长度的问题：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">char buf[30];</span><br><span class="line">read(fd, Span&#123;buf, 32&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>为此，我们在 Span 里加入一个隐式构造函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">struct Span &#123;</span><br><span class="line">char *data;</span><br><span class="line">size_t size;</span><br><span class="line"></span><br><span class="line">template &lt;size_t N&gt;</span><br><span class="line">Span(char (&amp;buf)[N]) : data(buf), size(N) &#123;&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这将允许 char [N] 隐式转换为 Span，且长度自动就是 N 的值。</p>
+<p>此处如果写 <code>Span(char buf[N])</code>，会被 C 语言的某条沙雕规则，函数签名会等价于 <code>Span(char *buf)</code>，从而只能获取起始地址，而推导不了长度。使用数组引用作为参数 <code>Span(char (&amp;buf)[N])</code> 就不会被 C 语言自动退化成起始地址指针了。</p>
+<p>用户只需要：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">char buf[30];</span><br><span class="line">read(fd, Span&#123;buf&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>等价于 <code>Span{buf, 30}</code>，数组长度自动推导，非常方便。</p>
+<p>由于我们是隐式构造函数，还可以省略 Span 不写：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">char buf[30];</span><br><span class="line">read(fd, buf);  // 自动转换成 Span&#123;buf, 30&#125;</span><br></pre></td></tr></table></figure>
+
+<p>加入更多类型的支持：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">struct Span &#123;</span><br><span class="line">char *data;</span><br><span class="line">size_t size;</span><br><span class="line"></span><br><span class="line">template &lt;size_t N&gt;</span><br><span class="line">Span(char (&amp;buf)[N]) : data(buf), size(N) &#123;&#125;</span><br><span class="line"></span><br><span class="line">template &lt;size_t N&gt;</span><br><span class="line">Span(std::array&lt;char, N&gt; &amp;arr) : data(arr.data()), size(N) &#123;&#125;</span><br><span class="line"></span><br><span class="line">Span(std::vector&lt;charN&gt; &amp;vec) : data(vec.data()), size(vec.size()) &#123;&#125;</span><br><span class="line"></span><br><span class="line">// 如果有需要，也可以显式写出 Span(buf, 30) 从首地址和长度构造出一个 Span 来</span><br><span class="line">explicit Span(char *data, size_t size) : data(data), size(size) &#123;&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>现在 C 数组、array、vector、都可以隐式转换为 Span 了：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">char buf1[30];</span><br><span class="line">Span span1 = buf1;</span><br><span class="line"></span><br><span class="line">std::array&lt;char, 30&gt; buf2;</span><br><span class="line">Span span2 = buf2;</span><br><span class="line"></span><br><span class="line">std::vector&lt;char&gt; buf(30);</span><br><span class="line">Span span3 = buf3;</span><br><span class="line"></span><br><span class="line">const char *str = &quot;hello&quot;;</span><br><span class="line">Span span4 = Span(str, strlen(str));</span><br></pre></td></tr></table></figure>
+
+<p>运用模板元编程，自动支持任何具有 data 和 size 成员的各种标准库容器，包括第三方的，只要他提供 data 和 size 函数。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class Arr&gt;</span><br><span class="line">concept has_data_size = requires (Arr arr) &#123;</span><br><span class="line">&#123; arr.data() &#125; -&gt; std::convertible_to&lt;char *&gt;;</span><br><span class="line">&#123; arr.size() &#125; -&gt; std::same_as&lt;size_t&gt;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">struct Span &#123;</span><br><span class="line">char *data;</span><br><span class="line">size_t size;</span><br><span class="line"></span><br><span class="line">template &lt;size_t N&gt;</span><br><span class="line">Span(char (&amp;buf)[N]) : data(buf), size(N) &#123;&#125;</span><br><span class="line"></span><br><span class="line">template &lt;has_data_size Arr&gt;</span><br><span class="line">Span(Arr &amp;&amp;arr) : data(arr.data()), size(arr.size()) &#123;&#125;</span><br><span class="line">// 满足 has_data_size 的任何类型都可以构造出 Span</span><br><span class="line">// 而标准库的 vector、string、array 容器都含有 .data() 和 .size() 成员函数</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>如果用户确实有修改长度的需要，可以通过 subspan 成员函数实现：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">char buf[32];</span><br><span class="line">read(fd, Span(buf).subspan(0, 10));  // 只读取前 10 个字节！</span><br></pre></td></tr></table></figure>
+
+<p>subspan 内部实现原理：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">struct Span &#123;</span><br><span class="line">char *data;</span><br><span class="line">size_t size;</span><br><span class="line"></span><br><span class="line">Span subspan(size_t start, size_t length = (size_t)-1) const &#123;</span><br><span class="line">    if (start &gt; size)  // 如果起始位置超出范围，则抛出异常</span><br><span class="line">        throw std::out_of_range(&quot;subspan start out of range&quot;);</span><br><span class="line">    auto restSize = size - start;</span><br><span class="line">    if (length &gt; restSize) // 如果长度超过上限，则自动截断</span><br><span class="line">        length = restSize;</span><br><span class="line">    return Span(data + start, restSize + length);</span><br><span class="line">&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以把 Span 变成模板类，支持任意类型的数组，比如 <code>Span&lt;int&gt;</code>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class Arr, class T&gt;</span><br><span class="line">concept has_data_size = requires (Arr arr) &#123;</span><br><span class="line">&#123; std::data(arr) &#125; -&gt; std::convertible_to&lt;T *&gt;;</span><br><span class="line">&#123; std::size(arr) &#125; -&gt; std::same_as&lt;size_t&gt;;</span><br><span class="line">// 使用 std::data 而不是 .data() 的好处：</span><br><span class="line">// std::data 对于 char (&amp;buf)[N] 这种数组类型也有重载！</span><br><span class="line">// 例如 std::size(buf) 会得到 int buf[N] 的正确长度 N</span><br><span class="line">// 而 sizeof buf 会得到 N * sizeof(int)</span><br><span class="line">// 类似于 sizeof(buf) / sizeof(buf[0]) 的效果</span><br><span class="line">// 不过如果 buf 是普通 int * 指针，会重载失败，直接报错，没有安全隐患</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;class T&gt;</span><br><span class="line">struct Span &#123;</span><br><span class="line">T *data;</span><br><span class="line">size_t size;</span><br><span class="line"></span><br><span class="line">template &lt;has_data_size&lt;T&gt; Arr&gt;</span><br><span class="line">Span(Arr &amp;&amp;arr) : data(std::data(arr)), size(std::size(arr)) &#123;&#125;</span><br><span class="line">// 👆 同时囊括了 vector、string、array、原始数组</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">template &lt;has_data_size Arr&gt;</span><br><span class="line">Span(Arr &amp;&amp;t) -&gt; Span&lt;std::remove_pointer_t&lt;decltype(std::data(std::declval&lt;Arr &amp;&amp;&gt;()))&gt;&gt;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p><code>Span&lt;T&gt;</code> 表示可读写的数组。 对于只读的数组，用 <code>Span&lt;const T&gt;</code> 就可以。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ssize_t read(FileHandle fd, Span&lt;char&gt; buf);         // buf 可读写！</span><br><span class="line">ssize_t write(FileHandle fd, Span&lt;const char&gt; buf);  // buf 只读！</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>好消息！这东西在 C++20 已经实装，那就是 std::span。 没有 C++20 开发环境的同学，也可以用 GSL 库的 gsl::span，或者 ABSL 库的 absl::Span 来体验。</p>
+<p>C++17 还有专门针对字符串的区间类 std::string_view，可以从 std::string 隐式构造，用法类似，不过切片函数是 substr，还支持 find、find_first_of 等 std::string 有的字符串专属函数。</p>
+<ul>
+<li><code>std::span&lt;T&gt;</code> - 任意类型 T 的可读可写数组</li>
+<li><code>std::span&lt;const T&gt;</code> - 任意类型 T 的只读数组</li>
+<li><code>std::string_view</code> - 任意字符串</li>
+</ul>
+<p>在 read 函数内部，可以用 .data() 和 .size() 重新取出独立的首地址指针和缓冲区长度，用于伺候 C 语言的老函数：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ssize_t read(FileHandle fd, std::span&lt;char&gt; buf) &#123;</span><br><span class="line">    memset(buf.data(), 0, buf.size());  // 课后作业，用所学知识，优化 C 语言的 memset 函数吧！</span><br><span class="line">    ...</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+<p>也可以用 range-based for 循环来遍历：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ssize_t read(FileHandle fd, std::span&lt;char&gt; buf) &#123;</span><br><span class="line">    for (auto &amp; c : buf) &#123;  // 注意这里一定要用 auto &amp; 哦！否则无法修改 buf 内容</span><br><span class="line">        c = &#x27;c&#x27;;</span><br><span class="line">        ...</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="std-mdspan的使用"><a href="#std-mdspan的使用" class="headerlink" title="std::mdspan的使用"></a>std::mdspan的使用</h1><p><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhuanlan.zhihu.com/p/1963293221128995391">https://zhuanlan.zhihu.com/p/1963293221128995391</a></p>
+<p><code>std::mdspan</code>是 C++23 引入的核心组件（<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=264525488&content_type=Article&match_order=1&q=C++26&zhida_source=entity">C++26</a>进一步扩展），全称 <strong>Multidimensional Span</strong>（多维视图）。它是一个轻量级、非拥有（non-owning）的多维数组视图，类似于一维的<code>std::span</code>，但支持任意维度。主要设计目标是高性能科学计算（如线性代数、数值模拟）和硬件友好型数据访问。</p>
+<p>核心特性如下：</p>
+<ol>
+<li>非拥有视图。不管理内存生命周期，仅引用现有数据，零开销抽象（但其实不完全零成本，详见：<a href="https://link.zhihu.com/?target=https://www.youtube.com/watch?v=9fRnSQkpNGg" rel="external nofollow noreferrer">Is C++23 std::mdspan a Zero-overhead Abstraction?</a>）</li>
+<li>多维支持。支持任意维度。</li>
+<li>可定制行为。通过布局策略（<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=264525488&content_type=Article&match_order=1&q=Layout+Policy&zhida_source=entity">Layout Policy</a>）控制内存排列方式，通过访问器（<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=264525488&content_type=Article&match_order=1&q=Accessor+Policy&zhida_source=entity">Accessor Policy</a>）控制元素访问方式。</li>
+</ol>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_9e02e7774759.jpeg"></p>
+<h2 id="基础操作"><a href="#基础操作" class="headerlink" title="基础操作"></a>基础操作</h2><p><code>std::mdspan</code>在头文件 <code>&lt;mdspan&gt;</code>中定义：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">template&lt;</span><br><span class="line">    class T,</span><br><span class="line">    class Extents,</span><br><span class="line">    class LayoutPolicy = std::layout_right,</span><br><span class="line">    class AccessorPolicy = std::default_accessor&lt;T&gt;</span><br><span class="line">&gt; class mdspan;</span><br></pre></td></tr></table></figure>
+
+<p>其中：</p>
+<ul>
+<li><code>T</code>指定了底层的数据类型，和<code>std::span</code>的第一个参数一样。</li>
+<li><code>Extents</code>指定了维度的信息。</li>
+<li><code>LayoutPolicy</code>指定内存布局方式。</li>
+<li><code>AccessorPolicy</code>指定元素访问的方式。</li>
+</ul>
+<p><code>std::mdspan</code>遵循了 <code>std::span</code>的模式，我们使用动态或静态维度来创建<code>std::mdspan</code>。当然，不同于<code>std::span</code>，我们可以指定多个维度，而不仅仅是一个。其声明还通过 <code>LayoutPolicy</code>和 <code>AccessorPolicy</code>提供了更多定制选项。</p>
+<h3 id="静态维度"><a href="#静态维度" class="headerlink" title="静态维度"></a>静态维度</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	std::vector&lt;int&gt; vec = &#123; 1, 2, 3, 2, 4, 5, 3, 5, 6 &#125;;</span><br><span class="line">	std::mdspan&lt;int, std::extents&lt;size_t, 2, 3&gt;&gt; mat&#123; vec.data() &#125;;</span><br><span class="line">	std::print(&quot;sizeof: &#123;&#125;, rank: &#123;&#125;, ext 0: &#123;&#125;, ext 1: &#123;&#125;\n&quot;, sizeof(mat), mat.rank(), mat.extent(0), mat.extent(1));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>sizeof: 8, rank: 2, ext 0: 2, ext 1: 3</p>
+<p>我们通过指定<code>std::mdspan</code>的第二个模板参数<code>Extents</code>为<code>std::extents&lt;size_t, 2, 3&gt;</code>，来表示引用一个大小为  的二维矩阵（下标类型为<code>size_t</code>）。<code>std::mdspan</code>的第一个参数指定了数据的来源，在这段代码里使用了<code>vec</code>中的数据。</p>
+<p>可以看到静态维度的<code>std::mdspan</code>只占用了8字节内存（保存了一个指针指向数据），它的大小是编译期常量不需要占用内存。静态维度的<code>std::mdspan</code>通常比动态维度的<code>std::mdspan</code>占用更小的内存，而且下标访问速度也更快（乘常数可以被优化成位移运算）。</p>
+<p>成员函数<code>rank</code>返回这个<code>std::mdspan</code>的维数，<code>extent(i)</code>返回第i维的长度。</p>
+<h3 id="动态维度"><a href="#动态维度" class="headerlink" title="动态维度"></a>动态维度</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	std::vector&lt;int&gt; vec = &#123; 1, 2, 3, 2, 4, 5, 3, 5, 6 &#125;;</span><br><span class="line">	std::mdspan&lt;int, std::dextents&lt;size_t, 2&gt;&gt; mat&#123; vec.data(), 2, 3 &#125;;</span><br><span class="line">	std::print(&quot;sizeof: &#123;&#125;, rank: &#123;&#125;, ext 0: &#123;&#125;, ext 1: &#123;&#125;\n&quot;, sizeof(mat), mat.rank(), mat.extent(0), mat.extent(1));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>sizeof: 24, rank: 2, ext 0: 2, ext 1: 3</p>
+<p>我们通过指定<code>std::mdspan</code>的第二个模板参数<code>Extents</code>为<code>std::dextents&lt;size_t, 2&gt;</code>，来让<code>std::mdspan</code>引用一个动态大小的二维矩阵。具体地，这个矩阵的长度和宽度可以不是编译期常量，我们通过运行时参数来传递（此处传递了2,3）。</p>
+<p>此时<code>std::mdspan</code>的大小变成了24字节，内存布局大致如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">struct mdspan &#123;</span><br><span class="line">    int* data; //指向数据的指针</span><br><span class="line">    size_t size[2]; //每一个维度的长度都要保存下来</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>std::dextents&lt;size_t, 2&gt;</code>其实是<code>std::extents&lt;size_t, std::dynamic_extents, std::dynamic_extents&gt;</code>的简写，从C++26开始，可以进一步简写为<code>std::dims&lt;2&gt;</code>。 <code>std::dims&lt;N&gt;</code>表示一个动态大小的N维张量。</p>
+<h3 id="混合维度"><a href="#混合维度" class="headerlink" title="混合维度"></a>混合维度</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	std::vector&lt;int&gt; vec = &#123; 1, 2, 3, 2, 4, 5, 3, 5, 6 &#125;;</span><br><span class="line">	std::mdspan&lt;int, std::extents&lt;size_t, 2, std::dynamic_extent&gt;&gt; mat&#123; vec.data(), 3 &#125;;</span><br><span class="line">	std::print(&quot;sizeof: &#123;&#125;, rank: &#123;&#125;, ext 0: &#123;&#125;, ext 1: &#123;&#125;\n&quot;, sizeof(mat), mat.rank(), mat.extent(0), mat.extent(1));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>sizeof: 16, rank: 2, ext 0: 2, ext 1: 3</p>
+<p>上述代码中<code>std::mdspan</code>的第一维是编译时确定的（长度为2），第二维是运行时指定的（在模板参数中指定<code>std::dynamic_extent</code>，然后再在构造函数中传递实际大小）。</p>
+<p><code>std::mdspan</code>具有指定某个维度是动态还是静态的能力，这给了<code>std::mdspan</code>非常大的灵活性，也赋予了<code>std::mdspan</code>能把编译期优化做到极致的能力。</p>
+<h2 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h2><h3 id="默认构造"><a href="#默认构造" class="headerlink" title="默认构造"></a>默认构造</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">constexpr mdspan();</span><br></pre></td></tr></table></figure>
+
+<p>样例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	std::mdspan&lt;int, std::dextents&lt;size_t, 2&gt;&gt; empty_span;</span><br><span class="line">	std::println(&quot;is empty &#123;&#125;&quot;, empty_span.empty());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="可变参数构造"><a href="#可变参数构造" class="headerlink" title="可变参数构造"></a>可变参数构造</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt; class... OtherIndexTypes &gt;</span><br><span class="line">constexpr explicit mdspan( data_handle_type p, OtherIndexTypes... exts );</span><br></pre></td></tr></table></figure>
+
+<p>样例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	int arr[12]&#123; 0 &#125;;</span><br><span class="line">	std::mdspan&lt;int, std::extents&lt;size_t, 3, 4&gt;&gt; span(arr);</span><br><span class="line">	std::println(&quot;w: &#123;&#125;, h: &#123;&#125;&quot;, span.extent(0), span.extent(1));</span><br><span class="line">	auto ex = span.extents();</span><br><span class="line">	std::println(&quot;&#123;&#125;, &#123;&#125;&quot;, ex.rank(), ex.static_extent(1));</span><br><span class="line"></span><br><span class="line">	std::mdspan&lt;int, std::dextents&lt;size_t, 2&gt;&gt; dspan(arr, 3, 4);</span><br><span class="line">	std::println(&quot;w: &#123;&#125;, h: &#123;&#125;&quot;, dspan.extent(0), dspan.extent(1));</span><br><span class="line">	auto ex2 = dspan.extents();</span><br><span class="line">	std::println(&quot;&#123;&#125;, &#123;&#125;&quot;, ex2.rank(), ex2.static_extent(1));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>w: 3, h: 4</p>
+<h3 id="通过std-array构造"><a href="#通过std-array构造" class="headerlink" title="通过std::array构造"></a>通过std::array构造</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">template&lt; class OtherIndexType, std::size_t N &gt;</span><br><span class="line">constexpr explicit(N != rank_dynamic()) mdspan( data_handle_type p, const std::array&lt;OtherIndexType, N&gt;&amp; exts );</span><br></pre></td></tr></table></figure>
+
+<p>样例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">	int arr[12]&#123; 0 &#125;;</span><br><span class="line">	std::mdspan span(arr, std::array&#123; 3, 4 &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>此时可以通过<code>std::mdspan</code>的CTAD直接推断出它的模板参数，此处推断出的类型为<code>std::mdspan&lt;int, std::dims&lt;2&gt;&gt;</code>。</p>
+<h2 id="布局策略"><a href="#布局策略" class="headerlink" title="布局策略"></a>布局策略</h2><p>由于我们处理的是多维数据，访问元素的方式有多种。为此，我们引入了”布局”策略类来表示不同的选择。</p>
+<p>以下是 C++23 标准提供的三种基础布局：</p>
+<ul>
+<li><strong>layout_right</strong>：C&#x2F;C++ 风格的row-major布局，最右侧索引对应内存的连续访问（跨度为1）；</li>
+<li><strong>layout_left</strong>：Fortran&#x2F;Matlab 风格的column-major布局，最左侧索引对应内存的连续访问（跨度为1）；</li>
+<li><strong>layout_stride</strong>：上述两种布局的通用形式，可为每个维度单独存储步长（步长值不一定为1）。</li>
+</ul>
+<p>此外，C++26 标准还引入了两种新的布局策略：</p>
+<ul>
+<li><strong>layout_left_padded</strong>：row-major布局，最左侧的维度可以有填充；</li>
+<li><strong>layout_right_padded</strong>：column-major布局，最右侧的维度可以有填充。</li>
+</ul>
+<h3 id="layout-right-和-layout-left"><a href="#layout-right-和-layout-left" class="headerlink" title="layout_right 和 layout_left"></a><strong>layout_right</strong> 和 <strong>layout_left</strong></h3><p><code>layout_right</code>和<code>layout_left</code>比较容易理解，下面看一个简单的样例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">template &lt;typename layout&gt;</span><br><span class="line">void printMat(std::mdspan&lt;int, std::dims&lt;2&gt;, layout&gt; mat) &#123;</span><br><span class="line">    for (size_t i = 0; i &lt; mat.extent(0); ++i) &#123;</span><br><span class="line">        for (size_t j = 0; j &lt; mat.extent(1); ++j)</span><br><span class="line">            std::print(&quot;&#123;&#125; &quot;, mat[i, j]);</span><br><span class="line">        std::println();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; vec = &#123; 0, 1, 2, 3, 4, 5 &#125;;</span><br><span class="line"></span><br><span class="line">    std::mdspan&lt;int, std::dims&lt;2&gt;, std::layout_right&gt; mat&#123; vec.data(), 2, 3 &#125;;</span><br><span class="line">    std::println(&quot;right:&quot;);</span><br><span class="line">    printMat(mat);</span><br><span class="line"></span><br><span class="line">    std::mdspan&lt;int, std::dims&lt;2&gt;, std::layout_left&gt; mat_left&#123; vec.data(), 2, 3 &#125;;</span><br><span class="line">    std::println(&quot;left:&quot;);</span><br><span class="line">    printMat(mat_left);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>right:<br>0 1 2<br>3 4 5<br>left:<br>0 2 4<br>1 3 5</p>
+<h3 id="layout-left-padded-和-layout-right-padded"><a href="#layout-left-padded-和-layout-right-padded" class="headerlink" title="layout_left_padded 和 layout_right_padded"></a>layout_left_padded 和 layout_right_padded</h3><p><code>layout_left_padded</code>和<code>layout_right_padded</code>功能类似，下面只介绍<code>layout_right_padded</code>。</p>
+<p><code>layout_right_padded</code>为最右边的维度设置了一个最小步长（即填充值）。这个步长可以大于该维度的实际长度，即<code>extent(rank()-1)</code>。同样，<code>PaddingExtent</code>可以是静态或动态的。 在<code>layout_right_padded&lt;PaddingStride&gt;</code>下，这个最小步长被设置为<code>max(cols, PaddingStride)</code>。</p>
+<p>下面看一段示例代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">template &lt;typename layout&gt;</span><br><span class="line">void printMat(std::mdspan&lt;int, std::dims&lt;2&gt;, layout&gt; mat) &#123;</span><br><span class="line">    for (size_t i = 0; i &lt; mat.extent(0); ++i) &#123;</span><br><span class="line">        for (size_t j = 0; j &lt; mat.extent(1); ++j)</span><br><span class="line">            std::print(&quot;&#123;&#125; &quot;, mat[i, j]);</span><br><span class="line">        std::println();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; vec = &#123; 0, 1, 2, 3, 4, 5, 6, 7 &#125;;</span><br><span class="line"></span><br><span class="line">    using PaddedRight = std::layout_right_padded&lt;std::dynamic_extent&gt;;</span><br><span class="line">    PaddedRight::mapping mapping(std::extents&#123;2, 3&#125;, 4);</span><br><span class="line"></span><br><span class="line">    std::mdspan mat&#123; vec.data(), mapping &#125;;</span><br><span class="line">    std::println(&quot;right:&quot;);</span><br><span class="line">    printMat(mat);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>right:<br>0 1 2<br>4 5 6</p>
+<p>如果最小步长是编译时常量，那么直接传递给<code>layout_right_padded</code>即可，比如<code>using PaddedRight = std::layout_right&lt;4&gt;</code>。</p>
+<h3 id="layout-stride"><a href="#layout-stride" class="headerlink" title="layout_stride"></a>layout_stride</h3><p><code>layout_stride</code>是最具灵活性的布局了，上面的所有4种布局都可以看作是<code>layout_stride</code>的特例。<code>layout_stride</code>为每一个维度独立指定一个步长（stride）。这个步长定义了在该维度上索引增加 1 时，在内存中的线性偏移量需要增加多少。</p>
+<p><code>layout_stride::mapping</code>对象内部存储了两个关键信息：</p>
+<ol>
+<li><strong>extents</strong>：描述多维索引空间的大小（每个维度有多少个元素）。</li>
+<li><strong>strides</strong>： 一个数组，其大小与 <code>extents</code>的秩（rank）相同。<code>strides[r]</code>指定了在第 <code>r</code>维上索引增加 1 时，在一维内存空间中的地址偏移量。</li>
+</ol>
+<p>对于一个多维索引  ，<code>layout_stride</code>将其映射到一维偏移量的公式是：</p>
+<p>前面的<code>layout_right_padded</code>逻辑上等价于下面的代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;mdspan&gt;</span><br><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line"></span><br><span class="line">template &lt;typename layout&gt;</span><br><span class="line">void printMat(std::mdspan&lt;int, std::dims&lt;2&gt;, layout&gt; mat) &#123;</span><br><span class="line">    for (size_t i = 0; i &lt; mat.extent(0); ++i) &#123;</span><br><span class="line">        for (size_t j = 0; j &lt; mat.extent(1); ++j)</span><br><span class="line">            std::print(&quot;&#123;&#125; &quot;, mat[i, j]);</span><br><span class="line">        std::println();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; vec = &#123; 0, 1, 2, 3, 4, 5, 6, 7 &#125;;</span><br><span class="line"></span><br><span class="line">    std::layout_stride::mapping mapping(std::extents&#123;2, 3&#125;, std::array&#123;4, 1&#125;);</span><br><span class="line"></span><br><span class="line">    std::mdspan mat&#123; vec.data(), mapping &#125;;</span><br><span class="line">    std::println(&quot;right:&quot;);</span><br><span class="line">    printMat(mat);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意，标准要求步长必须是正数：</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_400f5027a18f.png"></p>
+<p><strong>这里不是很理解为什么要加这个限制，因为步长为负数也是有用的（比如可以实现一个反向索引的span），有人知道原因的话可以在评论区说一下~</strong></p>
+<h2 id="访问策略"><a href="#访问策略" class="headerlink" title="访问策略"></a>访问策略</h2><p>C++23只提供了最基本的默认访问策略<code>std::default_accessor</code>，C++26进一步引入了<code>std::aligned_accessor</code>用了提供明确的对齐要求，在未来标准还有可能引入<code>std::atomic_accessor</code>来保证元素的访问是原子的。</p>
+<p>访问策略用的相对较少，此处就不展开介绍了。</p>
+<h2 id="std-submdspan"><a href="#std-submdspan" class="headerlink" title="std::submdspan"></a>std::submdspan</h2><p><code>std::submdspan</code>是一个普通函数。它的第一个参数是一个 <code>std::mdspan</code>对象 <code>x</code>，其余 <code>x.rank()</code>个参数是切片说明符，每个维度一个。这些切片说明符描述了范围 <code>[0, x.extent(d))</code>中的哪些元素属于返回的 <code>std::mdspan</code>的多维索引空间。</p>
+<p>函数签名如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">template&lt;class T, class E, class L, class A,</span><br><span class="line">         class ... SliceArgs)</span><br><span class="line">auto submdspan(mdspan&lt;T,E,L,A&gt; x, SliceArgs ... args);</span><br></pre></td></tr></table></figure>
+
+<p>其中<code>E.rank()</code>必须等于<code>sizeof...(SliceArgs)</code>。</p>
+<p><code>std::submdspan</code>支持的4种切片说明符如下：</p>
+<ol>
+<li>单个整数值。对于传递给 <code>std::submdspan</code>的每个整数值，返回的 <code>std::mdspan</code>的秩（rank）将比输入 <code>mdspan</code>的秩减少一，因为这个维度只有这一个索引被选取了，这个维度也将不再存在。</li>
+<li>任何可转换为 <code>std::tuple&lt;std::mdspan::index_type, std::mdspan::index_type&gt;</code>的类型。这个<code>std::tuple</code>表示一个左闭右开的索引区间。</li>
+<li>标签类 <code>std::full_extent_t</code>的实例。这表示在返回的子视图中包含该维度上的全部元素</li>
+<li><code>std::strided_slice</code>的实例。这个类似于python的切片语法<code>A[begin:end:step]</code>，但是又有一些不同。具体地，<code>std::strided_slice</code>通过起始位置（begin）、范围长度（extent）及步长（step size）来定义切片，而非python中的起始位置、结束位置与步长组合。这种方法具有一项根本优势：能够将运行时的起始值与编译时确定的范围长度相结合，从而直接为子视图生成静态维度（static extent）。注意，<code>std::strided_slice</code>结构采用具名字段而非元组形式，以避免三个参数顺序可能带来的混淆。</li>
+</ol>
+<p>样例如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;vector&gt;</span><br><span class="line">#include &lt;print&gt;</span><br><span class="line">#include &lt;mdspan&gt;</span><br><span class="line"></span><br><span class="line">void printMat(auto mat) &#123;</span><br><span class="line">    for (size_t i = 0; i &lt; mat.extent(0); ++i) &#123;</span><br><span class="line">        std::print(&quot;&#123;&#125; &quot;, mat[i]);</span><br><span class="line">    &#125;</span><br><span class="line">    std::println();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; vec = &#123; 0, 1, 2, 3, 4, 5, 6, 7 &#125;;</span><br><span class="line"></span><br><span class="line">    std::mdspan&lt;int, std::extents&lt;size_t, 2, 4&gt;&gt; mat&#123; vec.data() &#125;;</span><br><span class="line"></span><br><span class="line">    printMat(std::submdspan(mat, 1, std::full_extent));</span><br><span class="line">    printMat(std::submdspan(mat, 1, std::tuple&#123;1, 2&#125;));</span><br><span class="line">    printMat(std::submdspan(mat, 1, std::strided_slice&#123;0, 4, 2&#125;));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>4 5 6 7<br>5<br>4 6</p>
+<p>可以通过<code>std::integral_constant</code>来实现常量切片（得到的<code>std::mdspan</code>具有静态维度），代码如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int main() &#123;</span><br><span class="line">    std::vector&lt;int&gt; vec = &#123; 0, 1, 2, 3, 4, 5, 6, 7 &#125;;</span><br><span class="line"></span><br><span class="line">    std::mdspan&lt;int, std::extents&lt;size_t, 2, 4&gt;&gt; mat&#123; vec.data() &#125;;</span><br><span class="line"></span><br><span class="line">    std::println(&quot;&#123;&#125;&quot;, sizeof(std::submdspan(mat, 1, std::tuple&#123;1, 2&#125;)));</span><br><span class="line">    std::println(&quot;&#123;&#125;&quot;, sizeof(std::submdspan(mat, 1, std::tuple&#123;std::integral_constant&lt;size_t, 1&gt;&#123;&#125;, std::integral_constant&lt;size_t, 2&gt;&#123;&#125;&#125;)));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>程序输出如下：</p>
+<p>16<br>8</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p><code>std::mdspan</code>是 C++23 引入的一个非拥有、引用语义的多维数组视图。它将一个原始指针与一个多维索引空间（由<code>extents</code>描述）绑定，并通过可定制的布局策略<code>LayoutPolicy</code>和访问策略<code>AccessorPolicy</code>来定义元素的内存布局和访问方式。其核心价值在于为零开销的多维数据操作提供了类型安全、灵活且高性能的抽象，是科学计算、机器学习和高性能计算库的理想基础组件，同时也为 C++ 带来了现代、高效且强大的多维数组处理能力。</p>
+<h1 id="std-byte的使用"><a href="#std-byte的使用" class="headerlink" title="std::byte的使用"></a>std::byte的使用</h1><p>首先要了解char、signed char、unsigned char在C++中的三重职责：</p>
+<ol>
+<li><a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=715726330&content_type=Answer&match_order=1&q=%E5%AD%97%E8%8A%82%E5%AF%BB%E5%9D%80&zhida_source=entity">字节寻址</a>：被用于表示内存中的字节，是内存操作的基本单位。</li>
+<li>算术类型：可以参与算术运算，如加法、减法等。</li>
+<li>字符类型：特别是<code>char</code>和<code>signed char</code>，它们还被用来表示字符数据，用于处理文本。</li>
+</ol>
+<p>这种多重角色很容易导致程序员在处理应当作为原始数据字节的情况下，一不小心就进行了算术运算或字符处理，从而引发错误和混淆。</p>
+<p>而<code>std::byte</code>的引入正是为了解决这一问题，可以避免多重职责导致的混淆，在C++中，char、signed char和unsigned char承担了多重职责，既用于字节寻址，又用作算术类型和字符类型。这种设计容易导致程序员错误地对字节值进行算术运算，引入std::byte可以避免这种混淆，通过提供一个专门用于字节数据的类型，这样可以清晰地区分字节操作和字符&#x2F;数值操作，增强程序的<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=715726330&content_type=Answer&match_order=1&q=%E7%B1%BB%E5%9E%8B%E5%AE%89%E5%85%A8%E6%80%A7&zhida_source=entity">类型安全性</a>和表达清晰度。</p>
+<h3 id="它的作用"><a href="#它的作用" class="headerlink" title="它的作用"></a>它的作用</h3><ol>
+<li>提供明确的类型用于实现C++语言定义中的字节概念：<code>std::byte</code>它作为一个明确的类型，用于表示内存中的一个字节，而不是通过<code>char</code>、<code>signed char</code>或<code>unsigned char</code>来间接表示。</li>
+<li>增强类型安全性：通过引入一个独立的字节类型，<code>std::byte</code>有助于区分以字节为单位访问内存与以字符或整数值访问内存的操作，从而提高程序的类型安全性。</li>
+<li>提高代码可读性和意图清晰度：使用<code>std::byte</code>可以使代码的意图更加明确，即在处理内存中的原始数据，而不是字符或数值，这有助于提高代码的可读性和便于其他程序员或工具理解代码。</li>
+<li>便于<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=715726330&content_type=Answer&match_order=1&q=%E4%BD%8D%E6%93%8D%E4%BD%9C&zhida_source=entity">位操作</a>：尽管<code>std::byte</code>不是整数类型，但它提供了一系列的位操作函数，可以对字节进行位操作变得更加方便和安全。</li>
+</ol>
+<p>c++ 17引入了 一种std::byte类型，它表示内存元素的“nature”类型字节。与char或int类型的关键区别在于，它不是字符类型且非算术类型,它唯一支持的“计算”操作是<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=476470122&content_type=Answer&match_order=1&q=%E4%BD%8D%E6%93%8D%E4%BD%9C%E7%AC%A6&zhida_source=entity">位操作符</a>。</p>
+<p>补充知识：</p>
+<p>1）一个byte(字节)为八位<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=476470122&content_type=Answer&match_order=1&q=%E4%BA%8C%E8%BF%9B%E5%88%B6&zhida_source=entity">二进制</a>，可以存储十进制数值0-255</p>
+<p>2）0x为<a target="_blank" rel="noopener external nofollow noreferrer" href="https://zhida.zhihu.com/search?content_id=476470122&content_type=Answer&match_order=1&q=%E5%8D%81%E5%85%AD%E8%BF%9B%E5%88%B6&zhida_source=entity">十六进制</a>，0b为二进制</p>
+<p>3）位运算：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;cstddef&gt; // for std::byte</span><br><span class="line"></span><br><span class="line">std::byte b1&#123;0x3F&#125;;//</span><br><span class="line">std::byte b2&#123;0b1111&#x27;0000&#125;;</span><br><span class="line">std::byte b4[4] &#123;b1, b2, std::byte&#123;1&#125;&#125;; // 4 bytes (last is 0)</span><br><span class="line"></span><br><span class="line">if (b1 == b4[0]) </span><br><span class="line">&#123;</span><br><span class="line">    b1 &lt;&lt;= 1;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">std::cout &lt;&lt; std::to_integer&lt;int&gt;(b1) &lt;&lt; &#x27;\n&#x27;; // outputs: \T&#123;126&#125;</span><br><span class="line"></span><br><span class="line">//列表初始化(使用大括号)是直接初始化std::byte对象的单个值的唯一方法。</span><br><span class="line">std::byte b1&#123;42&#125;; // OK (as for all enums with fixed underlying type since C++17)</span><br><span class="line">std::byte b2(42); // ERROR</span><br><span class="line">std::byte b3 = 42; // ERROR</span><br><span class="line">std::byte b4 = &#123;42&#125;; // ERROR</span><br></pre></td></tr></table></figure>
+
+<p>初始化及相关用法如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">//须用显式转换的整数文字初始化字节数组</span><br><span class="line">std::byte b5[] &#123;1&#125;; // ERROR</span><br><span class="line">std::byte b5[] &#123;std::byte&#123;1&#125;&#125;; // OK</span><br><span class="line"></span><br><span class="line">//如果不进行任何初始化，std::byte的值将为堆栈上的对象未定义</span><br><span class="line">std::byte b; // undefined value</span><br><span class="line"></span><br><span class="line">//可以强制初始化，所有的位都设置为零，并使用列表初始化</span><br><span class="line">std::byte b&#123;&#125;; // same as bf0g</span><br><span class="line"></span><br><span class="line">//std::byte作为布尔值也需要这样的转换</span><br><span class="line">if (b2) ... // ERROR</span><br><span class="line">    if (b2 != std::byte&#123;0&#125;) ... // OK</span><br><span class="line">        if (to_integer&lt;bool&gt;(b2)) ... // ERROR (ADL doesn’t work here)</span><br><span class="line">            if (std::to_integer&lt;bool&gt;(b2)) ... // OK</span><br></pre></td></tr></table></figure>
+
+<p>1.std::byte的操作</p>
+<p><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/../../%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87/yuque_84bd702ffae2.webp"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;iostream&gt;</span><br><span class="line">#include &lt;string&gt;</span><br><span class="line">#include &lt;cstddef&gt;</span><br><span class="line">#include &lt;bitset&gt;</span><br><span class="line">#include &lt;limits&gt;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    std::byte b1&#123; 0x3F &#125;;</span><br><span class="line">    std::byte b2&#123; 0b1111&#x27;0000 &#125;;</span><br><span class="line">    std::byte b4[4]&#123; b1, b2, std::byte&#123;1&#125; &#125;; // 4 bytes (last is 0)</span><br><span class="line">    std::byte b5[]&#123; std::byte&#123;1&#125; &#125;;</span><br><span class="line">    std::byte b6&#123;&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    if (b2 == std::byte&#123; 0b1111&#x27;0000 &#125;)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cout &lt;&lt; std::to_integer&lt;int&gt;(b2) &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    using ByteBitset = std::bitset&lt;std::numeric_limits&lt;unsigned char&gt;::digits&gt;;</span><br><span class="line">    std::cout &lt;&lt; ByteBitset&#123; std::to_integer&lt;unsigned char&gt;(b1) &#125; &lt;&lt; std::endl;</span><br><span class="line"></span><br><span class="line">    std::string s = ByteBitset&#123; std::to_integer&lt;unsigned char&gt;(b2) &#125;.to_string();</span><br><span class="line">    std::cout &lt;&lt; s &lt;&lt; std::endl;</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="四、进阶应用（≥500字）"><a href="#四、进阶应用（≥500字）" class="headerlink" title="四、进阶应用（≥500字）"></a>四、进阶应用（≥500字）</h2><h3 id="4-1-span-的动态extent-vs-静态extent"><a href="#4-1-span-的动态extent-vs-静态extent" class="headerlink" title="4.1 span 的动态extent vs 静态extent"></a>4.1 span 的动态extent vs 静态extent</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::span&lt;<span class="type">int</span>&gt; <span class="title">dynamic_span</span><span class="params">(arr)</span></span>;         <span class="comment">// extent = dynamic_extent, sizeof = 16</span></span><br><span class="line"><span class="function">std::span&lt;<span class="type">int</span>, 5&gt; <span class="title">static_span</span><span class="params">(arr)</span></span>;       <span class="comment">// extent = 5 (编译期常量), sizeof = 8</span></span><br></pre></td></tr></table></figure>
+
+<p>静态extent允许编译器做更激进的优化（如循环展开），但数组大小必须在编译期确定。</p>
+<h3 id="4-2-span-的安全边界检查"><a href="#4-2-span-的安全边界检查" class="headerlink" title="4.2 span 的安全边界检查"></a>4.2 span 的安全边界检查</h3><p>span提供 <code>operator[]</code> 和 <code>.front()/.back()</code> 等带边界检查的访问。但在性能关键路径上，这些检查可由编译器的优化消除。与裸指针相比，span在API层面消除了”指针和长度不一致”的风险。</p>
+<h3 id="4-3-与其他主题的关联"><a href="#4-3-与其他主题的关联" class="headerlink" title="4.3 与其他主题的关联"></a>4.3 与其他主题的关联</h3><ul>
+<li><strong>string_view</strong>：span 的字符串特化版本，C++17引入</li>
+<li><strong>mdspan</strong> (C++23)：多维版本，支持矩阵等数据结构</li>
+<li><strong>指针+长度模式</strong>：span是”指针+长度”对的类型安全替代</li>
+<li><strong>迭代器</strong>：span提供begin()&#x2F;end()，可无缝配合标准算法</li>
+</ul>
+<h3 id="4-4-工程中的最佳实践"><a href="#4-4-工程中的最佳实践" class="headerlink" title="4.4 工程中的最佳实践"></a>4.4 工程中的最佳实践</h3><ul>
+<li><strong>统一API</strong>：用span替代 (T* ptr, size_t len) 参数组合</li>
+<li><strong>只读参数用 <code>span&lt;const T&gt;</code></strong>：明确只读意图</li>
+<li><strong>注意生命周期</strong>：span不拥有数据，被引用数据必须长于span</li>
+</ul>
+<h2 id="五、源码解析和实践感悟"><a href="#五、源码解析和实践感悟" class="headerlink" title="五、源码解析和实践感悟"></a>五、源码解析和实践感悟</h2><h3 id="5-1-std-span-的内部实现（简化）"><a href="#5-1-std-span-的内部实现（简化）" class="headerlink" title="5.1 std::span 的内部实现（简化）"></a>5.1 std::span 的内部实现（简化）</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libstdc++ 中 std::span 的核心骨架</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="type">size_t</span> Extent = dynamic_extent&gt;</span><br><span class="line"><span class="keyword">class</span> span &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">using</span> element_type = T;</span><br><span class="line">    <span class="keyword">using</span> pointer = T*;</span><br><span class="line">    <span class="keyword">using</span> size_type = <span class="type">size_t</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 关键：只有两个成员——指针和大小</span></span><br><span class="line">    pointer data_;</span><br><span class="line">    size_type size_;  <span class="comment">// 当 Extent != dynamic_extent 时编译器可优化掉</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从连续容器构造</span></span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;contiguous_range R&gt;</span></span><br><span class="line"><span class="function">    <span class="keyword">constexpr</span> <span class="keyword">explicit</span> <span class="title">span</span><span class="params">(R&amp;&amp; range)</span></span></span><br><span class="line"><span class="function">        : data_(std::data(range)), size_(std::size(range)) &#123;</span>&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从指针+大小构造</span></span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="title">span</span><span class="params">(pointer p, size_type n)</span> : data_(p), size_(n) &#123;</span>&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 子区间：零拷贝切片</span></span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> span <span class="title">subspan</span><span class="params">(size_type offset, size_type count)</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">span</span>(data_ + offset, count);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 访问</span></span><br><span class="line">    <span class="keyword">constexpr</span> T&amp; <span class="keyword">operator</span>[](size_type idx) <span class="type">const</span> &#123; <span class="keyword">return</span> data_[idx]; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> T&amp; <span class="title">front</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_[<span class="number">0</span>]; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> T&amp; <span class="title">back</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_[size_ - <span class="number">1</span>]; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> pointer <span class="title">data</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> size_type <span class="title">size</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> size_; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> size_type <span class="title">size_bytes</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> size_ * <span class="built_in">sizeof</span>(T); &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="type">bool</span> <span class="title">empty</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> size_ == <span class="number">0</span>; &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 迭代器支持 range-based for</span></span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> T* <span class="title">begin</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> T* <span class="title">end</span><span class="params">()</span> <span class="type">const</span> </span>&#123; <span class="keyword">return</span> data_ + size_; &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>核心设计要点：</p>
+<ul>
+<li><strong>胖指针</strong>：<code>{T*, size_t}</code> 结构，64位下固定 16 字节。与 <code>string_view</code> 同构。</li>
+<li><strong>静态 Extent</strong>：编译期已知大小时 <code>size_</code> 被优化掉，sizeof 降为 8 字节，下标访问用位移替代乘法。</li>
+<li><strong>subspan 零开销</strong>：只做指针偏移，不分配内存、不拷贝数据。返回新的 span 对象（两个寄存器值）。</li>
+</ul>
+<h3 id="5-2-span-为什么不需要引用传递？"><a href="#5-2-span-为什么不需要引用传递？" class="headerlink" title="5.2 span 为什么不需要引用传递？"></a>5.2 span 为什么不需要引用传递？</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// span 是 trivial 类型，无 RAII 语义</span></span><br><span class="line"><span class="comment">// 传值 = 复制两个寄存器（指针+长度），和传指针一样快</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(span&lt;<span class="type">int</span>&gt; s)</span></span>;   <span class="comment">// 推荐：值传递，16 字节</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(span&lt;<span class="type">int</span>&gt;&amp; s)</span></span>;  <span class="comment">// 多余：引用传递也是 8 字节，但多了一次解引用</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 对比 vector：传值会触发深拷贝</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(vector&lt;<span class="type">int</span>&gt; v)</span></span>;      <span class="comment">// 慢！拷贝所有元素</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">(<span class="type">const</span> vector&lt;<span class="type">int</span>&gt;&amp; v)</span></span>; <span class="comment">// 正确：引用传递</span></span><br></pre></td></tr></table></figure>
+
+<p>本质区别：span 是”视图”（view），不拥有数据。vector 是”容器”，拥有数据。视图传值，容器传引用——这是 C++ 的惯用法。</p>
+<h3 id="5-3-mdspan-的-layout-策略在内存中的映射"><a href="#5-3-mdspan-的-layout-策略在内存中的映射" class="headerlink" title="5.3 mdspan 的 layout 策略在内存中的映射"></a>5.3 mdspan 的 layout 策略在内存中的映射</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2x3 矩阵，原始内存：&#123;0,1,2,3,4,5&#125;</span></span><br><span class="line"><span class="type">int</span> data[] = &#123;<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// layout_right (C/C++ row-major): mat[i][j] = data[i * cols + j]</span></span><br><span class="line"><span class="comment">// mapping: offset(i,j) = i * 3 + j</span></span><br><span class="line"><span class="comment">// mat[0] = &#123;0,1,2&#125;, mat[1] = &#123;3,4,5&#125;</span></span><br><span class="line">mdspan&lt;<span class="type">int</span>, dims&lt;<span class="number">2</span>&gt;, layout_right&gt; <span class="built_in">mat_right</span>(data, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// layout_left (Fortran column-major): mat[i][j] = data[i + j * rows]</span></span><br><span class="line"><span class="comment">// mapping: offset(i,j) = i + j * 2</span></span><br><span class="line"><span class="comment">// mat[0] = &#123;0,2,4&#125;, mat[1] = &#123;1,3,5&#125;</span></span><br><span class="line">mdspan&lt;<span class="type">int</span>, dims&lt;<span class="number">2</span>&gt;, layout_left&gt; <span class="built_in">mat_left</span>(data, <span class="number">2</span>, <span class="number">3</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// layout_stride: 自定义步长</span></span><br><span class="line"><span class="comment">// stride[0] = 4: 行间跳跃 4 个元素</span></span><br><span class="line"><span class="comment">// stride[1] = 1: 列间跳跃 1 个元素</span></span><br><span class="line"><span class="comment">// mat[0] = &#123;0,1,2&#125;, mat[1] = &#123;4,5,6&#125;（跳过了 data[3]）</span></span><br><span class="line"><span class="function">layout_stride::mapping <span class="title">mapping</span><span class="params">(extents&#123;<span class="number">2</span>,<span class="number">3</span>&#125;, array&#123;<span class="number">4</span>,<span class="number">1</span>&#125;)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>layout_right_padded 的应用场景：SIMD 对齐。例如 AVX-512 一次处理 16 个 int，用 <code>layout_right_padded&lt;16&gt;</code> 确保每行末尾有 padding 对齐到 64 字节边界，避免跨 cache line 的 SIMD 加载。</p>
+<h3 id="5-4-std-byte-的类型安全设计"><a href="#5-4-std-byte-的类型安全设计" class="headerlink" title="5.4 std::byte 的类型安全设计"></a>5.4 std::byte 的类型安全设计</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// std::byte 在 libstdc++ 中的定义</span></span><br><span class="line"><span class="keyword">enum class</span> <span class="title class_">byte</span> : <span class="type">unsigned</span> <span class="type">char</span> &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 只支持位运算，禁止算术运算</span></span><br><span class="line"><span class="keyword">constexpr</span> byte <span class="keyword">operator</span>|(byte l, byte r) <span class="keyword">noexcept</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">byte</span>(<span class="built_in">static_cast</span>&lt;<span class="type">unsigned</span> <span class="type">char</span>&gt;(</span><br><span class="line">        <span class="built_in">static_cast</span>&lt;<span class="type">unsigned</span> <span class="type">char</span>&gt;(l) | <span class="built_in">static_cast</span>&lt;<span class="type">unsigned</span> <span class="type">char</span>&gt;(r)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 类似定义 &amp; ^ ~ &lt;&lt; &gt;&gt; 共六个位运算符</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// to_integer 是唯一&quot;逃逸&quot;方式</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> IntType&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> IntType <span class="title">to_integer</span><span class="params">(byte b)</span> <span class="keyword">noexcept</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">static_cast</span>&lt;IntType&gt;(b);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为什么 <code>byte b2(42)</code> 编译失败？<code>enum class</code> 禁止隐式整数转换，必须用 <code>byte{42}</code> 列表初始化。这是刻意的安全设计——防止 <code>int x = 5; byte b = x;</code> 这种无意的类型混淆。</p>
+<h3 id="感悟"><a href="#感悟" class="headerlink" title="感悟"></a>感悟</h3><ol>
+<li><strong>span 是 C++ 从”拥有语义”到”视图语义”的关键一步</strong>：类似 Rust 的 <code>&amp;[T]</code> 切片。C++20 span 终于补上了这块拼图，配合 ranges 让代码风格更接近函数式。</li>
+<li><strong>胖指针模式是跨语言共识</strong>：Go 的 slice（<code>{ptr, len, cap}</code>）、Rust 的 <code>&amp;[T]</code>（<code>{ptr, len}</code>）、C++ 的 span（<code>{ptr, len}</code>）都是同构设计。理解一个就能理解全部。</li>
+<li><strong>mdspan 的真正价值在 HPC</strong>：科学计算中矩阵乘法、卷积等操作严重依赖内存布局（row-major vs column-major）。mdspan 让 C++ 不必依赖 Fortran 或手写索引计算就能安全表达多维数据。</li>
+<li><strong>std::byte 是类型系统进化的缩影</strong>：从 <code>char</code> 的三重职责到 <code>byte</code> 的单一职责，是 C++ 从”能编译就行”到”类型安全”的持续演进。<code>enum class</code> + 位运算重载是零开销的类型安全。</li>
+<li><strong>subspan&#x2F;submdspan 的零开销切片是设计精华</strong>：Python 的切片会拷贝（除非用 memoryview），C++ 的 subspan 就是指针偏移。网络协议解析、文件格式解析中极其实用。</li>
+<li><strong>静态 Extent 的优化价值被低估</strong>：<code>span&lt;int, 4&gt;</code> 8 字节 vs <code>span&lt;int&gt;</code> 16 字节，差异在寄存器压力而非内存。函数参数超过 4-6 个时多出的 8 字节可能导致栈溢出（spill），影响热路径性能。</li>
+</ol>
+<h2 id="六、面试准备"><a href="#六、面试准备" class="headerlink" title="六、面试准备"></a>六、面试准备</h2><h3 id="6-1-高频面试题-Q-A"><a href="#6-1-高频面试题-Q-A" class="headerlink" title="6.1 高频面试题 Q&amp;A"></a>6.1 高频面试题 Q&amp;A</h3><p><strong>Q1: std::span 是什么？解决什么问题？</strong><br>A: std::span (C++20) 是对连续内存的非拥有视图，封装了 <code>{T*, size_t}</code> 胖指针。解决三个痛点：(1) 统一 API——一个函数接受 vector&#x2F;array&#x2F;C数组；(2) 安全——绑定指针和大小，避免越界；(3) 零开销切片——subspan 只做指针偏移。</p>
+<p><strong>Q2: span 和 string_view 的关系？</strong><br>A: 同构设计——都是 <code>{指针, 长度}</code> 的胖指针。<code>string_view</code> 是 <code>span&lt;const char&gt;</code> 的字符串特化版，多了 find&#x2F;substr&#x2F;compare 等字符串操作。span 是通用版，支持任意类型。</p>
+<p><strong>Q3: span 传值还是传引用？为什么？</strong><br>A: 传值。span 是 trivial 类型（不管理资源），复制只拷贝 16 字节（两个寄存器），没有深拷贝。传引用反而多一次解引用。容器（vector&#x2F;string）才需要传引用，因为它们有 RAII 和深拷贝语义。</p>
+<p><strong>Q4: span 的静态 Extent 有什么好处？</strong><br>A: <code>span&lt;int, 4&gt;</code> 大小在编译期已知：(1) sizeof 从 16 降到 8（长度不存）；(2) 编译器可做循环展开、边界检查消除；(3) 与固定大小 API（如 <code>span&lt;float,3&gt;</code> 表示 3D 向量）类型匹配。</p>
+<p><strong>Q5: std::mdspan 是什么？与 span 的关系？</strong><br>A: mdspan (C++23) 是多维 span。span 是一维数组视图，mdspan 是 N 维矩阵&#x2F;张量视图。核心扩展：(1) 多维 extents；(2) 可定制 layout（row-major&#x2F;column-major&#x2F;stride）；(3) submdspan 多维切片。</p>
+<p><strong>Q6: layout_right 和 layout_left 的区别？</strong><br>A: layout_right &#x3D; C&#x2F;C++ 行主序：<code>mat[i][j] = data[i*cols + j]</code>，右索引连续。layout_left &#x3D; Fortran 列主序：<code>mat[i][j] = data[i + j*rows]</code>，左索引连续。默认是 layout_right。跨语言互操作时（如 BLAS&#x2F;LAPACK 通常用列主序）必须匹配。</p>
+<p><strong>Q7: std::byte 和 unsigned char 的区别？</strong><br>A: std::byte 是 <code>enum class</code>，只支持位运算（<code>| &amp; ^ ~ &lt;&lt; &gt;&gt;</code>），不支持算术运算和隐式整数转换。unsigned char 可以做算术，也会被隐式转换为 int。byte 用类型系统强制”这就是原始字节，不是数字也不是字符”。</p>
+<p><strong>Q8: 为什么 <code>std::byte b = 42</code> 编译失败？</strong><br>A: <code>enum class</code> 禁止隐式整数转换。必须用列表初始化 <code>std::byte{42}</code>。这是安全设计——防止无意的 <code>int x = 5; byte b = x;</code> 混淆字节和整数。</p>
+<p><strong>Q9: span 能替代 const vector<T>&amp; 做函数参数吗？</strong><br>A: 大多数情况下可以，且有优势：(1) 调用方不用持有 vector，裸数组也能传；(2) 调用方可以只传子区间（subspan）；(3) 语义更清晰——“我需要连续的一段 T”比”我需要一个 vector”更精确。例外：如果函数需要 vector 特有的操作（push_back, resize），则不能用 span。</p>
+<p><strong>Q10: subspan 的边界检查是怎样的？</strong><br>A: <code>subspan(offset, count)</code> 要求 <code>offset + count &lt;= size()</code>，否则未定义行为（类似 <code>operator[]</code> 不检查）。标准库实现可选在 debug 模式下做断言。<code>first(n)</code> &#x2F; <code>last(n)</code> 同理。</p>
+<p><strong>Q11: mdspan 的 layout_stride 有什么实际用途？</strong><br>A: (1) 表达非连续矩阵（如卷积中的 im2col 展开）；(2) 反向索引（Python <code>[::-1]</code>，虽然标准要求 stride 为正）；(3) 子矩阵视图（取矩阵的隔行隔列）；(4) 与外部库（如 Eigen、LAPACK）的步长参数对接。</p>
+<h3 id="6-2-陷阱和反问"><a href="#6-2-陷阱和反问" class="headerlink" title="6.2 陷阱和反问"></a>6.2 陷阱和反问</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>陷阱&#x2F;反问</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>span 指向的 vector 扩容后继续用 span 安全吗？</td>
+<td>不安全。span 持有原始指针，vector 扩容后指针失效（reallocate），span 变成悬空指针。span 不拥有数据，不跟踪生命周期。</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>span&lt;const int&gt;</code> 能绑定到 <code>vector&lt;int&gt;</code> 吗？</td>
+<td>能。const span 表示只读视图，不要求底层数据是 const 的。类似 <code>const int*</code> 可指向非 const int。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>span 能指向 std::deque 吗？</td>
+<td>不能。deque 内存不连续（分块存储）。span 要求连续内存，只能用于 vector&#x2F;array&#x2F;C数组&#x2F;unique_ptr&lt;T[]&gt;。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>为什么 <code>std::byte</code> 可以用 <code>&lt;&lt;</code> 但不能用 <code>+</code>？</td>
+<td><code>&lt;&lt;</code> 是位运算（移位），<code>+</code> 是算术运算。byte 的设计哲学：字节操作 &#x3D; 位操作，禁止算数运算来避免语义混淆。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>反问：span 和 gsl::span 的区别？</td>
+<td>gsl::span 是 C++ Core Guidelines 的实现，比 std::span 早出现。std::span 吸取了 gsl::span 的经验，API 略有不同（如构造方式）。两者核心概念一致。</td>
+</tr>
+<tr>
+<td>6</td>
+<td>反问：mdspan 的零开销是真的零开销吗？</td>
+<td>静态 Extents 的 mdspan 确实 sizeof 只有 8 字节（仅存指针），下标访问编译期展开为零偏移计算。动态 Extents 的 sizeof 为 <code>8 + rank * 8</code>，每次访问需要查表，仍有轻微开销。</td>
+</tr>
+</tbody></table>
+<h3 id="6-3-一句话答案"><a href="#6-3-一句话答案" class="headerlink" title="6.3 一句话答案"></a>6.3 一句话答案</h3><ul>
+<li><strong>span 本质</strong>：<code>{T*, size_t}</code> 胖指针，连续内存的非拥有视图</li>
+<li><strong>span vs vector 参数</strong>：span 传值（16 字节拷贝），vector 传 const&amp;（避免深拷贝）</li>
+<li><strong>静态 Extent 优势</strong>：sizeof 缩半、编译器可循环展开、消除边界检查</li>
+<li><strong>mdspan 核心</strong>：多维 span + 可定制 layout（row&#x2F;column-major&#x2F;stride）</li>
+<li><strong>std::byte 设计目的</strong>：<code>enum class</code> 禁止算术，只留位运算，类型安全表达”原始字节”</li>
+<li><strong>subspan 零开销</strong>：指针偏移 + 返回新 span，不拷贝数据</li>
+<li><strong>span 最大坑</strong>：不拥有数据，底层容器释放后 span 悬空</li>
+<li><strong>layout_right vs left</strong>：C 行主序 vs Fortran 列主序，跨语言互操作必须匹配</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1">weimo</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://weimo1.github.io/posts/Span-byte/">https://weimo1.github.io/posts/Span-byte/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="external nofollow noreferrer" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://weimo1.github.io" target="_blank">weimo1's blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.png" data-sites="x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/Socket%E6%95%B0%E6%8D%AE%E6%B5%81%E5%AE%8C%E6%95%B4%E8%B7%AF%E5%BE%84%E8%A7%A3%E6%9E%90/" title="Socket数据流完整路径解析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Socket数据流完整路径解析</div></div><div class="info-2"><div class="info-item-1">Socket数据流完整路径解析 适用范围：Linux内核网络栈、Socket数据收发路径、DMA&#x2F;Ring Buffer、NAPI&#x2F;软中断、TCP&#x2F;IP协议栈处理流程  一、核心概念 定义：Socket数据流完整路径描述了数据从网卡硬件到用户空间（接收），以及从用户空间到网线（发送）的完整内核数据通路 关键词：DMA、Ring Buffer、NAPI、软中断(softirq)、sk_buff、TCP&#x2F;IP协议栈、sendfile零拷贝 适用场景&#x2F;边界： 理解网络IO性能瓶颈所在位置 调优内核网络参数（Ring Buffer大小、中断亲和性...</div></div></div></a><a class="pagination-related" href="/posts/Socket%E5%8F%91%E9%80%81%E6%8E%A5%E6%94%B6%E9%98%9F%E5%88%97%E4%B8%8E%E7%BC%93%E5%86%B2%E5%8C%BA%E8%AF%A6%E8%A7%A3/" title="Socket发送接收队列与缓冲区详解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Socket发送接收队列与缓冲区详解</div></div><div class="info-2"><div class="info-item-1">Socket发送接收队列与缓冲区详解 适用范围：Linux 内核 Socket 缓冲区管理、sk_write_queue&#x2F;sk_receive_queue、sk_buff 数据结构、TCP 流量控制、缓冲区调优  一、核心概念 定义：Socket 发送&#x2F;接收队列是 Linux 内核为每个 TCP 连接维护的数据缓冲机制。发送队列缓存待发送和未确认的数据，接收队列缓存已确认但尚未被用户读取的数据。两者通过 sk_buff 链表实现，是 TCP 可靠传输、流量控制、拥塞控制的基石 关键词：sk_write_queue、sk_receive_queue、sk_buff、tr...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">weimo</div><div class="author-info-description">C++ / 图形学 / 系统底层</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">299</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">39</div></a></div><a id="card-info-btn" target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/weimo1"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/weimo1" rel="external nofollow noreferrer" target="_blank" title="Github"><i class="fab fa-github" style="color: #00d4ff;"></i></a><a class="social-icon" href="mailto:weimo@example.com" rel="external nofollow noreferrer" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">Welcome to my blog ✨</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Span-byte"><span class="toc-number">1.</span> <span class="toc-text">Span   byte</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.</span> <span class="toc-text">一、核心概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AF%A6%E7%BB%86%E8%A7%A3%E6%9E%90%EF%BC%88%E2%89%A5200%E5%AD%97%EF%BC%89"><span class="toc-number">1.2.</span> <span class="toc-text">二、详细解析（≥200字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-span-%E7%9A%84%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 span 的核心设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-std-byte-%E7%9A%84%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 std::byte 的设计</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%8A%A8%E6%89%8B%E5%AE%9E%E8%B7%B5%EF%BC%88%E4%BB%A3%E7%A0%81%E6%A1%88%E4%BE%8B%EF%BC%89"><span class="toc-number">1.3.</span> <span class="toc-text">三、动手实践（代码案例）</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#std-Span%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="toc-number">2.</span> <span class="toc-text">std::Span的使用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%87%E7%89%87-Slicing"><span class="toc-number">2.1.</span> <span class="toc-text">切片 (Slicing)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#span-%E2%80%9C%E8%83%96%E6%8C%87%E9%92%88%E2%80%9D"><span class="toc-number">2.2.</span> <span class="toc-text">span “胖指针”</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#std-mdspan%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="toc-number">3.</span> <span class="toc-text">std::mdspan的使用</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E6%93%8D%E4%BD%9C"><span class="toc-number">3.1.</span> <span class="toc-text">基础操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%99%E6%80%81%E7%BB%B4%E5%BA%A6"><span class="toc-number">3.1.1.</span> <span class="toc-text">静态维度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E7%BB%B4%E5%BA%A6"><span class="toc-number">3.1.2.</span> <span class="toc-text">动态维度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B7%E5%90%88%E7%BB%B4%E5%BA%A6"><span class="toc-number">3.1.3.</span> <span class="toc-text">混合维度</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0"><span class="toc-number">3.2.</span> <span class="toc-text">构造函数</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%BB%98%E8%AE%A4%E6%9E%84%E9%80%A0"><span class="toc-number">3.2.1.</span> <span class="toc-text">默认构造</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E6%9E%84%E9%80%A0"><span class="toc-number">3.2.2.</span> <span class="toc-text">可变参数构造</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E8%BF%87std-array%E6%9E%84%E9%80%A0"><span class="toc-number">3.2.3.</span> <span class="toc-text">通过std::array构造</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%83%E5%B1%80%E7%AD%96%E7%95%A5"><span class="toc-number">3.3.</span> <span class="toc-text">布局策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#layout-right-%E5%92%8C-layout-left"><span class="toc-number">3.3.1.</span> <span class="toc-text">layout_right 和 layout_left</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#layout-left-padded-%E5%92%8C-layout-right-padded"><span class="toc-number">3.3.2.</span> <span class="toc-text">layout_left_padded 和 layout_right_padded</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#layout-stride"><span class="toc-number">3.3.3.</span> <span class="toc-text">layout_stride</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E7%AD%96%E7%95%A5"><span class="toc-number">3.4.</span> <span class="toc-text">访问策略</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#std-submdspan"><span class="toc-number">3.5.</span> <span class="toc-text">std::submdspan</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.6.</span> <span class="toc-text">总结</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#std-byte%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="toc-number">4.</span> <span class="toc-text">std::byte的使用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%83%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="toc-number">4.1.</span> <span class="toc-text">它的作用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%BF%9B%E9%98%B6%E5%BA%94%E7%94%A8%EF%BC%88%E2%89%A5500%E5%AD%97%EF%BC%89"><span class="toc-number">4.2.</span> <span class="toc-text">四、进阶应用（≥500字）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-span-%E7%9A%84%E5%8A%A8%E6%80%81extent-vs-%E9%9D%99%E6%80%81extent"><span class="toc-number">4.2.1.</span> <span class="toc-text">4.1 span 的动态extent vs 静态extent</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-span-%E7%9A%84%E5%AE%89%E5%85%A8%E8%BE%B9%E7%95%8C%E6%A3%80%E6%9F%A5"><span class="toc-number">4.2.2.</span> <span class="toc-text">4.2 span 的安全边界检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E4%B8%8E%E5%85%B6%E4%BB%96%E4%B8%BB%E9%A2%98%E7%9A%84%E5%85%B3%E8%81%94"><span class="toc-number">4.2.3.</span> <span class="toc-text">4.3 与其他主题的关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E5%B7%A5%E7%A8%8B%E4%B8%AD%E7%9A%84%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"><span class="toc-number">4.2.4.</span> <span class="toc-text">4.4 工程中的最佳实践</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E5%92%8C%E5%AE%9E%E8%B7%B5%E6%84%9F%E6%82%9F"><span class="toc-number">4.3.</span> <span class="toc-text">五、源码解析和实践感悟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-std-span-%E7%9A%84%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0%EF%BC%88%E7%AE%80%E5%8C%96%EF%BC%89"><span class="toc-number">4.3.1.</span> <span class="toc-text">5.1 std::span 的内部实现（简化）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-span-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E9%9C%80%E8%A6%81%E5%BC%95%E7%94%A8%E4%BC%A0%E9%80%92%EF%BC%9F"><span class="toc-number">4.3.2.</span> <span class="toc-text">5.2 span 为什么不需要引用传递？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-mdspan-%E7%9A%84-layout-%E7%AD%96%E7%95%A5%E5%9C%A8%E5%86%85%E5%AD%98%E4%B8%AD%E7%9A%84%E6%98%A0%E5%B0%84"><span class="toc-number">4.3.3.</span> <span class="toc-text">5.3 mdspan 的 layout 策略在内存中的映射</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-4-std-byte-%E7%9A%84%E7%B1%BB%E5%9E%8B%E5%AE%89%E5%85%A8%E8%AE%BE%E8%AE%A1"><span class="toc-number">4.3.4.</span> <span class="toc-text">5.4 std::byte 的类型安全设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%84%9F%E6%82%9F"><span class="toc-number">4.3.5.</span> <span class="toc-text">感悟</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E9%9D%A2%E8%AF%95%E5%87%86%E5%A4%87"><span class="toc-number">4.4.</span> <span class="toc-text">六、面试准备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-%E9%AB%98%E9%A2%91%E9%9D%A2%E8%AF%95%E9%A2%98-Q-A"><span class="toc-number">4.4.1.</span> <span class="toc-text">6.1 高频面试题 Q&amp;A</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-%E9%99%B7%E9%98%B1%E5%92%8C%E5%8F%8D%E9%97%AE"><span class="toc-number">4.4.2.</span> <span class="toc-text">6.2 陷阱和反问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-%E4%B8%80%E5%8F%A5%E8%AF%9D%E7%AD%94%E6%A1%88"><span class="toc-number">4.4.3.</span> <span class="toc-text">6.3 一句话答案</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor_CSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor_CSP设计模式">Actor_CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/" title="Asio 网络编程">Asio 网络编程</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Actor%E5%92%8CCSP%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" title="Actor和CSP设计模式">Actor和CSP设计模式</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Asio%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8BIOServicePool/" title="Asio多线程模型IOServicePool">Asio多线程模型IOServicePool</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Base64/" title="Base64">Base64</a><time datetime="2026-06-19T16:00:00.000Z" title="发表于 2026-06-20 00:00:00">2026-06-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2026 By weimo</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener external nofollow noreferrer" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.5.5-b1</a></span></div><div class="footer_custom_text">❤ 用代码探索世界</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5-b1"></script><script src="/js/main.js?v=5.5.5-b1"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload@19.1.3/dist/lazyload.iife.min.js"></script><div class="js-pjax"></div><canvas class="fireworks" mobile="false"></canvas><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/fireworks.min.js"></script><script id="canvas_nest" defer="defer" color="0,212,255" opacity="0.5" zIndex="-1" count="80" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script id="click-heart" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/click-heart.min.js" async="async" mobile="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
