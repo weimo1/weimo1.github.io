@@ -1,7 +1,17 @@
 ﻿# Butterfly 主题配置
 # 文档: https://butterfly.js.org/
+# ----
+# 深色科技风配置 - v2
 
-# 导航菜单
+# --------------------------------------
+# 导航栏
+# --------------------------------------
+nav:
+  logo:
+  display_title: true
+  display_post_title: true
+  fixed: true
+
 menu:
   首页: / || fas fa-home
   归档: /archives/ || fas fa-archive
@@ -9,39 +19,180 @@ menu:
   分类: /categories/ || fas fa-folder-open
   关于: /about/ || fas fa-heart
 
+# --------------------------------------
+# 主题色彩 - 青蓝科技
+# --------------------------------------
+theme_color:
+  enable: true
+  main: "#00d4ff"
+  paginator: "#00d4ff"
+  button_hover: "#7c3aed"
+  text_selection: "#00d4ff"
+  link_color: "#00d4ff"
+  meta_color: "#858585"
+  hr_color: "#00d4ff"
+  code_foreground: "#f472b6"
+  code_background: "rgba(0, 212, 255, 0.08)"
+  toc_color: "#00d4ff"
+  blockquote_padding_color: "#00d4ff"
+  blockquote_background_color: "#00d4ff"
+  scrollbar_color: "#00d4ff"
+  meta_theme_color_light: "#ffffff"
+  meta_theme_color_dark: "#0a0a0f"
+
+# --------------------------------------
 # 代码块
+# --------------------------------------
 code_blocks:
   theme: darker
   macStyle: true
+  height_limit: false
+  word_wrap: false
   copy: true
   language: true
   shrink: false
   fullpage: false
 
+# --------------------------------------
 # 社交链接
+# --------------------------------------
 social:
-  fab fa-github: https://github.com/weimo1 || Github || '#24292e'
+  fab fa-github: https://github.com/weimo1 || Github || '#00d4ff'
+  fas fa-envelope: mailto:weimo@example.com || Email || '#4a7dbe'
 
-# 网站图标
+# --------------------------------------
+# 图像设置
+# --------------------------------------
 favicon: /img/favicon.png
-
-# 头像
 avatar:
   img: /img/avatar.png
   effect: true
 
-# 首页顶部图
-index_img: /img/index_bg.jpg
+disable_top_img: false
 default_top_img: /img/default_bg.jpg
+index_img: /img/index_bg.jpg
+archive_img: /img/default_bg.jpg
+tag_img: /img/default_bg.jpg
+category_img: /img/default_bg.jpg
+footer_img: false
 
-# 封面设置
+# 网站背景 - 深色渐变
+background:
+  - linear-gradient(135deg, #0a0a0f 0%, #0f172a 50%, #0a0a1a 100%)
+
 cover:
   index_enable: true
   aside_enable: true
   archives_enable: true
   position: both
+  default_cover:
 
+error_img:
+  flink: /img/friend_404.gif
+  post_page: /img/404.jpg
+
+error_404:
+  enable: true
+  subtitle: '星轨偏离，信号丢失'
+  background: /img/error-page.png
+
+# --------------------------------------
+# 文章元信息
+# --------------------------------------
+post_meta:
+  page:
+    date_type: created
+    date_format: date
+    categories: true
+    tags: false
+    label: true
+  post:
+    position: center
+    date_type: both
+    date_format: date
+    categories: true
+    tags: true
+    label: true
+
+# --------------------------------------
+# 首页设置
+# --------------------------------------
+index_site_info_top: 43%
+index_top_img_height: 100vh
+
+subtitle:
+  enable: true
+  effect: true
+  typed_option:
+    strings:
+      - "C++ / 图形学 / 系统底层"
+      - "持续探索技术边界"
+      - "代码即艺术"
+    typeSpeed: 70
+    backSpeed: 50
+    loop: true
+  source: false
+  sub:
+    - "C++ / 图形学 / 系统底层"
+
+# 文章列表布局: 5 = 信息展示在封面上
+index_layout: 5
+
+index_post_content:
+  method: 2
+  length: 300
+
+# --------------------------------------
+# 文章设置
+# --------------------------------------
+toc:
+  post: true
+  page: false
+  number: true
+  expand: false
+  style_simple: false
+  scroll_percent: true
+
+post_copyright:
+  enable: true
+  decode: false
+  author_href: https://github.com/weimo1
+  license: CC BY-NC-SA 4.0
+  license_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+reward:
+  enable: false
+
+related_post:
+  enable: true
+  limit: 6
+  date_type: created
+
+post_pagination: 1
+
+noticeOutdate:
+  enable: true
+  style: flat
+  limit_day: 365
+  position: top
+  message_prev: 本文最后更新于
+  message_next: 天前，内容可能已过期
+
+# --------------------------------------
+# 页脚
+# --------------------------------------
+footer:
+  owner:
+    enable: true
+    since: 2026
+  copyright:
+    enable: true
+    version: true
+  custom_text: '❤ 用代码探索世界'
+
+# --------------------------------------
 # 侧边栏
+# --------------------------------------
 aside:
   enable: true
   hide: false
@@ -55,54 +206,204 @@ aside:
   card_author:
     enable: true
     description: 'C++ / 图形学 / 系统底层'
+    button:
+      enable: true
+      icon: fab fa-github
+      text: Follow Me
+      link: https://github.com/weimo1
   card_announcement:
     enable: true
-    content: Welcome to my blog
+    content: Welcome to my blog ✨
   card_recent_post:
     enable: true
     limit: 5
+    sort: date
+  card_newest_comments:
+    enable: false
   card_categories:
     enable: true
     limit: 8
+    expand: none
   card_tags:
     enable: true
     limit: 40
+    color: false
+    orderby: random
+    order: 1
   card_archives:
     enable: true
     type: monthly
+    format: MMMM YYYY
+    order: -1
+    limit: 8
+  card_post_series:
+    enable: true
+    series_title: false
+    orderBy: 'date'
+    order: -1
+  card_webinfo:
+    enable: true
+    post_count: true
+    last_push_date: true
+    runtime_date:
 
-# 暗色模式
+# --------------------------------------
+# 右下角
+# --------------------------------------
+rightside_bottom:
+rightside_scroll_percent: true
+rightside_item_order:
+  enable: false
+rightside_config_animation: true
+
+# --------------------------------------
+# 模式
+# --------------------------------------
+readmode: true
+
 darkmode:
   enable: true
   button: true
   autoChangeMode: 1
 
+display_mode: light
+
+# --------------------------------------
+# 全局设置
+# --------------------------------------
+anchor:
+  auto_update: false
+  click_to_scroll: false
+
+photofigcaption: false
+
+copy:
+  enable: true
+  copyright:
+    enable: true
+    limit_count: 150
+
+wordcount:
+  enable: true
+  post_wordcount: true
+  min2read: true
+  total_wordcount: true
+
+busuanzi:
+  site_uv: true
+  site_pv: true
+  page_pv: true
+
+# --------------------------------------
 # 搜索
+# --------------------------------------
 search:
   use: local
-  placeholder: search...
+  placeholder: 搜索文章...
 
 local_search:
   enable: true
+  preload: true
+  top_n_per_article: 1
 
-# 页脚
-footer:
-  owner:
-    enable: true
-    since: 2026
+# --------------------------------------
+# 分享
+# --------------------------------------
+share:
+  use: sharejs
+  sharejs:
+    sites: x,wechat,weibo,qq
 
-# 图片灯箱
-fancybox: true
+# --------------------------------------
+# 评论
+# --------------------------------------
+comments:
+  use:
+  text: true
+  lazyload: false
+  count: false
+  card_post_count: false
 
-# 懒加载
-lazyload:
+# --------------------------------------
+# 美化与动效
+# --------------------------------------
+category_ui:
+tag_ui:
+rounded_corners_ui: true
+text_align_justify: false
+
+mask:
+  header: true
+  footer: true
+
+preloader:
   enable: true
+  source: 1
 
-# PJAX
-pjax:
-  enable: false
+enter_transitions: true
 
-# 字体
+beautify:
+  enable: true
+  field: post
+  title_prefix_icon: '\f0c1'
+  title_prefix_icon_color: '#00d4ff'
+
 font:
   global-font-size: '16px'
   code-font-size: '14px'
+
+hr_icon:
+  enable: true
+  icon: '\f0c1'
+  icon_top: -10px
+
+# canvas_nest 背景粒子连线
+canvas_nest:
+  enable: true
+  color: '0,212,255'
+  opacity: 0.5
+  zIndex: -1
+  count: 80
+  mobile: true
+
+# 烟花点击
+fireworks:
+  enable: true
+  zIndex: 9999
+  mobile: false
+
+# 点击爱心
+click_heart:
+  enable: true
+  mobile: false
+
+# --------------------------------------
+# 灯箱
+# --------------------------------------
+lightbox: medium_zoom
+
+# --------------------------------------
+# 懒加载
+# --------------------------------------
+lazyload:
+  enable: true
+  native: false
+  field: site
+  placeholder:
+  blur: false
+
+# --------------------------------------
+# CDN
+# --------------------------------------
+CDN:
+  internal_provider: local
+  third_party_provider: jsdelivr
+  version: true
+
+# --------------------------------------
+# 注入自定义 CSS
+# --------------------------------------
+inject:
+  head:
+    - <link rel="stylesheet" href="/css/custom.css">
+  bottom:
